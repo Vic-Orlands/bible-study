@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   BookOpen,
   Calendar,
@@ -13,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import BibleLogo from "@/components/logo";
 import { ArrowRightIcon } from "@/components/ui/arrow-right";
+import AnimatedBible from "@/components/animated-bible";
 
 const features = [
   {
@@ -70,10 +72,33 @@ const featureLines = [
   ["Audio notes", "record reflections with automatic transcription"],
 ];
 
+const INTRO_DURATION_MS = 10000;
+
 export default function HomePage() {
+  const [showIntro, setShowIntro] = useState(true);
+  const [revealLanding, setRevealLanding] = useState(false);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setRevealLanding(true);
+      setShowIntro(false);
+    }, INTRO_DURATION_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, []);
+
   return (
     <main className="min-h-screen bg-[#0d0d0d] text-white">
-      <section className="grid h-[calc(100vh)] lg:grid-cols-[70%_30%] xl:grid-cols-[70%_30%]">
+      {showIntro && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-[#1f1f1f]">
+          <AnimatedBible holdOpen />
+        </div>
+      )}
+      <section
+        className={`grid h-[calc(100vh)] transform-gpu transition-[opacity,transform] duration-1000 ease-out lg:grid-cols-[70%_30%] xl:grid-cols-[70%_30%] ${
+          revealLanding ? "scale-100 opacity-100" : "scale-0 opacity-0"
+        }`}
+      >
         <div className="relative flex flex-col px-6 pb-8 md:px-9">
           <nav className="flex items-center justify-between z-20 mb-20 pt-10">
             <div className="flex items-center gap-2 font-serif text-xl tracking-tight font-medium">
@@ -103,7 +128,7 @@ export default function HomePage() {
             <Button
               asChild
               size="lg"
-              className="rounded-full mt-8 text-base shadow-glow"
+              className="rounded-full font-medium mt-8 text-base shadow-glow"
             >
               <Link href="/study">
                 Start Reading
@@ -111,15 +136,15 @@ export default function HomePage() {
               </Link>
             </Button>
 
-            <p className="mt-7 text-base font-semibold text-white/45">
+            <p className="mt-6 text-base font-medium text-white/45">
               Free for personal study. Built for community.
             </p>
           </div>
 
-          <div className="mt-24 w-full max-w-[780px] space-y-2 text-[18px] font-semibold leading-7 text-white md:mt-auto">
+          <div className="mt-24 w-full max-w-[780px] space-y-2 text-base leading-5 text-white md:mt-auto">
             {featureLines.map(([lead, rest]) => (
               <p key={lead}>
-                <span className="text-white">{lead}</span>{" "}
+                <span className="text-white font-medium">{lead}</span>{" "}
                 <span className="text-white/45">{rest}</span>
               </p>
             ))}
