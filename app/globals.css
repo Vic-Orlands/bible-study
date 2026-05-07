@@ -86,3 +86,68 @@ a {
     animation: none;
   }
 }
+
+.bible-app {
+  --bible-bg: #ffffff;
+  --bible-panel: #ffffff;
+  --bible-surface: #fbf7f2;
+  --bible-soft: #f5eee6;
+  --bible-border: #f1e8df;
+  --bible-border-strong: #e5d6c9;
+  --bible-ink: #25140b;
+  --bible-muted: #7a6758;
+  --bible-accent: #f6823c;
+  --bible-brown: #3a2218;
+  --bible-dark-brown: #1f1209;
+  background: var(--bible-bg);
+  color: var(--bible-ink);
+  font-family: var(--font-sans);
+}
+
+.bible-app button {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.bible-app .cta-button {
+  border-radius: 999px;
+}
+
+.bible-app .icon-button {
+  border-radius: 999px;
+}
+
+.bible-app button:hover {
+  transform: scale(1.035);
+}
+
+.bible-app button:active {
+  transform: scale(0.96);
+}
+
+.bible-app .rail-handle,
+.bible-app .rail-handle:hover,
+.bible-app .rail-handle:active {
+  transform: translateY(-50%);
+}
+
+.bible-app-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #e5d6c9 transparent;
+}
+
+.bible-app-scroll::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+
+.bible-app-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bible-app-scroll::-webkit-scrollbar-thumb {
+  background: #e5d6c9;
+}
