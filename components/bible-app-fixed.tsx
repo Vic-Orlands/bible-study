@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Bookmark,
   BookOpen,
   ChevronDown,
   ChevronLeft,
@@ -27,11 +28,25 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { toast } from "sonner";
 
 import { ProductShell } from "@/components/product-shell";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 type RightTab = "Study" | "Notes" | "Audio Notes" | "Activity";
+type PassageSelection = {
+  book: string;
+  chapter: number;
+  verse: number;
+};
+
+const STUDY_SIDEBARS_STORAGE_KEY = "bible-study:study-sidebars";
+
+type StudySidebarsState = {
+  leftOpen: boolean;
+  rightOpen: boolean;
+};
 
 const searchResults = [
   [
@@ -103,40 +118,48 @@ const bibleIndex = [
   },
 ];
 
+const translationVerses: Record<string, string[]> = {
+  KJV: [
+    "In the beginning was the Word, and the Word was with God, and the Word was God.",
+    "The same was in the beginning with God.",
+    "All things were made by him; and without him was not any thing made that was made.",
+    "In him was life; and the life was the light of men.",
+    "And the light shineth in darkness; and the darkness comprehended it not.",
+    "There was a man sent from God, whose name was John.",
+  ],
+  NIV: [
+    "In the beginning was the Word, and the Word was with God, and the Word was God.",
+    "He was with God in the beginning.",
+    "Through him all things were made; without him nothing was made that has been made.",
+    "In him was life, and that life was the light of all mankind.",
+    "The light shines in the darkness, and the darkness has not overcome it.",
+    "There was a man sent from God whose name was John.",
+  ],
+  ESV: [
+    "In the beginning was the Word, and the Word was with God, and the Word was God.",
+    "He was in the beginning with God.",
+    "All things were made through him, and without him was not any thing made that was made.",
+    "In him was life, and the life was the light of men.",
+    "The light shines in the darkness, and the darkness has not overcome it.",
+    "There was a man sent from God, whose name was John.",
+  ],
+};
+
 const translations = [
   {
     label: "KJV",
-    verses: [
-      "In the beginning was the Word, and the Word was with God, and the Word was God.",
-      "The same was in the beginning with God.",
-      "All things were made by him; and without him was not any thing made that was made.",
-      "In him was life; and the life was the light of men.",
-      "And the light shineth in darkness; and the darkness comprehended it not.",
-      "There was a man sent from God, whose name was John.",
-    ],
   },
   {
     label: "NIV",
-    verses: [
-      "In the beginning was the Word, and the Word was with God, and the Word was God.",
-      "He was with God in the beginning.",
-      "Through him all things were made; without him nothing was made that has been made.",
-      "In him was life, and that life was the light of all mankind.",
-      "The light shines in the darkness, and the darkness has not overcome it.",
-      "There was a man sent from God whose name was John.",
-    ],
   },
   {
     label: "ESV",
-    verses: [
-      "In the beginning was the Word, and the Word was with God, and the Word was God.",
-      "He was in the beginning with God.",
-      "All things were made through him, and without him was not any thing made that was made.",
-      "In him was life, and the life was the light of men.",
-      "The light shines in the darkness, and the darkness has not overcome it.",
-      "There was a man sent from God, whose name was John.",
-    ],
   },
+  { label: "NASB" },
+  { label: "NLT" },
+  { label: "NKJV" },
+  { label: "CSB" },
+  { label: "AMP" },
 ];
 
 const waveform = [
@@ -200,11 +223,138 @@ const fadeMotion = {
   transition: { duration: 0.16, ease: [0.215, 0.61, 0.355, 1] },
 } as const;
 
+const formatPassage = ({ book, chapter, verse }: PassageSelection) =>
+  `${book} ${chapter} : ${verse}`;
+
+const chapterKeyFor = ({ book, chapter }: PassageSelection) => `${book}-${chapter}`;
+
+const getChapter = (bookName: string, chapterNumber: number) =>
+  bibleIndex
+    .find(({ book }) => book === bookName)
+    ?.chapters.find(({ chapter }) => chapter === chapterNumber);
+
+const getVerses = (label: string, selection: PassageSelection) => {
+  const source = translationVerses[label] ?? translationVerses.NIV;
+
+  if (selection.book === "John" && selection.chapter === 1) {
+    if (selection.verse <= source.length) {
+      return source;
+    }
+
+    return [
+      ...source,
+      ...Array.from(
+        { length: selection.verse - source.length },
+        (_, index) =>
+          `John 1:${source.length + index + 1} rendered in ${label}. This mock continuation keeps the selected verse visible while the API integration comes later.`,
+      ),
+    ];
+  }
+
+  const count = Math.min(
+    getChapter(selection.book, selection.chapter)?.verses ?? 6,
+    Math.max(6, selection.verse),
+  );
+  return Array.from({ length: count }, (_, index) => {
+    const verse = index + 1;
+    return `${selection.book} ${selection.chapter}:${verse} rendered in ${label}. This mock passage keeps the reading layout responsive while the API integration comes later.`;
+  });
+};
+
+function useOutsideClick<T extends HTMLElement>(
+  open: boolean,
+  onClose: () => void,
+) {
+  const ref = useRef<T>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [onClose, open]);
+
+  return ref;
+}
+
 export default function BibleApp() {
   const [rightTab, setRightTab] = useState<RightTab>("Notes");
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [sidebars, setSidebars] = useState<StudySidebarsState>({
+    leftOpen: true,
+    rightOpen: true,
+  });
+  const [sidebarsReady, setSidebarsReady] = useState(false);
   const [commentTarget, setCommentTarget] = useState("John 1:3");
+  const [selectedPassage, setSelectedPassage] = useState<PassageSelection>({
+    book: "John",
+    chapter: 1,
+    verse: 3,
+  });
+  const { leftOpen, rightOpen } = sidebars;
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(STUDY_SIDEBARS_STORAGE_KEY);
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Partial<StudySidebarsState>;
+
+        setSidebars({
+          leftOpen:
+            typeof parsed.leftOpen === "boolean" ? parsed.leftOpen : true,
+          rightOpen:
+            typeof parsed.rightOpen === "boolean" ? parsed.rightOpen : true,
+        });
+      } catch {
+        window.localStorage.removeItem(STUDY_SIDEBARS_STORAGE_KEY);
+      }
+    }
+
+    setSidebarsReady(true);
+  }, []);
+
+  const updateSidebars = useCallback((nextState: Partial<StudySidebarsState>) => {
+    setSidebars((current) => {
+      const next = { ...current, ...nextState };
+      window.localStorage.setItem(
+        STUDY_SIDEBARS_STORAGE_KEY,
+        JSON.stringify(next),
+      );
+
+      return next;
+    });
+  }, []);
+
+  const setLeftOpen = useCallback(
+    (open: boolean) => updateSidebars({ leftOpen: open }),
+    [updateSidebars],
+  );
+
+  const setRightOpen = useCallback(
+    (open: boolean) => updateSidebars({ rightOpen: open }),
+    [updateSidebars],
+  );
+
+  const showToast = useCallback((title: string, description?: string) => {
+    toast(title, {
+      description,
+      icon: <span className="mt-1 flex h-2 w-2 shrink-0 bg-[#f6823c]" />,
+    });
+  }, []);
+
+  const handlePassageChange = (selection: PassageSelection) => {
+    setSelectedPassage(selection);
+    setCommentTarget(`${selection.book} ${selection.chapter}:${selection.verse}`);
+    showToast(`Opened ${selection.book} ${selection.chapter}:${selection.verse}`);
+  };
 
   const handleVerseComment = (target: string) => {
     setCommentTarget(target);
@@ -215,40 +365,74 @@ export default function BibleApp() {
   return (
     <ProductShell>
       <div className="flex flex-1 overflow-hidden bg-white">
-        <AnimatePresence initial={false}>
-          {leftOpen && <LeftPanel onCollapse={() => setLeftOpen(false)} />}
-        </AnimatePresence>
-        <AnimatePresence initial={false}>
-          {!leftOpen && (
-            <RailOpenHandle side="left" onClick={() => setLeftOpen(true)} />
-          )}
-        </AnimatePresence>
-        <Reader onVerseComment={handleVerseComment} />
-        <AnimatePresence initial={false}>
-          {rightOpen && (
-            <RightPanel
-              commentTarget={commentTarget}
-              tab={rightTab}
-              onCollapse={() => setRightOpen(false)}
-              onTabChange={setRightTab}
+        {!sidebarsReady ? (
+          <div className="min-w-0 flex-1 bg-white" />
+        ) : (
+          <>
+            <AnimatePresence initial={false}>
+              {leftOpen && (
+                <LeftPanel
+                  selectedPassage={selectedPassage}
+                  onCollapse={() => setLeftOpen(false)}
+                  onPassageChange={handlePassageChange}
+                />
+              )}
+            </AnimatePresence>
+            <AnimatePresence initial={false}>
+              {!leftOpen && (
+                <RailOpenHandle side="left" onClick={() => setLeftOpen(true)} />
+              )}
+            </AnimatePresence>
+            <Reader
+              selectedPassage={selectedPassage}
+              onBookmark={() =>
+                showToast(`Bookmarked ${selectedPassage.book} ${selectedPassage.chapter}:${selectedPassage.verse}`)
+              }
+              onPassageChange={handlePassageChange}
+              onToast={showToast}
+              onVerseComment={handleVerseComment}
             />
-          )}
-        </AnimatePresence>
-        <AnimatePresence initial={false}>
-          {!rightOpen && (
-            <RailOpenHandle side="right" onClick={() => setRightOpen(true)} />
-          )}
-        </AnimatePresence>
+            <AnimatePresence initial={false}>
+              {rightOpen && (
+                <RightPanel
+                  commentTarget={commentTarget}
+                  tab={rightTab}
+                  onCollapse={() => setRightOpen(false)}
+                  onTabChange={setRightTab}
+                />
+              )}
+            </AnimatePresence>
+            <AnimatePresence initial={false}>
+              {!rightOpen && (
+                <RailOpenHandle side="right" onClick={() => setRightOpen(true)} />
+              )}
+            </AnimatePresence>
+          </>
+        )}
       </div>
+      <Toaster />
     </ProductShell>
   );
 }
 
-function LeftPanel({ onCollapse }: { onCollapse: () => void }) {
+function LeftPanel({
+  selectedPassage,
+  onCollapse,
+  onPassageChange,
+}: {
+  selectedPassage: PassageSelection;
+  onCollapse: () => void;
+  onPassageChange: (selection: PassageSelection) => void;
+}) {
   const [searchOpen, setSearchOpen] = useState(true);
   const [indexOpen, setIndexOpen] = useState(true);
-  const [openBook, setOpenBook] = useState("John");
-  const [openChapter, setOpenChapter] = useState("John-1");
+  const [openBook, setOpenBook] = useState(selectedPassage.book);
+  const [openChapter, setOpenChapter] = useState(chapterKeyFor(selectedPassage));
+
+  useEffect(() => {
+    setOpenBook(selectedPassage.book);
+    setOpenChapter(chapterKeyFor(selectedPassage));
+  }, [selectedPassage]);
 
   return (
     <motion.aside
@@ -265,7 +449,15 @@ function LeftPanel({ onCollapse }: { onCollapse: () => void }) {
         <div className="flex items-center justify-between">
           <button
             className="flex items-center gap-2 text-[13px] font-semibold text-[#25140b]"
-            onClick={() => setSearchOpen((open) => !open)}
+            onClick={() => {
+              setSearchOpen((open) => {
+                const nextOpen = !open;
+                if (nextOpen) {
+                  setIndexOpen(false);
+                }
+                return nextOpen;
+              });
+            }}
             type="button"
           >
             Search Scripture
@@ -376,7 +568,15 @@ function LeftPanel({ onCollapse }: { onCollapse: () => void }) {
 
         <button
           className="flex w-full items-center justify-between border-b border-[#f1e8df] px-3 py-3 text-left text-[12px] font-semibold text-[#3a2218] hover:text-[#25140b]"
-          onClick={() => setIndexOpen((open) => !open)}
+          onClick={() => {
+            setIndexOpen((open) => {
+              const nextOpen = !open;
+              if (nextOpen) {
+                setSearchOpen(false);
+              }
+              return nextOpen;
+            });
+          }}
           type="button"
         >
           Full Index
@@ -399,8 +599,10 @@ function LeftPanel({ onCollapse }: { onCollapse: () => void }) {
             <ScriptureIndex
               openBook={openBook}
               openChapter={openChapter}
+              selectedPassage={selectedPassage}
               onBookChange={setOpenBook}
               onChapterChange={setOpenChapter}
+              onPassageChange={onPassageChange}
             />
           </div>
         </div>
@@ -412,20 +614,30 @@ function LeftPanel({ onCollapse }: { onCollapse: () => void }) {
 function ScriptureIndex({
   onBookChange,
   onChapterChange,
+  onPassageChange,
   openBook,
   openChapter,
+  selectedPassage,
 }: {
   onBookChange: (book: string) => void;
   onChapterChange: (chapter: string) => void;
+  onPassageChange: (selection: PassageSelection) => void;
   openBook: string;
   openChapter: string;
+  selectedPassage: PassageSelection;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [path, setPath] = useState("");
-  const [activeHeight, setActiveHeight] = useState(0);
+  const pathRef = useRef<SVGPathElement>(null);
+  const activePathRef = useRef<SVGPathElement>(null);
+  const clipRectRef = useRef<SVGRectElement>(null);
 
   const calculatePath = useCallback(() => {
-    if (!containerRef.current) {
+    if (
+      !containerRef.current ||
+      !pathRef.current ||
+      !activePathRef.current ||
+      !clipRectRef.current
+    ) {
       return;
     }
 
@@ -447,10 +659,19 @@ function ScriptureIndex({
     const chaptersBottom = getRelY("chapters", "bottom");
     const versesTop = getRelY("verses", "top");
     const versesBottom = getRelY("verses", "bottom");
+    const height = rect.height;
+    let activeEnd = height;
+
+    if (versesTop !== null && versesBottom !== null) {
+      activeEnd = versesTop + (versesBottom - versesTop) * 0.7;
+    } else if (chaptersTop !== null) {
+      activeEnd = chaptersTop + 80;
+    }
+
     const x0 = 26;
     const x1 = 44;
     const x2 = 62;
-    const radius = 16;
+    const radius = 14;
     const curve = (xStart: number, yStart: number, xEnd: number, yEnd: number) => {
       const middleY = (yStart + yEnd) / 2;
       return `C ${xStart} ${middleY}, ${xEnd} ${middleY}, ${xEnd} ${yEnd}`;
@@ -459,47 +680,56 @@ function ScriptureIndex({
     let nextPath = `M ${x0} -20`;
 
     if (chaptersTop !== null && chaptersBottom !== null) {
-      if (chaptersTop - radius > -20) {
-        nextPath += ` L ${x0} ${chaptersTop - radius}`;
+      const t1Start = chaptersTop - radius;
+      const t1End = Math.max(t1Start + 1, chaptersTop + radius);
+
+      if (t1Start > -20) {
+        nextPath += ` L ${x0} ${t1Start}`;
       }
 
-      nextPath += ` ${curve(x0, chaptersTop - radius, x1, chaptersTop + radius)}`;
+      nextPath += ` ${curve(x0, t1Start, x1, t1End)}`;
 
       if (versesTop !== null && versesBottom !== null) {
-        nextPath += ` L ${x1} ${versesTop - radius}`;
-        nextPath += ` ${curve(x1, versesTop - radius, x2, versesTop + radius)}`;
-        nextPath += ` L ${x2} ${versesBottom - radius}`;
-        nextPath += ` ${curve(x2, versesBottom - radius, x1, versesBottom + radius)}`;
+        const t2Start = Math.max(t1End, versesTop - radius);
+        const t2End = Math.max(t2Start + 1, versesTop + radius);
+        const t3Start = Math.max(t2End, versesBottom - radius);
+        const t3End = Math.max(t3Start + 1, versesBottom + radius);
+        const t4Start = Math.max(t3End, chaptersBottom - radius);
+        const t4End = Math.max(t4Start + 1, chaptersBottom + radius);
+
+        nextPath += ` L ${x1} ${t2Start}`;
+        nextPath += ` ${curve(x1, t2Start, x2, t2End)}`;
+        nextPath += ` L ${x2} ${t3Start}`;
+        nextPath += ` ${curve(x2, t3Start, x1, t3End)}`;
+        nextPath += ` L ${x1} ${t4Start}`;
+        nextPath += ` ${curve(x1, t4Start, x0, t4End)}`;
+        nextPath += ` L ${x0} ${Math.max(t4End, height + 20)}`;
+      } else {
+        const t4Start = Math.max(t1End, chaptersBottom - radius);
+        const t4End = Math.max(t4Start + 1, chaptersBottom + radius);
+
+        nextPath += ` L ${x1} ${t4Start}`;
+        nextPath += ` ${curve(x1, t4Start, x0, t4End)}`;
+        nextPath += ` L ${x0} ${Math.max(t4End, height + 20)}`;
       }
-
-      nextPath += ` L ${x1} ${chaptersBottom - radius}`;
-      nextPath += ` ${curve(x1, chaptersBottom - radius, x0, chaptersBottom + radius)}`;
+    } else {
+      nextPath += ` L ${x0} ${height + 20}`;
     }
 
-    nextPath += ` L ${x0} ${rect.height + 20}`;
-    setPath(nextPath);
-
-    if (versesTop !== null && versesBottom !== null) {
-      setActiveHeight(versesTop + (versesBottom - versesTop) * 0.7);
-      return;
-    }
-
-    setActiveHeight(chaptersTop !== null ? chaptersTop + 80 : rect.height);
+    pathRef.current.setAttribute("d", nextPath);
+    activePathRef.current.setAttribute("d", nextPath);
+    clipRectRef.current.setAttribute("height", activeEnd.toString());
   }, []);
 
   useEffect(() => {
-    calculatePath();
-    const observer = new ResizeObserver(calculatePath);
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-
-    const frame = requestAnimationFrame(calculatePath);
-    const interval = window.setInterval(calculatePath, 50);
+    let frame = 0;
+    const loop = () => {
+      calculatePath();
+      frame = requestAnimationFrame(loop);
+    };
+    frame = requestAnimationFrame(loop);
     return () => {
-      window.clearInterval(interval);
       cancelAnimationFrame(frame);
-      observer.disconnect();
     };
   }, [calculatePath, openBook, openChapter]);
 
@@ -507,7 +737,7 @@ function ScriptureIndex({
     <div className="relative mt-3" ref={containerRef}>
       <svg className="pointer-events-none absolute left-0 top-0 h-full w-[80px]">
         <path
-          d={path}
+          ref={pathRef}
           fill="none"
           stroke="#f1e8df"
           strokeLinecap="round"
@@ -516,7 +746,7 @@ function ScriptureIndex({
         />
         <g clipPath="url(#scripture-index-active)">
           <path
-            d={path}
+            ref={activePathRef}
             fill="none"
             stroke="#f6823c"
             strokeLinecap="round"
@@ -526,7 +756,7 @@ function ScriptureIndex({
         </g>
         <defs>
           <clipPath id="scripture-index-active">
-            <rect height={activeHeight} width="88" x="0" y="0" />
+            <rect ref={clipRectRef} height="0" width="88" x="0" y="0" />
           </clipPath>
         </defs>
       </svg>
@@ -564,7 +794,7 @@ function ScriptureIndex({
             >
               <div className="min-h-0 overflow-hidden">
                 <div
-                  className="py-1"
+                  className="pb-6 pt-2"
                   data-marker={openBook === book ? "chapters" : undefined}
                 >
                   {chapters.map(({ chapter, verses }) => {
@@ -611,12 +841,15 @@ function ScriptureIndex({
                                 <button
                                   className={cn(
                                     "flex h-7 w-7 items-center justify-center text-[12px] font-medium text-[#7a6758] hover:text-[#f6823c]",
-                                    book === "John" &&
-                                      chapter === 1 &&
-                                      verse === 3 &&
+                                    selectedPassage.book === book &&
+                                      selectedPassage.chapter === chapter &&
+                                      selectedPassage.verse === verse &&
                                       "font-semibold text-[#f6823c]",
                                   )}
                                   key={verse}
+                                  onClick={() =>
+                                    onPassageChange({ book, chapter, verse })
+                                  }
                                   type="button"
                                 >
                                   {verse}
@@ -639,16 +872,40 @@ function ScriptureIndex({
 }
 
 function Reader({
+  selectedPassage,
+  onBookmark,
+  onPassageChange,
+  onToast,
   onVerseComment,
 }: {
+  selectedPassage: PassageSelection;
+  onBookmark: () => void;
+  onPassageChange: (selection: PassageSelection) => void;
+  onToast: (title: string, description?: string) => void;
   onVerseComment: (target: string) => void;
 }) {
   const [visibleVersions, setVisibleVersions] = useState(
-    translations.map((translation) => translation.label),
+    translations.slice(0, 3).map((translation) => translation.label),
   );
   const [versionMenuOpen, setVersionMenuOpen] = useState(false);
-  const visibleTranslations = translations.filter((translation) =>
-    visibleVersions.includes(translation.label),
+  const [versionSearch, setVersionSearch] = useState("");
+  const [replaceTarget, setReplaceTarget] = useState<string | null>(null);
+  const readerScrollRef = useRef<HTMLDivElement>(null);
+  const versionMenuRef = useOutsideClick<HTMLDivElement>(
+    versionMenuOpen,
+    () => {
+      setVersionMenuOpen(false);
+      setReplaceTarget(null);
+    },
+  );
+  const visibleTranslations = translations
+    .filter((translation) => visibleVersions.includes(translation.label))
+    .map((translation) => ({
+      ...translation,
+      verses: getVerses(translation.label, selectedPassage),
+    }));
+  const availableTranslations = translations.filter(({ label }) =>
+    label.toLowerCase().includes(versionSearch.trim().toLowerCase()),
   );
   const canCloseVersion = visibleTranslations.length > 1;
 
@@ -663,8 +920,17 @@ function Reader({
   };
 
   const addVersion = (label: string) => {
+    const mode = replaceTarget ? "changed" : "added";
     setVisibleVersions((current) => {
       if (current.includes(label)) {
+        return current;
+      }
+
+      if (replaceTarget) {
+        return current.map((version) => (version === replaceTarget ? label : version));
+      }
+
+      if (current.length >= 3) {
         return current;
       }
 
@@ -674,6 +940,30 @@ function Reader({
         .slice(0, 3);
     });
     setVersionMenuOpen(false);
+    setVersionSearch("");
+    setReplaceTarget(null);
+    onToast(`${label} ${mode} in comparison`);
+  };
+
+  const handleVersionChoice = (label: string) => {
+    if (
+      visibleVersions.length >= 3 &&
+      replaceTarget === null &&
+      !visibleVersions.includes(label)
+    ) {
+      onToast(
+        "Maximum number of versions selected",
+        "Remove one translation first, or click a selected version label to swap it.",
+      );
+      return;
+    }
+
+    addVersion(label);
+  };
+
+  const openVersionMenu = (target: string | null = null) => {
+    setReplaceTarget(target);
+    setVersionMenuOpen(true);
   };
 
   return (
@@ -681,13 +971,10 @@ function Reader({
       <div className="flex shrink-0 items-center gap-3 border-b border-[#f1e8df] bg-white px-5 py-2.5">
         <NavButton icon={<ChevronsLeft className="h-3.5 w-3.5" />} />
         <NavButton icon={<ChevronLeft className="h-3.5 w-3.5" />} />
-        <button
-          className="cta-button flex items-center gap-1 border border-[#e5d6c9] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#25140b] hover:border-[#f6823c]"
-          type="button"
-        >
-          John 1 : 3
-          <ChevronDown className="h-3 w-3 text-[#9b8878]" />
-        </button>
+        <PassagePicker
+          selectedPassage={selectedPassage}
+          onPassageChange={onPassageChange}
+        />
         <NavButton icon={<ChevronRight className="h-3.5 w-3.5" />} />
         <NavButton icon={<ChevronsRight className="h-3.5 w-3.5" />} />
 
@@ -696,40 +983,62 @@ function Reader({
         <motion.div className="flex items-center gap-3" layout>
           <AnimatePresence initial={false}>
             {visibleVersions.map((version) => (
-              <motion.span
+              <motion.button
                 animate={{ opacity: 1, y: 0 }}
-                className="text-[13px] font-semibold uppercase tracking-[0.04em] text-[#3a2218]"
+                className={cn(
+                  "text-[13px] font-semibold uppercase tracking-[0.04em] text-[#3a2218] transition-colors duration-150 ease-out hover:text-[#f6823c]",
+                  replaceTarget === version && "text-[#f6823c]",
+                )}
                 exit={{ opacity: 0, y: -4 }}
                 initial={{ opacity: 0, y: 4 }}
                 key={version}
                 layout
+                onClick={() => openVersionMenu(version)}
                 transition={{ duration: 0.15, ease: [0.215, 0.61, 0.355, 1] }}
+                type="button"
               >
                 {version}
-              </motion.span>
+              </motion.button>
             ))}
           </AnimatePresence>
 
-          <div className="relative">
+          <div className="relative" ref={versionMenuRef}>
             <button
               aria-label="Add Bible version"
-              className="flex items-center gap-2 border border-[#e5d6c9] bg-white px-3 py-1.5 text-[13px] font-medium text-[#3a2218] outline-none transition-colors duration-150 ease-out hover:border-[#f6823c] focus:border-[#f6823c]"
-              onClick={() => setVersionMenuOpen((open) => !open)}
+              className="flex w-40 items-center justify-between gap-2 border border-[#e5d6c9] bg-white px-3 py-1.5 text-[13px] font-medium text-[#3a2218] outline-none transition-colors duration-150 ease-out hover:border-[#f6823c] focus:border-[#f6823c]"
+              onClick={() => {
+                setReplaceTarget(null);
+                setVersionMenuOpen((open) => !open);
+              }}
               type="button"
             >
-              {visibleVersions.length >= 3 ? "3 versions max" : "Add version"}
-              <ChevronDown className="w-4 h-4 text-gray-400 ml-1" />
+              {replaceTarget
+                ? `Change ${replaceTarget}`
+                : visibleVersions.length >= 3
+                  ? "3 versions max"
+                  : "Add version"}
+              <ChevronDown className="ml-1 h-4 w-4 shrink-0 text-gray-400" />
             </button>
             <AnimatePresence>
               {versionMenuOpen && (
                 <motion.section
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute right-0 top-[calc(100%+6px)] z-30 w-36 border border-[#e5d6c9] bg-white p-1 shadow-[0_14px_36px_rgba(31,18,9,0.10)]"
+                  className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 border border-[#e5d6c9] bg-white p-2 shadow-[0_14px_36px_rgba(31,18,9,0.10)]"
                   exit={{ opacity: 0, y: -4 }}
                   initial={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.16, ease: [0.215, 0.61, 0.355, 1] }}
                 >
-                  {translations.map(({ label }) => {
+                  <div className="mb-1.5 flex items-center gap-2 border border-[#f1e8df] bg-[#fbf7f2] px-2 py-1.5">
+                    <Search className="h-3.5 w-3.5 text-[#9b8878]" />
+                    <input
+                      autoFocus
+                      className="min-w-0 flex-1 bg-transparent text-[12px] text-[#25140b] outline-none placeholder:text-[#9b8878]"
+                      onChange={(event) => setVersionSearch(event.target.value)}
+                      placeholder="Search translations"
+                      value={versionSearch}
+                    />
+                  </div>
+                  {availableTranslations.map(({ label }) => {
                     const selected = visibleVersions.includes(label);
 
                     return (
@@ -741,47 +1050,212 @@ function Reader({
                         )}
                         disabled={selected}
                         key={label}
-                        onClick={() => addVersion(label)}
+                        onClick={() => handleVersionChoice(label)}
                         type="button"
                       >
                         {label}
                         {selected && (
                           <span className="text-[10px] font-medium text-[#9b8878]">
-                            Shown
+                            Selected
                           </span>
                         )}
                       </button>
                     );
                   })}
+                  {availableTranslations.length === 0 && (
+                    <p className="px-3 py-2 text-[12px] font-medium text-[#9b8878]">
+                      No translations found
+                    </p>
+                  )}
                 </motion.section>
               )}
             </AnimatePresence>
           </div>
+          <button
+            aria-label={`Bookmark ${formatPassage(selectedPassage)}`}
+            className="icon-button flex h-8 w-8 items-center justify-center border border-[#e5d6c9] text-[#7a6758] hover:border-[#f6823c] hover:bg-[#fbf7f2] hover:text-[#3a2218]"
+            onClick={onBookmark}
+            type="button"
+          >
+            <Bookmark className="h-4 w-4" />
+          </button>
         </motion.div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <motion.div
+          className="flex min-w-0 shrink-0 justify-center overflow-hidden"
           layout
-          className="flex min-w-0 flex-1 justify-center overflow-hidden"
         >
           <AnimatePresence initial={false}>
-            {visibleTranslations.map((translation) => (
-              <TranslationColumn
+            {visibleTranslations.map(({ label }) => (
+              <TranslationHeader
                 canClose={canCloseVersion}
-                key={translation.label}
-                onClose={() => closeVersion(translation.label)}
-                onComment={onVerseComment}
+                key={label}
+                label={label}
+                onClose={() => closeVersion(label)}
                 visibleCount={visibleTranslations.length}
-                {...translation}
               />
             ))}
           </AnimatePresence>
+        </motion.div>
+        <motion.div
+          className="bible-app-scroll min-h-0 flex-1 overflow-y-auto"
+          layout
+          ref={readerScrollRef}
+        >
+          <motion.div
+            className="flex min-h-full min-w-0 flex-1 justify-center overflow-hidden"
+            layout
+          >
+            <AnimatePresence initial={false}>
+              {visibleTranslations.map((translation) => (
+                <TranslationVerses
+                  key={translation.label}
+                  onComment={onVerseComment}
+                  selectedPassage={selectedPassage}
+                  visibleCount={visibleTranslations.length}
+                  {...translation}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.div>
         </motion.div>
       </div>
 
       <ReaderFooter />
     </section>
+  );
+}
+
+function PassagePicker({
+  selectedPassage,
+  onPassageChange,
+}: {
+  selectedPassage: PassageSelection;
+  onPassageChange: (selection: PassageSelection) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draftBook, setDraftBook] = useState(selectedPassage.book);
+  const [draftChapter, setDraftChapter] = useState(selectedPassage.chapter);
+  const ref = useOutsideClick<HTMLDivElement>(open, () => setOpen(false));
+  const selectedBook = bibleIndex.find(({ book }) => book === draftBook) ?? bibleIndex[0];
+  const selectedChapter =
+    selectedBook.chapters.find(({ chapter }) => chapter === draftChapter) ??
+    selectedBook.chapters[0];
+
+  useEffect(() => {
+    if (!open) {
+      setDraftBook(selectedPassage.book);
+      setDraftChapter(selectedPassage.chapter);
+    }
+  }, [open, selectedPassage]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        className="cta-button flex items-center gap-1 border border-[#e5d6c9] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#25140b] hover:border-[#f6823c]"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        {formatPassage(selectedPassage)}
+        <ChevronDown className="h-3 w-3 text-[#9b8878]" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.section
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute left-0 top-[calc(100%+6px)] z-40 grid w-[520px] grid-cols-[160px_140px_1fr] items-start border border-[#e5d6c9] bg-white shadow-[0_18px_44px_rgba(31,18,9,0.12)]"
+            exit={{ opacity: 0, y: -4 }}
+            initial={{ opacity: 0, y: -4 }}
+            layout
+            transition={{ duration: 0.2, ease: [0.215, 0.61, 0.355, 1] }}
+          >
+            <div className="max-h-[320px] overflow-y-auto border-r border-[#f1e8df] p-2">
+              <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9b8878]">
+                Book
+              </p>
+              {bibleIndex.map(({ book }) => (
+                <button
+                  className={cn(
+                    "w-full px-2 py-2 text-left text-[12px] font-semibold text-[#5d493a] hover:text-[#25140b]",
+                    draftBook === book && "text-[#f6823c]",
+                  )}
+                  key={book}
+                  onClick={() => {
+                    const firstChapter = bibleIndex.find(
+                      (item) => item.book === book,
+                    )?.chapters[0]?.chapter;
+                    setDraftBook(book);
+                    setDraftChapter(firstChapter ?? 1);
+                  }}
+                  type="button"
+                >
+                  {book}
+                </button>
+              ))}
+            </div>
+            <div className="max-h-[320px] overflow-y-auto border-r border-[#f1e8df] p-2">
+              <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9b8878]">
+                Chapter
+              </p>
+              {selectedBook.chapters.map(({ chapter }) => (
+                <button
+                  className={cn(
+                    "w-full px-2 py-2 text-left text-[12px] font-medium text-[#5d493a] hover:text-[#25140b]",
+                    draftChapter === chapter && "font-semibold text-[#f6823c]",
+                  )}
+                  key={chapter}
+                  onClick={() => setDraftChapter(chapter)}
+                  type="button"
+                >
+                  Chapter {chapter}
+                </button>
+              ))}
+            </div>
+            <div className="max-h-[320px] overflow-y-auto p-2">
+              <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9b8878]">
+                Verse
+              </p>
+              <motion.div
+                className="grid grid-cols-5 gap-1"
+                key={`${draftBook}-${draftChapter}`}
+                layout
+                transition={{ duration: 0.2, ease: [0.215, 0.61, 0.355, 1] }}
+              >
+                {Array.from(
+                  { length: Math.min(selectedChapter.verses, 36) },
+                  (_, index) => index + 1,
+                ).map((verse) => (
+                  <motion.button
+                    className={cn(
+                      "flex h-8 items-center justify-center text-[12px] font-medium text-[#7a6758] hover:text-[#f6823c]",
+                      selectedPassage.book === draftBook &&
+                        selectedPassage.chapter === draftChapter &&
+                        selectedPassage.verse === verse &&
+                        "font-semibold text-[#f6823c]",
+                    )}
+                    key={verse}
+                    layout
+                    onClick={() => {
+                      onPassageChange({
+                        book: draftBook,
+                        chapter: draftChapter,
+                        verse,
+                      });
+                      setOpen(false);
+                    }}
+                    type="button"
+                  >
+                    {verse}
+                  </motion.button>
+                ))}
+              </motion.div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -796,77 +1270,109 @@ function NavButton({ icon }: { icon: React.ReactNode }) {
   );
 }
 
-function TranslationColumn({
+const translationColumnMotion = (visibleCount: number) => ({
+  animate: {
+    flex: visibleCount === 1 ? "0 0 50%" : "1 1 0%",
+    maxWidth: visibleCount === 1 ? "50%" : "none",
+    opacity: 1,
+    width: visibleCount === 1 ? "50%" : "100%",
+    x: 0,
+  },
+  exit: {
+    flex: 0,
+    opacity: 0,
+    width: 0,
+    x: 0,
+  },
+  initial: {
+    flex: 0,
+    opacity: 0,
+    width: 0,
+    x: -96,
+  },
+});
+
+function TranslationHeader({
   canClose,
   label,
   onClose,
-  onComment,
   visibleCount,
-  verses,
 }: {
   canClose: boolean;
   label: string;
   onClose: () => void;
-  onComment: (target: string) => void;
   visibleCount: number;
-  verses: string[];
 }) {
+  const motionProps = translationColumnMotion(visibleCount);
+
   return (
     <motion.div
-      animate={{
-        flex: visibleCount === 1 ? "0 0 50%" : "1 1 0%",
-        maxWidth: visibleCount === 1 ? "50%" : "none",
-        opacity: 1,
-        width: visibleCount === 1 ? "50%" : "100%",
-        x: 0,
-      }}
-      className="h-full overflow-hidden bg-white"
-      exit={{
-        flex: 0,
-        opacity: 0,
-        width: 0,
-        x: 0,
-      }}
-      initial={{
-        flex: 0,
-        opacity: 0,
-        width: 0,
-        x: -96,
-      }}
+      animate={motionProps.animate}
+      className="overflow-hidden bg-white"
+      exit={motionProps.exit}
+      initial={motionProps.initial}
       layout
       transition={{ type: "spring", bounce: 0, duration: 0.48 }}
     >
-      <article className="flex h-full min-w-[320px] flex-col overflow-hidden border-r border-[#f1e8df] last:border-r-0">
-        <div className="flex items-center justify-between border-b border-[#f1e8df] bg-white px-5 py-3">
-          <button
-            className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#3a2218]"
-            type="button"
-          >
-            {label}
-            <ChevronDown className="h-3 w-3 text-[#9b8878]" />
-          </button>
-          <button
-            aria-label={`Close ${label} version`}
-            className={cn(
-              "icon-button flex h-[30px] w-[30px] items-center justify-center text-[#9b8878] hover:bg-[#fbf7f2]",
-              !canClose && "cursor-default opacity-35 hover:scale-100",
-            )}
-            disabled={!canClose}
-            onClick={onClose}
-            type="button"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
+      <div className="flex min-w-[320px] items-center justify-between border-b border-r border-[#f1e8df] bg-white px-5 py-3 last:border-r-0">
+        <button
+          className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#3a2218]"
+          type="button"
+        >
+          {label}
+          <ChevronDown className="h-3 w-3 text-[#9b8878]" />
+        </button>
+        <button
+          aria-label={`Close ${label} version`}
+          className={cn(
+            "icon-button flex h-[30px] w-[30px] items-center justify-center text-[#9b8878] hover:bg-[#fbf7f2]",
+            !canClose && "cursor-default opacity-35 hover:scale-100",
+          )}
+          disabled={!canClose}
+          onClick={onClose}
+          type="button"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
 
-        <div className="bible-app-scroll flex-1 space-y-4 overflow-y-auto px-5 py-4">
+function TranslationVerses({
+  label,
+  onComment,
+  selectedPassage,
+  visibleCount,
+  verses,
+}: {
+  label: string;
+  onComment: (target: string) => void;
+  selectedPassage: PassageSelection;
+  visibleCount: number;
+  verses: string[];
+}) {
+  const motionProps = translationColumnMotion(visibleCount);
+
+  return (
+    <motion.div
+      animate={motionProps.animate}
+      className="self-stretch overflow-hidden bg-white"
+      exit={motionProps.exit}
+      initial={motionProps.initial}
+      layout
+      transition={{ type: "spring", bounce: 0, duration: 0.48 }}
+    >
+      <article className="flex min-h-full min-w-[320px] flex-col overflow-visible border-r border-[#f1e8df] last:border-r-0">
+
+        <div className="flex-1 space-y-4 px-5 py-4 pb-24">
           {verses.map((text, index) => (
             <div
               className={cn(
                 "group relative flex gap-3 px-2 py-2 transition-colors duration-150 ease-out hover:bg-[#fbf7f2]",
-                index === 2 && "bg-[#fff3e8]",
+                index + 1 === selectedPassage.verse && "bg-[#fff3e8]",
               )}
-              key={text}
+              key={`${label}-${selectedPassage.book}-${selectedPassage.chapter}-${index}`}
             >
               <span className="min-w-4 pt-0.5 text-[11px] font-semibold leading-tight text-[#f6823c]">
                 {index + 1}
@@ -879,9 +1385,13 @@ function TranslationColumn({
                   aria-label={`Comment on ${label} John 1:${index + 1}`}
                   className={cn(
                     "absolute right-2 top-2 hidden h-7 w-7 items-center justify-center bg-white/80 text-[#9b8878] backdrop-blur-sm transition-colors duration-150 ease-out hover:text-[#3a2218] group-hover:flex",
-                    index === 2 && "flex",
+                    index + 1 === selectedPassage.verse && "flex",
                   )}
-                  onClick={() => onComment(`${label} John 1:${index + 1}`)}
+                  onClick={() =>
+                    onComment(
+                      `${label} ${selectedPassage.book} ${selectedPassage.chapter}:${index + 1}`,
+                    )
+                  }
                   type="button"
                 >
                   <MessageCircle className="h-3.5 w-3.5" />

@@ -1,13 +1,14 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Lenis from "lenis";
 import { motion } from "motion/react";
-import { Bell, BookOpen, CalendarDays, CheckCircle2, ChevronDown, Users } from "lucide-react";
+import { Bell, BookOpen, CalendarDays, ChevronDown, Users } from "lucide-react";
 
 import BibleLogo from "@/components/logo";
+import { CheckCircleIcon } from "@/components/ui/check-circle";
+import { WifiIcon } from "@/components/ui/wifi";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -17,17 +18,6 @@ const navItems = [
 ];
 
 export function ProductShell({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    const lenis = new Lenis({
-      autoRaf: true,
-      duration: 0.9,
-      easing: (time: number) => Math.min(1, 1.001 - 2 ** (-10 * time)),
-      wrapper: window,
-    });
-
-    return () => lenis.destroy();
-  }, []);
-
   return (
     <main className="bible-app flex h-screen flex-col overflow-hidden bg-white">
       <ProductTopNav />
@@ -38,6 +28,20 @@ export function ProductShell({ children }: { children: ReactNode }) {
 
 function ProductTopNav() {
   const pathname = usePathname();
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const updateStatus = () => setIsOnline(window.navigator.onLine);
+
+    updateStatus();
+    window.addEventListener("online", updateStatus);
+    window.addEventListener("offline", updateStatus);
+
+    return () => {
+      window.removeEventListener("online", updateStatus);
+      window.removeEventListener("offline", updateStatus);
+    };
+  }, []);
 
   return (
     <header className="z-10 flex h-14 shrink-0 items-center gap-4 border-b border-[#f1e8df] bg-white px-5">
@@ -76,9 +80,19 @@ function ProductTopNav() {
       </nav>
 
       <div className="ml-auto flex items-center gap-3">
-        <button className="cta-button hidden items-center gap-1.5 border border-[#f1e8df] bg-[#fbf7f2] px-3 py-1.5 text-[13px] font-semibold text-[#2e6b3d] md:flex" type="button">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Offline Ready
+        <button
+          className={cn(
+            "cta-button hidden items-center gap-1.5 border border-[#f1e8df] bg-[#fbf7f2] px-3 py-1.5 text-[13px] font-semibold md:flex",
+            isOnline ? "text-[#2e6b3d]" : "text-[#a24723]",
+          )}
+          type="button"
+        >
+          {isOnline ? (
+            <CheckCircleIcon animateOnParentHover className="h-3.5 w-3.5" size={14} />
+          ) : (
+            <WifiIcon animateOnParentHover className="h-3.5 w-3.5" size={14} />
+          )}
+          {isOnline ? "Online" : "Offline"}
         </button>
         <button className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#3a2218]" type="button">
           <Bell className="h-4 w-4" />

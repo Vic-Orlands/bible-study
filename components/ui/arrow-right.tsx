@@ -10,6 +10,7 @@ import {
   useRef,
 } from "react";
 import { cn } from "@/lib/utils";
+import { useParentHoverAnimation } from "@/components/ui/use-parent-hover-animation";
 
 export interface ArrowRightIconHandle {
   startAnimation: () => void;
@@ -122,23 +123,12 @@ const ArrowRightIcon = forwardRef<ArrowRightIconHandle, ArrowRightIconProps>(
       };
     }, [startAnimation, stopAnimation]);
 
-    useEffect(() => {
-      if (!animateOnParentHover || isControlledRef.current) {
-        return;
-      }
-
-      const parent = rootRef.current?.parentElement;
-
-      if (!parent) {
-        return;
-      }
-
-      parent.addEventListener("pointerenter", startAnimation);
-
-      return () => {
-        parent.removeEventListener("pointerenter", startAnimation);
-      };
-    }, [animateOnParentHover, startAnimation]);
+    useParentHoverAnimation({
+      disabled: isControlledRef.current,
+      enabled: animateOnParentHover,
+      onHover: startAnimation,
+      targetRef: rootRef,
+    });
 
     useEffect(() => {
       return () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { WheelEvent } from "react";
 import {
   BookOpen,
   ChevronDown,
@@ -32,6 +33,13 @@ import { ProductShell } from "@/components/product-shell";
 import { cn } from "@/lib/utils";
 
 type RightTab = "Study" | "Notes" | "Audio Notes" | "Activity";
+
+const STUDY_SIDEBARS_STORAGE_KEY = "bible-study:study-sidebars";
+
+type StudySidebarsState = {
+  leftOpen: boolean;
+  rightOpen: boolean;
+};
 
 const searchResults = [
   [
@@ -202,9 +210,63 @@ const fadeMotion = {
 
 export default function BibleApp() {
   const [rightTab, setRightTab] = useState<RightTab>("Notes");
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [sidebars, setSidebars] = useState<StudySidebarsState>({
+    leftOpen: true,
+    rightOpen: true,
+  });
+  const [sidebarsReady, setSidebarsReady] = useState(false);
   const [commentTarget, setCommentTarget] = useState("John 1:3");
+  const { leftOpen, rightOpen } = sidebars;
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(STUDY_SIDEBARS_STORAGE_KEY);
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Partial<StudySidebarsState>;
+
+        setSidebars({
+          leftOpen:
+            typeof parsed.leftOpen === "boolean" ? parsed.leftOpen : true,
+          rightOpen:
+            typeof parsed.rightOpen === "boolean" ? parsed.rightOpen : true,
+        });
+      } catch {
+        window.localStorage.removeItem(STUDY_SIDEBARS_STORAGE_KEY);
+      }
+    }
+
+    setSidebarsReady(true);
+  }, []);
+
+  const updateSidebars = useCallback(
+    (nextState: Partial<StudySidebarsState>) => {
+      setSidebars((current) => {
+        const next = { ...current, ...nextState };
+        window.localStorage.setItem(
+          STUDY_SIDEBARS_STORAGE_KEY,
+          JSON.stringify(next),
+        );
+
+        return next;
+      });
+    },
+    [],
+  );
+
+  const setLeftOpen = useCallback(
+    (open: boolean) => {
+      updateSidebars({ leftOpen: open });
+    },
+    [updateSidebars],
+  );
+
+  const setRightOpen = useCallback(
+    (open: boolean) => {
+      updateSidebars({ rightOpen: open });
+    },
+    [updateSidebars],
+  );
 
   const handleVerseComment = (target: string) => {
     setCommentTarget(target);
@@ -215,33 +277,65 @@ export default function BibleApp() {
   return (
     <ProductShell>
       <div className="flex flex-1 overflow-hidden bg-white">
-        <AnimatePresence initial={false}>
-          {leftOpen && <LeftPanel onCollapse={() => setLeftOpen(false)} />}
-        </AnimatePresence>
-        <AnimatePresence initial={false}>
-          {!leftOpen && (
-            <RailOpenHandle side="left" onClick={() => setLeftOpen(true)} />
-          )}
-        </AnimatePresence>
-        <Reader onVerseComment={handleVerseComment} />
-        <AnimatePresence initial={false}>
-          {rightOpen && (
-            <RightPanel
-              commentTarget={commentTarget}
-              tab={rightTab}
-              onCollapse={() => setRightOpen(false)}
-              onTabChange={setRightTab}
-            />
-          )}
-        </AnimatePresence>
-        <AnimatePresence initial={false}>
-          {!rightOpen && (
-            <RailOpenHandle side="right" onClick={() => setRightOpen(true)} />
-          )}
-        </AnimatePresence>
+        {!sidebarsReady ? (
+          <div className="min-w-0 flex-1 bg-white" />
+        ) : (
+          <>
+            <AnimatePresence initial={false}>
+              {leftOpen && <LeftPanel onCollapse={() => setLeftOpen(false)} />}
+            </AnimatePresence>
+            <AnimatePresence initial={false}>
+              {!leftOpen && (
+                <RailOpenHandle side="left" onClick={() => setLeftOpen(true)} />
+              )}
+            </AnimatePresence>
+            <Reader onVerseComment={handleVerseComment} />
+            <AnimatePresence initial={false}>
+              {rightOpen && (
+                <RightPanel
+                  commentTarget={commentTarget}
+                  tab={rightTab}
+                  onCollapse={() => setRightOpen(false)}
+                  onTabChange={setRightTab}
+                />
+              )}
+            </AnimatePresence>
+            <AnimatePresence initial={false}>
+              {!rightOpen && (
+                <RailOpenHandle
+                  side="right"
+                  onClick={() => setRightOpen(true)}
+                />
+              )}
+            </AnimatePresence>
+          </>
+        )}
       </div>
     </ProductShell>
   );
+}
+
+function routeWheelToScrollArea(
+  event: WheelEvent<HTMLElement>,
+  selector = ".bible-app-scroll",
+) {
+  const target = event.target as HTMLElement;
+  const scrollArea = target.closest<HTMLElement>(selector);
+
+  if (scrollArea) {
+    return;
+  }
+
+  const fallback = event.currentTarget.querySelector<HTMLElement>(selector);
+
+  if (!fallback) {
+    return;
+  }
+
+  fallback.scrollBy({
+    left: event.deltaX,
+    top: event.deltaY,
+  });
 }
 
 function LeftPanel({ onCollapse }: { onCollapse: () => void }) {
@@ -748,7 +842,7 @@ function Reader({
         </motion.div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1" onWheel={routeWheelToScrollArea}>
         <motion.div
           layout
           className="flex min-w-0 flex-1 justify-center overflow-hidden"

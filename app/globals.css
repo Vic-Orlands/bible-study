@@ -151,3 +151,34 @@ a {
 .bible-app-scroll::-webkit-scrollbar-thumb {
   background: #e5d6c9;
 }
+
+[data-sonner-toaster] [data-sonner-toast] [data-content] {
+  flex: 1;
+  min-width: 0;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  --toast-animation-duration: 200ms;
+  transition:
+    transform 200ms ease,
+    opacity 200ms ease,
+    height 200ms ease,
+    box-shadow 200ms ease !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-front="true"] {
+  box-shadow: 0 18px 44px rgba(31, 18, 9, 0.12);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-type="loading"] {
+  border-left: 3px solid #f6823c;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-type="loading"] [data-icon] {
+  color: #f6823c;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-type="loading"] .sonner-loader {
+  position: static;
+  transform: none;
+}
