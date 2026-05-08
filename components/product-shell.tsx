@@ -11,7 +11,7 @@ import BibleLogo from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/bible", label: "Study", icon: BookOpen },
+  { href: "/study", label: "Study", icon: BookOpen },
   { href: "/reading-plan", label: "Reading Plan", icon: CalendarDays },
   { href: "/community", label: "Community", icon: Users },
 ];
@@ -41,7 +41,7 @@ function ProductTopNav() {
 
   return (
     <header className="z-10 flex h-14 shrink-0 items-center gap-4 border-b border-[#f1e8df] bg-white px-5">
-      <Link className="flex w-[220px] items-center gap-2" href="/bible">
+      <Link className="flex w-[220px] items-center gap-2" href="/study">
         <BibleLogo className="h-8 w-8" />
         <span className="font-serif text-[15px] font-semibold tracking-tight text-[#25140b]">
           Bible Study

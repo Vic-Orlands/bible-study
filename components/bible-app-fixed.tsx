@@ -447,19 +447,19 @@ function ScriptureIndex({
     const chaptersBottom = getRelY("chapters", "bottom");
     const versesTop = getRelY("verses", "top");
     const versesBottom = getRelY("verses", "bottom");
-    const x0 = 18;
-    const x1 = 36;
-    const x2 = 54;
-    const radius = 14;
+    const x0 = 26;
+    const x1 = 44;
+    const x2 = 62;
+    const radius = 16;
     const curve = (xStart: number, yStart: number, xEnd: number, yEnd: number) => {
       const middleY = (yStart + yEnd) / 2;
       return `C ${xStart} ${middleY}, ${xEnd} ${middleY}, ${xEnd} ${yEnd}`;
     };
 
-    let nextPath = `M ${x0} -18`;
+    let nextPath = `M ${x0} -20`;
 
     if (chaptersTop !== null && chaptersBottom !== null) {
-      if (chaptersTop - radius > -18) {
+      if (chaptersTop - radius > -20) {
         nextPath += ` L ${x0} ${chaptersTop - radius}`;
       }
 
@@ -476,7 +476,7 @@ function ScriptureIndex({
       nextPath += ` ${curve(x1, chaptersBottom - radius, x0, chaptersBottom + radius)}`;
     }
 
-    nextPath += ` L ${x0} ${rect.height + 18}`;
+    nextPath += ` L ${x0} ${rect.height + 20}`;
     setPath(nextPath);
 
     if (versesTop !== null && versesBottom !== null) {
@@ -495,7 +495,9 @@ function ScriptureIndex({
     }
 
     const frame = requestAnimationFrame(calculatePath);
+    const interval = window.setInterval(calculatePath, 50);
     return () => {
+      window.clearInterval(interval);
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
@@ -503,7 +505,7 @@ function ScriptureIndex({
 
   return (
     <div className="relative mt-3" ref={containerRef}>
-      <svg className="pointer-events-none absolute left-0 top-0 h-full w-[72px]">
+      <svg className="pointer-events-none absolute left-0 top-0 h-full w-[80px]">
         <path
           d={path}
           fill="none"
@@ -524,7 +526,7 @@ function ScriptureIndex({
         </g>
         <defs>
           <clipPath id="scripture-index-active">
-            <rect height={activeHeight} width="80" x="0" y="0" />
+            <rect height={activeHeight} width="88" x="0" y="0" />
           </clipPath>
         </defs>
       </svg>
@@ -534,9 +536,9 @@ function ScriptureIndex({
           <div className="flex flex-col" key={book}>
             <button
               className={cn(
-                "flex w-full items-center justify-between py-2.5 pl-11 pr-3 text-left text-[13px] font-semibold text-[#3a2218] hover:text-[#25140b]",
+                "flex w-full items-center justify-between py-2.5 pl-12 pr-3 text-left text-[13px] font-semibold text-[#3a2218] hover:text-[#25140b]",
                 openBook === book && "text-[#25140b]",
-                level === 0 && "pl-9",
+                level === 0 && "pl-12",
               )}
               onClick={() => {
                 onBookChange(openBook === book ? "" : book);
@@ -561,7 +563,10 @@ function ScriptureIndex({
               )}
             >
               <div className="min-h-0 overflow-hidden">
-                <div className="py-1" data-marker="chapters">
+                <div
+                  className="py-1"
+                  data-marker={openBook === book ? "chapters" : undefined}
+                >
                   {chapters.map(({ chapter, verses }) => {
                     const chapterKey = `${book}-${chapter}`;
 
@@ -569,7 +574,7 @@ function ScriptureIndex({
                       <div key={chapterKey}>
                         <button
                           className={cn(
-                            "flex w-full items-center justify-between py-2 pl-[60px] pr-3 text-left text-[12px] font-medium text-[#5d493a] hover:text-[#25140b]",
+                            "flex w-full items-center justify-between py-2 pl-[64px] pr-3 text-left text-[12px] font-medium text-[#5d493a] hover:text-[#25140b]",
                             openChapter === chapterKey && "text-[#25140b]",
                           )}
                           onClick={() => onChapterChange(chapterKey)}
@@ -591,7 +596,14 @@ function ScriptureIndex({
                           )}
                         >
                           <div className="min-h-0 overflow-hidden">
-                            <div className="grid grid-cols-5 gap-x-2 gap-y-2 py-3 pl-[80px] pr-3" data-marker="verses">
+                            <div
+                              className="grid grid-cols-5 gap-x-2 gap-y-2 py-3 pl-[84px] pr-3"
+                              data-marker={
+                                openChapter === chapterKey
+                                  ? "verses"
+                                  : undefined
+                              }
+                            >
                               {Array.from(
                                 { length: Math.min(verses, 18) },
                                 (_, index) => index + 1,
@@ -802,10 +814,10 @@ function TranslationColumn({
   return (
     <motion.div
       animate={{
-        flex: visibleCount === 1 ? "0 0 520px" : "1 1 0%",
-        maxWidth: visibleCount === 1 ? 520 : "none",
+        flex: visibleCount === 1 ? "0 0 50%" : "1 1 0%",
+        maxWidth: visibleCount === 1 ? "50%" : "none",
         opacity: 1,
-        width: visibleCount === 1 ? 520 : "100%",
+        width: visibleCount === 1 ? "50%" : "100%",
         x: 0,
       }}
       className="h-full overflow-hidden bg-white"
