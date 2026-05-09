@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -22,16 +22,19 @@ const navItems = [
 export function ProductShell({
   children,
   onOpenNotifications,
+  onOpenSettings,
   onOpenBookmarks,
 }: {
   children: ReactNode;
   onOpenNotifications?: () => void;
+  onOpenSettings?: () => void;
   onOpenBookmarks?: () => void;
 }) {
   return (
     <main className="bible-app flex h-screen flex-col overflow-hidden bg-white">
       <ProductTopNav
         onOpenNotifications={onOpenNotifications}
+        onOpenSettings={onOpenSettings}
         onOpenBookmarks={onOpenBookmarks}
       />
       {children}
@@ -41,14 +44,17 @@ export function ProductShell({
 
 function ProductTopNav({
   onOpenNotifications,
+  onOpenSettings,
   onOpenBookmarks,
 }: {
   onOpenNotifications?: () => void;
+  onOpenSettings?: () => void;
   onOpenBookmarks?: () => void;
 }) {
   const pathname = usePathname();
   const [isOnline, setIsOnline] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const guestName = useStudyStore((s) => s.guestName);
 
   useEffect(() => {
@@ -63,6 +69,17 @@ function ProductTopNav({
       window.removeEventListener("offline", updateStatus);
     };
   }, []);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [profileOpen]);
 
   return (
     <header className="z-10 flex h-14 shrink-0 items-center gap-4 border-b border-[#f1e8df] bg-white px-5">
@@ -129,7 +146,7 @@ function ProductTopNav({
         >
           <Bell className="h-4 w-4" />
         </button>
-        <div className="relative">
+        <div className="relative" ref={profileMenuRef}>
           <div
             className="flex items-center gap-2 cursor-pointer hover:bg-[#fbf7f2] p-1 pr-2 rounded-full transition-colors duration-150"
             onClick={() => setProfileOpen((o) => !o)}
@@ -172,7 +189,7 @@ function ProductTopNav({
                       onOpenBookmarks?.();
                     }}
                   >
-                    Bookmarks
+                    <span className="hover:translate-x-1.5 transition-transform duration-150 inline-block">Bookmarks</span>
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
@@ -181,7 +198,7 @@ function ProductTopNav({
                       onOpenSettings?.();
                     }}
                   >
-                    Settings
+                    <span className="hover:translate-x-1.5 transition-transform duration-150 inline-block">Settings</span>
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
@@ -190,13 +207,13 @@ function ProductTopNav({
                       onOpenNotifications?.();
                     }}
                   >
-                    Profile
+                    <span className="hover:translate-x-1.5 transition-transform duration-150 inline-block">Profile</span>
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#f6823c] hover:bg-[#fbf7f2]"
                     onClick={() => setProfileOpen(false)}
                   >
-                    {guestName.startsWith("Anonymous-") ? "Sign In" : "Log Out"}
+                    <span className="hover:translate-x-1.5 transition-transform duration-150 inline-block">{guestName.startsWith("Anonymous-") ? "Sign In" : "Log Out"}</span>
                   </button>
                 </div>
               </motion.div>

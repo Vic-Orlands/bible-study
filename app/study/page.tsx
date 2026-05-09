@@ -10,6 +10,7 @@ import {
   ChevronUp,
   ChevronsLeft,
   ChevronsRight,
+  CheckCircle,
   Download,
   FileText,
   Heart,
@@ -23,6 +24,7 @@ import {
   SendHorizontal,
   Share2,
   ThumbsUp,
+  Trash2,
   Upload,
   X,
   Bell,
@@ -391,12 +393,18 @@ export default function BibleApp() {
                           key="confirm"
                           initial={{ x: 20, opacity: 0 }}
                           animate={{ x: 0, opacity: 1 }}
-                          exit={{ x: -20, opacity: 0 }}
+                          exit={{ x: 20, opacity: 0 }}
                           className="flex items-center gap-1"
+                          transition={{
+                            type: "spring",
+                            stiffness: 400,
+                            damping: 25,
+                          }}
                         >
                           <button
                             onClick={() => setDeletingId(null)}
-                            className="p-2 text-[#7a6758] hover:text-[#3a2218]"
+                            className="p-2 text-[#7a6758] hover:text-[#3a2218] transition-colors"
+                            title="Cancel"
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -411,7 +419,8 @@ export default function BibleApp() {
                               setDeletingId(null);
                               toast.success("Bookmark removed");
                             }}
-                            className="p-2 text-[#2e6b3d]"
+                            className="p-2 text-[#2e6b3d] hover:bg-[#f0f9f0] rounded transition-colors"
+                            title="Confirm Delete"
                           >
                             <CheckCircle className="h-4 w-4" />
                           </button>
@@ -419,12 +428,14 @@ export default function BibleApp() {
                       ) : (
                         <motion.button
                           key="delete"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="p-2 text-[#9b8878] hover:text-[#a24723]"
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.8, opacity: 0 }}
+                          className="p-2 text-[#9b8878] hover:text-[#a24723] hover:bg-[#fff5f5] rounded transition-colors"
                           onClick={() => setDeletingId(b._id)}
+                          title="Delete bookmark"
                         >
-                          <X className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </motion.button>
                       )}
                     </AnimatePresence>
@@ -596,7 +607,9 @@ function LeftPanel({
           }}
           type="button"
         >
-          Search Scripture
+          <span className="hover:translate-x-1.5 transition-transform duration-150">
+            Search Scripture
+          </span>
           {searchOpen ? (
             <ChevronUp className="h-3.5 w-3.5 text-[#9b8878]" />
           ) : (
@@ -786,7 +799,9 @@ function LeftPanel({
           }
           type="button"
         >
-          Full Index
+          <span className="hover:translate-x-1.5 transition-transform duration-150">
+            Full Index
+          </span>
           {indexOpen ? (
             <ChevronUp className="h-3.5 w-3.5 text-[#9b8878]" />
           ) : (
@@ -796,7 +811,7 @@ function LeftPanel({
 
         <div
           className={cn(
-            "grid px-2 transition-[grid-template-rows,opacity] duration-200 ease-out",
+            "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
             indexOpen
               ? "grid-rows-[1fr] opacity-100"
               : "grid-rows-[0fr] opacity-0",
@@ -1365,7 +1380,7 @@ function Reader({
                 transition={{ duration: 0.15, ease: [0.215, 0.61, 0.355, 1] }}
                 type="button"
               >
-                {translations.find((t) => t.label === version)?.name || version}
+                {version}
               </motion.button>
             ))}
           </AnimatePresence>
@@ -1413,22 +1428,28 @@ function Reader({
                       return (
                         <button
                           className={cn(
-                            "flex w-full items-center justify-between px-3 py-2 text-left text-[12px] font-semibold text-[#3a2218] hover:bg-[#fbf7f2]",
+                            "flex w-full flex-col px-3 py-2 text-left hover:bg-[#fbf7f2]",
                             selected &&
-                              "cursor-default text-[#b09d8d] hover:bg-white",
+                              "cursor-default opacity-50 hover:bg-white",
                           )}
                           disabled={selected}
                           key={label}
                           onClick={() => handleVersionChoice(label)}
-                          title={name}
                           type="button"
                         >
-                          {label}
-                          {selected && (
-                            <span className="text-[10px] font-medium text-[#9b8878]">
-                              Selected
+                          <div className="flex items-center justify-between">
+                            <span className="text-[12px] font-bold text-[#3a2218]">
+                              {label}
                             </span>
-                          )}
+                            {selected && (
+                              <span className="text-[10px] font-medium text-[#f6823c]">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-[#7a6758] truncate">
+                            {name}
+                          </span>
                         </button>
                       );
                     })}
@@ -1802,11 +1823,16 @@ function TranslationHeader({
     >
       <div className="flex min-w-[320px] items-center justify-between border-b border-r border-[#f1e8df] bg-white px-5 py-3 last:border-r-0">
         <button
-          className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#3a2218] hover:text-[#f6823c]"
+          className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#3a2218] hover:text-[#f6823c]"
           onClick={onSwap}
           type="button"
         >
-          {label}
+          <div className="flex flex-col text-left">
+            <span className="text-[12px] font-bold">{label}</span>
+            <span className="text-[11px] font-normal text-[#7a6758] truncate max-w-[180px]">
+              {translations.find((t) => t.label === label)?.name}
+            </span>
+          </div>
           <ChevronDown className="h-3 w-3 text-[#9b8878]" />
         </button>
         <button
