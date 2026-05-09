@@ -17,6 +17,8 @@ type State = {
   sidebars: StudySidebars;
   rightTab: RightTab;
   commentTarget: string;
+  guestId: string;
+  guestName: string;
 };
 
 type Actions = {
@@ -25,6 +27,7 @@ type Actions = {
   patchSidebars(patch: Partial<StudySidebars>): void;
   setRightTab(t: RightTab): void;
   setCommentTarget(t: string): void;
+  setGuestName(name: string): void;
 };
 
 export const useStudyStore = create<State & Actions>()(
@@ -35,6 +38,8 @@ export const useStudyStore = create<State & Actions>()(
       sidebars: DEFAULT_SIDEBARS,
       rightTab: "Study" as RightTab,
       commentTarget: `${DEFAULT_PASSAGE.book} ${DEFAULT_PASSAGE.chapter}:${DEFAULT_PASSAGE.verse}`,
+      guestId: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
+      guestName: `Anonymous-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
 
       setPassage(p: PassageSelection) {
         set({ selectedPassage: p, commentTarget: `${p.book} ${p.chapter}:${p.verse}` });
@@ -51,6 +56,9 @@ export const useStudyStore = create<State & Actions>()(
       setCommentTarget(t: string) {
         set({ commentTarget: t });
       },
+      setGuestName(name: string) {
+        set({ guestName: name });
+      }
     }),
     {
       name: "bible-study:study",
@@ -58,6 +66,8 @@ export const useStudyStore = create<State & Actions>()(
         selectedPassage: state.selectedPassage,
         visibleVersions: state.visibleVersions,
         sidebars: state.sidebars,
+        guestId: state.guestId,
+        guestName: state.guestName,
       }),
     },
   ),

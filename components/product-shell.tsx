@@ -9,6 +9,8 @@ import { Bell, BookOpen, CalendarDays, ChevronDown, Users } from "lucide-react";
 import BibleLogo from "@/components/logo";
 import { CheckCircleIcon } from "@/components/ui/check-circle";
 import { WifiIcon } from "@/components/ui/wifi";
+import { useStudyStore } from "@/lib/study-store";
+
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -17,18 +19,19 @@ const navItems = [
   { href: "/community", label: "Community", icon: Users },
 ];
 
-export function ProductShell({ children }: { children: ReactNode }) {
+export function ProductShell({ children, onOpenNotifications }: { children: ReactNode, onOpenNotifications?: () => void }) {
   return (
     <main className="bible-app flex h-screen flex-col overflow-hidden bg-white">
-      <ProductTopNav />
+      <ProductTopNav onOpenNotifications={onOpenNotifications} />
       {children}
     </main>
   );
 }
 
-function ProductTopNav() {
+function ProductTopNav({ onOpenNotifications }: { onOpenNotifications?: () => void }) {
   const pathname = usePathname();
   const [isOnline, setIsOnline] = useState(true);
+  const guestName = useStudyStore((s) => s.guestName);
 
   useEffect(() => {
     const updateStatus = () => setIsOnline(window.navigator.onLine);
@@ -94,13 +97,19 @@ function ProductTopNav() {
           )}
           {isOnline ? "Online" : "Offline"}
         </button>
-        <button className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#3a2218]" type="button">
+        <button className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#3a2218]" type="button" onClick={onOpenNotifications}>
           <Bell className="h-4 w-4" />
         </button>
-        <button className="icon-button flex h-8 w-8 items-center justify-center bg-[#3a2218] text-sm font-semibold text-[#f6823c]" type="button">
-          JD
-        </button>
-        <ChevronDown className="h-3.5 w-3.5 text-[#7a6758]" />
+        <div className="flex items-center gap-2 cursor-pointer hover:bg-[#fbf7f2] p-1 pr-2 rounded-full transition-colors duration-150">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3a2218] text-[11px] font-semibold text-[#f6823c]">
+            {guestName.startsWith("Anonymous-") ? "AN" : guestName.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="hidden flex-col justify-center md:flex">
+            <span className="text-[12px] font-semibold leading-tight text-[#25140b]">{guestName}</span>
+            <span className="text-[10px] leading-tight text-[#7a6758]">guest@biblestudy.app</span>
+          </div>
+          <ChevronDown className="h-3 w-3 text-[#7a6758]" />
+        </div>
       </div>
     </header>
   );

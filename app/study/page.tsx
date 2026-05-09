@@ -25,6 +25,7 @@ import {
   ThumbsUp,
   Upload,
   X,
+  Bell,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -50,6 +51,9 @@ import {
   type RightTab,
 } from "@/lib/study-store";
 import { cn } from "@/lib/utils";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 
 type SearchHit = {
   book: string;
@@ -172,6 +176,11 @@ export default function BibleApp() {
   }, []);
 
   const { leftOpen, rightOpen } = sidebars;
+  const guestId = useStudyStore((s) => s.guestId);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const toggleBookmark = useMutation(api.bookmarks.toggle);
+  const bookmarks = useQuery(api.bookmarks.listForGuest, { guestId }) || [];
 
   const bookId = useMemo(
     () => getBookId(bibleBooks, selectedPassage.book),
@@ -228,7 +237,7 @@ export default function BibleApp() {
   );
 
   return (
-    <ProductShell>
+    <ProductShell onOpenNotifications={() => setNotificationsOpen(true)}>
       <div className="flex flex-1 overflow-hidden bg-white">
         {!storeReady ? (
           <div className="min-w-0 flex-1 bg-white" />
@@ -244,6 +253,7 @@ export default function BibleApp() {
                   selectedPassage={selectedPassage}
                   visibleVersions={visibleVersions}
                   onCollapse={() => patchSidebars({ leftOpen: false })}
+                  onOpenBookmarks={() => setBookmarksOpen(true)}
                   onPassageChange={handlePassageChange}
                 />
               )}
@@ -265,9 +275,25 @@ export default function BibleApp() {
               chapterVerses={chapterVerses}
               selectedPassage={selectedPassage}
               visibleVersions={visibleVersions}
-              onBookmark={() =>
-                showToast(`Bookmarked ${formatReference(selectedPassage)}`)
-              }
+              isBookmarked={bookmarks.some(
+                (b) =>
+                  b.passageBook === selectedPassage.book &&
+                  b.passageChapter === selectedPassage.chapter &&
+                  b.passageVerse === selectedPassage.verse,
+              )}
+              onBookmark={async () => {
+                const added = await toggleBookmark({
+                  guestId,
+                  passageBook: selectedPassage.book,
+                  passageChapter: selectedPassage.chapter,
+                  passageVerse: selectedPassage.verse,
+                });
+                showToast(
+                  added
+                    ? `Bookmarked ${formatReference(selectedPassage)}`
+                    : `Removed bookmark for ${formatReference(selectedPassage)}`,
+                );
+              }}
               onPassageChange={handlePassageChange}
               onToast={showToast}
               onVerseComment={handleVerseComment}
@@ -277,6 +303,7 @@ export default function BibleApp() {
               {rightOpen && (
                 <RightPanel
                   commentTarget={commentTarget}
+                  selectedPassage={selectedPassage}
                   tab={rightTab}
                   onCollapse={() => patchSidebars({ rightOpen: false })}
                   onTabChange={setRightTab}
@@ -295,6 +322,51 @@ export default function BibleApp() {
         )}
       </div>
       <Toaster />
+
+      <BottomSheet
+        isOpen={bookmarksOpen}
+        onClose={() => setBookmarksOpen(false)}
+        title="My Bookmarks"
+      >
+        {bookmarks.length === 0 ? (
+          <p className="text-[13px] text-[#7a6758] p-4 text-center">
+            No bookmarks yet.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {bookmarks.map((b) => (
+              <button
+                key={b._id}
+                className="flex flex-col text-left border border-[#f1e8df] bg-white p-3 hover:border-[#f6823c] transition-colors"
+                onClick={() => {
+                  handlePassageChange({
+                    book: b.passageBook,
+                    chapter: b.passageChapter,
+                    verse: b.passageVerse,
+                  });
+                  setBookmarksOpen(false);
+                }}
+              >
+                <span className="text-[13px] font-semibold text-[#25140b]">
+                  {b.passageBook} {b.passageChapter}:{b.passageVerse}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </BottomSheet>
+      <BottomSheet
+        isOpen={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+        title="Notifications"
+      >
+        <div className="flex flex-col items-center justify-center p-8 opacity-60">
+          <Bell className="h-8 w-8 text-[#9b8878] mb-3" />
+          <p className="text-[13px] text-[#7a6758] text-center font-medium">
+            You have no new notifications.
+          </p>
+        </div>
+      </BottomSheet>
     </ProductShell>
   );
 }
@@ -316,6 +388,7 @@ function LeftPanel({
   selectedPassage: PassageSelection;
   visibleVersions: string[];
   onCollapse: () => void;
+  onOpenBookmarks?: () => void;
   onPassageChange: (selection: PassageSelection) => void;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -907,6 +980,7 @@ function Reader({
   chapterVerses: Record<string, BibleVerse[]>;
   selectedPassage: PassageSelection;
   visibleVersions: string[];
+  isBookmarked?: boolean;
   onBookmark: () => void;
   onPassageChange: (selection: PassageSelection) => void;
   onToast: (title: string, description?: string) => void;
@@ -1734,13 +1808,16 @@ function ReaderFooter() {
 
 function RightPanel({
   commentTarget,
+  selectedPassage,
   tab,
   onCollapse,
   onTabChange,
 }: {
   commentTarget: string;
+  selectedPassage: PassageSelection;
   tab: RightTab;
   onCollapse: () => void;
+  onOpenBookmarks?: () => void;
   onTabChange: (tab: RightTab) => void;
 }) {
   return (
@@ -1796,10 +1873,24 @@ function RightPanel({
       <div className="min-h-0 flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div className="h-full" key={tab} {...fadeMotion}>
-            {tab === "Study" && <PublicStudy commentTarget={commentTarget} />}
-            {tab === "Notes" && <PersonalNotes commentTarget={commentTarget} />}
-            {tab === "Audio Notes" && <AudioNotesPanel />}
-            {tab === "Activity" && <ActivityPanel />}
+            {tab === "Study" && (
+              <PublicStudy
+                commentTarget={commentTarget}
+                selectedPassage={selectedPassage}
+              />
+            )}
+            {tab === "Notes" && (
+              <PersonalNotes
+                commentTarget={commentTarget}
+                selectedPassage={selectedPassage}
+              />
+            )}
+            {tab === "Audio Notes" && (
+              <AudioNotesPanel selectedPassage={selectedPassage} />
+            )}
+            {tab === "Activity" && (
+              <ActivityPanel selectedPassage={selectedPassage} />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -1807,7 +1898,13 @@ function RightPanel({
   );
 }
 
-function PublicStudy({ commentTarget }: { commentTarget: string }) {
+function PublicStudy({
+  commentTarget,
+  selectedPassage,
+}: {
+  commentTarget: string;
+  selectedPassage: PassageSelection;
+}) {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const toggle = (name: string) =>
     setReplyingTo((c) => (c === name ? null : name));
@@ -1895,12 +1992,25 @@ function PublicStudy({ commentTarget }: { commentTarget: string }) {
         </ChatMessage>
       </div>
 
-      <Composer target={commentTarget} />
+      <Composer target={commentTarget} selectedPassage={selectedPassage} />
     </div>
   );
 }
 
-function PersonalNotes({ commentTarget }: { commentTarget: string }) {
+function PersonalNotes({
+  commentTarget,
+  selectedPassage,
+}: {
+  commentTarget: string;
+  selectedPassage: PassageSelection;
+}) {
+  const guestId = useStudyStore((s) => s.guestId);
+  const notes = useQuery(api.notes.listForPassage, {
+    guestId,
+    passageBook: selectedPassage.book,
+    passageChapter: selectedPassage.chapter,
+  });
+
   return (
     <div className="flex h-full min-h-0 flex-col px-4 py-4">
       <div className="mb-4 shrink-0">
@@ -1911,65 +2021,72 @@ function PersonalNotes({ commentTarget }: { commentTarget: string }) {
       </div>
 
       <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto pr-1">
-        <article className="mb-3 border border-[#f1e8df] bg-[#fbf7f2] p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[12px] font-semibold text-[#25140b]">
-              Observation
-            </span>
-            <span className="text-[10px] text-[#9b8878]">Today</span>
-          </div>
-          <p className="font-serif text-[13px] leading-relaxed text-[#3a2218]">
-            The Hebrew "Bereshit" carries weight — not just a start in time but
-            the founding moment of all existence.
+        {notes === undefined ? (
+          <p className="text-[12px] text-[#7a6758]">Loading notes...</p>
+        ) : notes.length === 0 ? (
+          <p className="text-[12px] text-[#7a6758]">
+            No notes yet for {selectedPassage.book} {selectedPassage.chapter}.
           </p>
-        </article>
-
-        <article className="mb-3 border border-[#f1e8df] bg-white p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[12px] font-semibold text-[#25140b]">
-              Images
-            </span>
-            <button
-              className="cta-button flex items-center gap-1.5 border border-[#e5d6c9] px-2.5 py-1.5 text-[11px] font-semibold text-[#3a2218] hover:bg-[#fbf7f2]"
-              type="button"
+        ) : (
+          notes.map((note) => (
+            <article
+              key={note._id}
+              className="mb-3 border border-[#f1e8df] bg-[#fbf7f2] p-3"
             >
-              <Upload className="h-3 w-3" />
-              Upload
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="border border-[#f1e8df] bg-[#fbf7f2] p-2">
-              <div className="mb-2 flex h-20 items-center justify-center bg-white text-[#f6823c]">
-                <ImageIcon className="h-5 w-5" />
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[12px] font-semibold text-[#25140b] capitalize">
+                  {note.type}
+                </span>
+                <span className="text-[10px] text-[#9b8878]">
+                  v{note.passageVerse}
+                </span>
               </div>
-              <p className="truncate text-[11px] font-semibold text-[#3a2218]">
-                creation-timeline.png
+              <p className="font-serif text-[13px] leading-relaxed text-[#3a2218]">
+                {note.content}
               </p>
-            </div>
-            <div className="border border-dashed border-[#e5d6c9] bg-[#fbf7f2] p-2">
-              <div className="flex h-20 items-center justify-center text-[#9b8878]">
-                <Upload className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-        </article>
+            </article>
+          ))
+        )}
       </div>
 
-      <Composer target={commentTarget} />
+      <Composer target={commentTarget} selectedPassage={selectedPassage} />
     </div>
   );
 }
 
-function ActivityPanel() {
+function ActivityPanel({
+  selectedPassage,
+}: {
+  selectedPassage: PassageSelection;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [path, setPath] = useState("");
   const [clipHeight, setClipHeight] = useState(0);
 
+  const stats = useQuery(api.activity.statsForPassage, {
+    passageBook: selectedPassage.book,
+    passageChapter: selectedPassage.chapter,
+  });
+
+  const recent = useQuery(api.activity.recentForPassage, {
+    passageBook: selectedPassage.book,
+    passageChapter: selectedPassage.chapter,
+  });
+
+  const displayItems = useMemo(() => {
+    if (!recent) return [];
+    return recent.map((r, i) => ({
+      title: `${r.guestName} left a ${r.type}`,
+      meta: r.preview || "Attached a file or audio",
+      level: i % 2 === 0 ? 0 : 1,
+    }));
+  }, [recent]);
+
   const calculatePath = useCallback(() => {
     if (!containerRef.current) return;
     const cr = containerRef.current.getBoundingClientRect();
-    const bounds = activityItems.map((_, i) => {
+    const bounds = displayItems.map((_, i) => {
       const el = itemRefs.current[i];
       if (!el) return { bottom: 0, height: 0, top: 0 };
       const r = el.getBoundingClientRect();
@@ -1983,12 +2100,12 @@ function ActivityPanel() {
 
     const px = 7,
       sx = 25;
-    let d = `M ${activityItems[0].level === 1 ? sx : px} ${bounds[0].top + 4}\n`;
-    for (let i = 0; i < activityItems.length; i++) {
-      const cx = activityItems[i].level === 1 ? sx : px;
+    let d = `M ${displayItems[0].level === 1 ? sx : px} ${bounds[0].top + 4}\n`;
+    for (let i = 0; i < displayItems.length; i++) {
+      const cx = displayItems[i].level === 1 ? sx : px;
       d += `L ${cx} ${bounds[i].bottom}\n`;
-      if (i < activityItems.length - 1) {
-        const nx = activityItems[i + 1].level === 1 ? sx : px;
+      if (i < displayItems.length - 1) {
+        const nx = displayItems[i + 1].level === 1 ? sx : px;
         const mid =
           bounds[i].bottom + (bounds[i + 1].top - bounds[i].bottom) / 2;
         d +=
@@ -2000,8 +2117,8 @@ function ActivityPanel() {
       }
     }
     setPath(d);
-    setClipHeight(bounds[3].bottom + 12);
-  }, []);
+    setClipHeight(bounds[bounds.length - 1]?.bottom + 12 || 0);
+  }, [displayItems]);
 
   useEffect(() => {
     calculatePath();
@@ -2017,15 +2134,15 @@ function ActivityPanel() {
           Verse Activity
         </h2>
         <p className="mt-0.5 text-[11px] text-[#9b8878]">
-          Live signals around Genesis 1
+          Live signals around {selectedPassage.book} {selectedPassage.chapter}
         </p>
       </div>
 
       <div className="mb-5 grid grid-cols-3 border border-[#f1e8df] bg-[#fbf7f2]">
         {[
-          ["42", "Read"],
-          ["18", "Studied"],
-          ["27", "Comments"],
+          [`${stats?.commentCount ?? 0}`, "Comments"],
+          [`${stats?.noteCount ?? 0}`, "Notes"],
+          [`${stats?.audioCount ?? 0}`, "Audio"],
         ].map(([value, label]) => (
           <div
             className="border-r border-[#f1e8df] p-3 last:border-r-0"
@@ -2067,13 +2184,16 @@ function ActivityPanel() {
         </svg>
 
         <div className="flex flex-col gap-[18px] pl-9">
-          {activityItems.map((item, i) => (
+          {displayItems.length === 0 && (
+            <p className="text-[12px] text-[#7a6758]">No activity yet.</p>
+          )}
+          {displayItems.map((item, i) => (
             <div
               className={cn(
                 "transition-colors duration-150 ease-out",
                 item.level === 0 && "-ml-4",
               )}
-              key={item.title}
+              key={`${item.title}-${i}`}
               ref={(el) => {
                 itemRefs.current[i] = el;
               }}
@@ -2088,7 +2208,7 @@ function ActivityPanel() {
               >
                 {item.title}
               </p>
-              <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[#9b8878]">
+              <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[#9b8878] truncate max-w-full">
                 {item.meta}
               </p>
             </div>
@@ -2205,7 +2325,13 @@ function VoiceNoteBubble() {
   );
 }
 
-function Composer({ target }: { target: string }) {
+function Composer({
+  target,
+  selectedPassage,
+}: {
+  target: string;
+  selectedPassage: PassageSelection;
+}) {
   return (
     <div className="mt-4 shrink-0 overflow-hidden border-[1.5px] border-[#e5d6c9] bg-white focus-within:border-[#f6823c]">
       <div className="flex items-center gap-2 border-b border-[#f1e8df] px-3 py-2">
@@ -2234,9 +2360,15 @@ function Composer({ target }: { target: string }) {
 function ChatInput({
   compact = false,
   placeholder,
+  value,
+  onChange,
+  onSend,
 }: {
   compact?: boolean;
   placeholder: string;
+  value?: string;
+  onChange?: (val: string) => void;
+  onSend?: () => void;
 }) {
   return (
     <div
@@ -2260,6 +2392,7 @@ function ChatInput({
         aria-label="Send message"
         className="icon-button flex h-7 w-7 items-center justify-center bg-[#3a2218] text-white hover:bg-[#1f1209]"
         type="button"
+        onClick={onSend}
       >
         <SendHorizontal className="h-3.5 w-3.5" />
       </button>
@@ -2297,7 +2430,11 @@ function FileRow({
   );
 }
 
-function AudioNotesPanel() {
+function AudioNotesPanel({
+  selectedPassage,
+}: {
+  selectedPassage: PassageSelection;
+}) {
   return (
     <div className="bible-app-scroll h-full overflow-y-auto px-4 py-4">
       <div className="mb-4 flex items-center justify-between">
