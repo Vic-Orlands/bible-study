@@ -1083,11 +1083,8 @@ function Reader({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <motion.div
-          className="flex min-w-0 shrink-0 justify-center overflow-hidden"
-          layout
-        >
-          <AnimatePresence initial={false}>
+        <div className="flex min-w-0 shrink-0 justify-center overflow-hidden">
+          <AnimatePresence initial={false} mode="popLayout">
             {visibleTranslations.map(({ label }) => (
               <TranslationHeader
                 canClose={canCloseVersion}
@@ -1098,17 +1095,13 @@ function Reader({
               />
             ))}
           </AnimatePresence>
-        </motion.div>
-        <motion.div
+        </div>
+        <div
           className="bible-app-scroll min-h-0 flex-1 overflow-y-auto"
-          layout
           ref={readerScrollRef}
         >
-          <motion.div
-            className="flex min-h-full min-w-0 flex-1 justify-center overflow-hidden"
-            layout
-          >
-            <AnimatePresence initial={false}>
+          <div className="flex min-h-full min-w-0 flex-1 justify-center overflow-hidden">
+            <AnimatePresence initial={false} mode="popLayout">
               {visibleTranslations.map((translation) => (
                 <TranslationVerses
                   key={translation.label}
@@ -1119,8 +1112,8 @@ function Reader({
                 />
               ))}
             </AnimatePresence>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
 
       <ReaderFooter />
@@ -1380,7 +1373,6 @@ function TranslationHeader({
       className="overflow-hidden bg-white"
       exit={motionProps.exit}
       initial={motionProps.initial}
-      layout
       transition={{ type: "spring", bounce: 0, duration: 0.48 }}
     >
       <div className="flex min-w-[320px] items-center justify-between border-b border-r border-[#f1e8df] bg-white px-5 py-3 last:border-r-0">
@@ -1426,13 +1418,12 @@ function TranslationVerses({
   return (
     <motion.div
       animate={motionProps.animate}
-      className="self-stretch overflow-hidden bg-white"
+      className="overflow-hidden bg-white"
       exit={motionProps.exit}
       initial={motionProps.initial}
-      layout
       transition={{ type: "spring", bounce: 0, duration: 0.48 }}
     >
-      <article className="flex min-h-full min-w-[320px] flex-col overflow-visible border-r border-[#f1e8df] last:border-r-0">
+      <article className="flex min-h-full min-w-[320px] flex-col border-r border-[#f1e8df] last:border-r-0">
 
         <div className="flex-1 space-y-4 px-5 py-4 pb-24">
           {verses.map((text, index) => (
