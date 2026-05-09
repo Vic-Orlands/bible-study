@@ -176,13 +176,19 @@ function ProductTopNav({
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
-                    onClick={() => setProfileOpen(false)}
+                    onClick={() => {
+                      setProfileOpen(false);
+                      onOpenSettings?.();
+                    }}
                   >
                     Settings
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
-                    onClick={() => setProfileOpen(false)}
+                    onClick={() => {
+                      setProfileOpen(false);
+                      onOpenNotifications?.();
+                    }}
                   >
                     Profile
                   </button>
@@ -190,7 +196,7 @@ function ProductTopNav({
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#f6823c] hover:bg-[#fbf7f2]"
                     onClick={() => setProfileOpen(false)}
                   >
-                    Log out / Sign in
+                    {guestName.startsWith("Anonymous-") ? "Sign In" : "Log Out"}
                   </button>
                 </div>
               </motion.div>

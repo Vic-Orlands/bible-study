@@ -23,14 +23,21 @@ export type Translation = {
 };
 
 export const translations: Translation[] = [
-  { label: "KJV", name: "King James Version", translationId: "eng_kjv" },
   { label: "BSB", name: "Berean Standard Bible", translationId: "BSB" },
   { label: "WEB", name: "World English Bible", translationId: "ENGWEBP" },
+  { label: "KJV", name: "King James Version", translationId: "eng_kjv" },
   { label: "ASV", name: "American Standard Version", translationId: "eng_asv" },
   { label: "BBE", name: "Bible in Basic English", translationId: "eng_bbe" },
   { label: "DBY", name: "Darby Translation", translationId: "eng_dby" },
   { label: "LSV", name: "Literal Standard Version", translationId: "eng_lsv" },
   { label: "FBV", name: "Free Bible Version", translationId: "eng_fbv" },
+  { label: "YLT", name: "Youngs Literal Translation", translationId: "eng_ylt" },
+  { label: "WEBBE", name: "WEB British Edition", translationId: "eng_webpb" },
+  { label: "RV", name: "Revised Version 1895", translationId: "eng_rv5" },
+  { label: "NET", name: "NET Bible", translationId: "eng_net" },
+  { label: "GLW", name: "Gods Living Word", translationId: "eng_glw" },
+  { label: "WEB Catholic", name: "WEB Catholic Edition", translationId: "eng_webc" },
+  { label: "WMB", name: "World Messianic Bible", translationId: "eng_wmb" },
 ];
 
 export const formatPassage = ({ book, chapter, verse }: PassageSelection) =>

@@ -54,6 +54,7 @@ import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { MagnifyingGlassIcon } from "@/components/ui/magnifying-glass";
 
 type SearchHit = {
   book: string;
@@ -173,6 +174,10 @@ export default function BibleApp() {
   const guestId = useStudyStore((s) => s.guestId);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [sheetView, setSheetView] = useState<
+    "bookmarks" | "settings" | "profile" | "login"
+  >("bookmarks");
   const toggleBookmark = useMutation(api.bookmarks.toggle);
   const bookmarks = useQuery(api.bookmarks.listForGuest, { guestId }) || [];
 
@@ -232,8 +237,18 @@ export default function BibleApp() {
 
   return (
     <ProductShell
-      onOpenNotifications={() => setNotificationsOpen(true)}
-      onOpenBookmarks={() => setBookmarksOpen(true)}
+      onOpenNotifications={() => {
+        setSheetView("profile");
+        setNotificationsOpen(true);
+      }}
+      onOpenSettings={() => {
+        setSheetView("settings");
+        setNotificationsOpen(true);
+      }}
+      onOpenBookmarks={() => {
+        setSheetView("bookmarks");
+        setBookmarksOpen(true);
+      }}
     >
       <div className="flex flex-1 overflow-hidden bg-white">
         {!storeReady ? (
@@ -250,7 +265,10 @@ export default function BibleApp() {
                   selectedPassage={selectedPassage}
                   visibleVersions={visibleVersions}
                   onCollapse={() => patchSidebars({ leftOpen: false })}
-                  onOpenBookmarks={() => setBookmarksOpen(true)}
+                  onOpenBookmarks={() => {
+                    setSheetView("bookmarks");
+                    setBookmarksOpen(true);
+                  }}
                   onPassageChange={handlePassageChange}
                 />
               )}
@@ -321,48 +339,135 @@ export default function BibleApp() {
       <Toaster />
 
       <BottomSheet
-        isOpen={bookmarksOpen}
-        onClose={() => setBookmarksOpen(false)}
-        title="My Bookmarks"
+        isOpen={bookmarksOpen || notificationsOpen}
+        onClose={() => {
+          setBookmarksOpen(false);
+          setNotificationsOpen(false);
+          setDeletingId(null);
+        }}
+        title={
+          sheetView === "bookmarks"
+            ? "My Bookmarks"
+            : sheetView === "settings"
+              ? "Settings"
+              : sheetView === "profile"
+                ? "My Profile"
+                : "Welcome"
+        }
       >
-        {bookmarks.length === 0 ? (
-          <p className="text-[13px] text-[#7a6758] p-4 text-center">
-            No bookmarks yet.
-          </p>
-        ) : (
+        {sheetView === "bookmarks" && (
           <div className="flex flex-col gap-2">
-            {bookmarks.map((b) => (
-              <button
-                key={b._id}
-                className="flex flex-col text-left border border-[#f1e8df] bg-white p-3 hover:border-[#f6823c] transition-colors"
-                onClick={() => {
-                  handlePassageChange({
-                    book: b.passageBook,
-                    chapter: b.passageChapter,
-                    verse: b.passageVerse,
-                  });
-                  setBookmarksOpen(false);
-                }}
-              >
-                <span className="text-[13px] font-semibold text-[#25140b]">
-                  {b.passageBook} {b.passageChapter}:{b.passageVerse}
-                </span>
-              </button>
-            ))}
+            {bookmarks.length === 0 ? (
+              <p className="text-[13px] text-[#7a6758] p-4 text-center">
+                No bookmarks yet.
+              </p>
+            ) : (
+              bookmarks.map((b) => (
+                <div
+                  key={b._id}
+                  className="group relative flex items-center border border-[#f1e8df] bg-white hover:border-[#f6823c] transition-colors"
+                >
+                  <button
+                    className="flex-1 text-left p-4"
+                    onClick={() => {
+                      handlePassageChange({
+                        book: b.passageBook,
+                        chapter: b.passageChapter,
+                        verse: b.passageVerse,
+                      });
+                      setBookmarksOpen(false);
+                      setNotificationsOpen(false);
+                    }}
+                  >
+                    <span className="text-[14px] font-bold text-[#25140b]">
+                      {b.passageBook} {b.passageChapter}:{b.passageVerse}
+                    </span>
+                  </button>
+
+                  <div className="pr-2">
+                    <AnimatePresence mode="wait">
+                      {deletingId === b._id ? (
+                        <motion.div
+                          key="confirm"
+                          initial={{ x: 20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          exit={{ x: -20, opacity: 0 }}
+                          className="flex items-center gap-1"
+                        >
+                          <button
+                            onClick={() => setDeletingId(null)}
+                            className="p-2 text-[#7a6758] hover:text-[#3a2218]"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await toggleBookmark({
+                                guestId,
+                                passageBook: b.passageBook,
+                                passageChapter: b.passageChapter,
+                                passageVerse: b.passageVerse,
+                              });
+                              setDeletingId(null);
+                              toast.success("Bookmark removed");
+                            }}
+                            className="p-2 text-[#2e6b3d]"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </button>
+                        </motion.div>
+                      ) : (
+                        <motion.button
+                          key="delete"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="p-2 text-[#9b8878] hover:text-[#a24723]"
+                          onClick={() => setDeletingId(b._id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
-      </BottomSheet>
-      <BottomSheet
-        isOpen={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-        title="Notifications"
-      >
-        <div className="flex flex-col items-center justify-center p-8 opacity-60">
-          <Bell className="h-8 w-8 text-[#9b8878] mb-3" />
-          <p className="text-[13px] text-[#7a6758] text-center font-medium">
-            You have no new notifications.
-          </p>
-        </div>
+
+        {sheetView === "profile" && (
+          <div className="p-4 flex flex-col gap-6">
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-full bg-[#3a2218] flex items-center justify-center text-xl font-bold text-[#f6823c]">
+                {useStudyStore.getState().guestName.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#25140b]">
+                  {useStudyStore.getState().guestName}
+                </h3>
+                <p className="text-sm text-[#7a6758]">guest@biblestudy.app</p>
+              </div>
+            </div>
+            <button className="w-full bg-[#3a2218] text-white py-3 rounded-lg font-semibold hover:bg-[#1f1209] transition-colors">
+              {useStudyStore.getState().guestName.startsWith("Anonymous-")
+                ? "Sign In to Sync"
+                : "Log Out"}
+            </button>
+          </div>
+        )}
+
+        {sheetView === "settings" && (
+          <div className="p-4 flex flex-col gap-4">
+            <div className="flex items-center justify-between p-3 border border-[#f1e8df] bg-white">
+              <span className="text-sm font-medium">Dark Mode</span>
+              <div className="h-5 w-10 bg-[#e5d6c9] rounded-full" />
+            </div>
+            <div className="flex items-center justify-between p-3 border border-[#f1e8df] bg-white">
+              <span className="text-sm font-medium">FontSize</span>
+              <span className="text-xs text-[#9b8878]">14px</span>
+            </div>
+          </div>
+        )}
       </BottomSheet>
     </ProductShell>
   );
@@ -390,14 +495,27 @@ function LeftPanel({
   onPassageChange: (selection: PassageSelection) => void;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchOpen, setSearchOpen] = useState(true);
+  const [debouncedTerm, setDebouncedTerm] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedTerm(searchTerm), 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const [searchOpen, setSearchOpen] = useState(false);
   const [indexOpen, setIndexOpen] = useState(true);
   const [openBook, setOpenBook] = useState(selectedPassage.book);
   const [openChapter, setOpenChapter] = useState(
     chapterKeyFor(selectedPassage),
   );
   const [activeFilter, setActiveFilter] = useState<
-    "All" | "Old Testament" | "New Testament" | "Bookmarks" | "Notes"
+    | "All"
+    | "Old Testament"
+    | "New Testament"
+    | "Bookmarks"
+    | "Notes"
+    | "Study"
+    | "Audio"
   >("All");
 
   useEffect(() => {
@@ -407,18 +525,18 @@ function LeftPanel({
 
   const referenceMatch = useMemo(
     () =>
-      searchTerm.trim().length > 0
-        ? parseVerseReference(searchTerm, bibleBooks)
+      debouncedTerm.trim().length > 0
+        ? parseVerseReference(debouncedTerm, bibleBooks)
         : null,
-    [searchTerm, bibleBooks],
+    [debouncedTerm, bibleBooks],
   );
 
   const searchHits = useMemo((): SearchHit[] => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = debouncedTerm.trim().toLowerCase();
     if (q.length < 2) return [];
     const hits: SearchHit[] = [];
-    for (const label of visibleVersions) {
-      for (const { number, text } of chapterVerses[label] ?? []) {
+    for (const [label, verses] of Object.entries(chapterVerses)) {
+      for (const { number, text } of verses) {
         if (text.toLowerCase().includes(q)) {
           hits.push({
             book: selectedPassage.book,
@@ -431,17 +549,19 @@ function LeftPanel({
       }
     }
     return hits.slice(0, 30);
-  }, [searchTerm, chapterVerses, visibleVersions, selectedPassage]);
+  }, [debouncedTerm, chapterVerses, selectedPassage]);
 
   const filteredBibleBooks = useMemo(
     () =>
       activeFilter === "All"
         ? bibleBooks
-        : bibleBooks.filter(({ testament }) => testament === activeFilter),
+        : activeFilter === "Old Testament" || activeFilter === "New Testament"
+          ? bibleBooks.filter(({ testament }) => testament === activeFilter)
+          : bibleBooks,
     [activeFilter, bibleBooks],
   );
 
-  const hasQuery = searchTerm.trim().length >= 2;
+  const hasQuery = debouncedTerm.trim().length >= 2;
   const showResults =
     hasQuery && (searchHits.length > 0 || referenceMatch !== null);
 
@@ -456,25 +576,9 @@ function LeftPanel({
       variants={panelVariants}
     >
       <RailCollapseHandle side="left" onClick={onCollapse} />
-      <div className="border-b border-[#f1e8df] px-4 py-4">
+      <div className="border-b border-[#f1e8df] px-4 py-4 pb-0">
         <div className="flex items-center justify-between">
-          <button
-            className="flex items-center gap-2 text-[13px] font-semibold text-[#25140b]"
-            onClick={() =>
-              setSearchOpen((o) => {
-                if (!o) setIndexOpen(false);
-                return !o;
-              })
-            }
-            type="button"
-          >
-            Search Scripture
-            {searchOpen ? (
-              <ChevronUp className="h-3.5 w-3.5 text-[#9b8878]" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-[#9b8878]" />
-            )}
-          </button>
+          <div />
           <button
             className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#7a6758] hover:bg-[#fbf7f2]"
             onClick={onCollapse}
@@ -483,6 +587,22 @@ function LeftPanel({
             <ChevronsLeft className="h-3.5 w-3.5" />
           </button>
         </div>
+        <button
+          className="flex w-full items-center justify-between py-2 text-left text-[12px] font-semibold text-[#3a2218] hover:text-[#25140b]"
+          onClick={() => {
+            const next = !searchOpen;
+            setSearchOpen(next);
+            if (next) setIndexOpen(false);
+          }}
+          type="button"
+        >
+          Search Scripture
+          {searchOpen ? (
+            <ChevronUp className="h-3.5 w-3.5 text-[#9b8878]" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-[#9b8878]" />
+          )}
+        </button>
 
         <div
           className={cn(
@@ -493,7 +613,7 @@ function LeftPanel({
           )}
         >
           <div className="min-h-0 overflow-hidden">
-            <div className="mt-3 flex items-center gap-2 bg-[#fbf7f2] px-3 py-2">
+            <div className="flex items-center gap-2 bg-[#fbf7f2] px-3 py-2">
               <Search className="h-3.5 w-3.5 shrink-0 text-[#9b8878]" />
               <input
                 className="min-w-0 flex-1 bg-transparent text-[13px] text-[#25140b] outline-none placeholder:text-[#9b8878]"
@@ -512,7 +632,7 @@ function LeftPanel({
               )}
             </div>
 
-            <div className="mb-2 mt-3 flex items-center gap-1 overflow-x-auto whitespace-nowrap hide-scrollbar pb-1">
+            <div className="flex items-center mt-1 gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {(
                 [
                   "All",
@@ -520,16 +640,18 @@ function LeftPanel({
                   "New Testament",
                   "Bookmarks",
                   "Notes",
+                  "Study",
+                  "Audio",
                 ] as const
               ).map((filter) => {
                 const isActive = activeFilter === filter;
                 return (
                   <button
                     className={cn(
-                      "relative px-3 py-1.5 text-[11px] font-medium transition-colors",
+                      "relative px-3 py-2 text-[11px] font-semibold tracking-tight transition-colors duration-200",
                       isActive
-                        ? "text-[#25140b] font-semibold"
-                        : "text-[#7a6758] hover:text-[#25140b]",
+                        ? "text-[#25140b]"
+                        : "text-[#9b8878] hover:text-[#5d493a]",
                     )}
                     key={filter}
                     onClick={() => {
@@ -542,13 +664,12 @@ function LeftPanel({
                   >
                     {isActive && (
                       <motion.div
+                        className="absolute inset-x-0 bottom-0 h-0.5 bg-[#f6823c] shadow-[0_-1px_4px_rgba(246,130,60,0.4)]"
                         layoutId="left-panel-filter-indicator"
-                        className="absolute inset-0 rounded-full border border-[#e5d6c9] bg-[#fff3e8]"
-                        style={{ zIndex: -1 }}
                         transition={{
                           type: "spring",
-                          bounce: 0.2,
-                          duration: 0.5,
+                          bounce: 0.15,
+                          duration: 0.4,
                         }}
                       />
                     )}
@@ -568,7 +689,7 @@ function LeftPanel({
               <>
                 <div className="mb-2">
                   <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
-                    Results in {selectedPassage.book} {selectedPassage.chapter}
+                    Matches in {selectedPassage.book} {selectedPassage.chapter}
                   </span>
                 </div>
 
@@ -633,11 +754,24 @@ function LeftPanel({
               </p>
             )}
 
+            {hasQuery && debouncedTerm !== searchTerm && (
+              <div className="flex items-center justify-center h-[10vh] opacity-60">
+                <div className="h-4 w-4 border-2 border-[#f6823c] border-t-transparent rounded-full animate-spin" />
+                <span className="ml-2 text-[11px] font-medium text-[#7a6758]">
+                  Searching...
+                </span>
+              </div>
+            )}
             {!hasQuery && (
-              <p className="px-1 py-1 text-[11px] font-medium text-[#9b8878]">
-                Searching {selectedPassage.book} {selectedPassage.chapter}{" "}
-                across {visibleVersions.join(", ")}
-              </p>
+              <div className="flex flex-col items-center justify-center h-[10vh] border border-[#f1e8df] bg-[#fbf7f2] rounded-lg mt-2 px-3 py-4 text-center opacity-80">
+                <MagnifyingGlassIcon
+                  animateOnParentHover
+                  className="text-[#9b8878] mb-1.5"
+                />
+                <p className="text-[10px] font-medium text-[#7a6758] leading-tight">
+                  Easily search the Scriptures across different versions
+                </p>
+              </div>
             )}
           </section>
         )}
@@ -1231,7 +1365,7 @@ function Reader({
                 transition={{ duration: 0.15, ease: [0.215, 0.61, 0.355, 1] }}
                 type="button"
               >
-                {version}
+                {translations.find((t) => t.label === version)?.name || version}
               </motion.button>
             ))}
           </AnimatePresence>
@@ -1239,7 +1373,7 @@ function Reader({
           <div className="relative" ref={versionMenuRef}>
             <button
               aria-label="Add Bible version"
-              className="flex w-40 items-center justify-between gap-2 border border-[#e5d6c9] bg-white px-3 py-1.5 text-[13px] font-medium text-[#3a2218] outline-none transition-colors duration-150 ease-out hover:border-[#f6823c] focus:border-[#f6823c]"
+              className="flex w-40 items-center rounded-full justify-between gap-2 border border-[#e5d6c9] bg-white px-3 py-1.5 text-[13px] font-medium text-[#3a2218] outline-none transition-colors duration-150 ease-out hover:border-[#f6823c] focus:border-[#f6823c]"
               onClick={() => {
                 setReplaceTarget(null);
                 setVersionMenuOpen((o) => !o);
@@ -1795,7 +1929,7 @@ function ReaderFooter() {
             {tab}
             {activeTab === tab && (
               <motion.span
-                className="absolute inset-x-0 bottom-0 h-0.5 bg-[#f6823c]"
+                className="absolute inset-x-0 bottom-0 h-0.5 bg-[#f6823c] shadow-[0_-1px_4px_rgba(246,130,60,0.4)]"
                 layoutId="reader-tab-indicator"
                 transition={{ duration: 0.22, ease: [0.645, 0.045, 0.355, 1] }}
               />
