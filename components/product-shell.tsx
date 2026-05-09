@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, scale } from "motion/react";
 import { Bell, BookOpen, CalendarDays, ChevronDown, Users } from "lucide-react";
 
 import BibleLogo from "@/components/logo";
@@ -73,7 +73,10 @@ function ProductTopNav({
   useEffect(() => {
     if (!profileOpen) return;
     const handleOutsideClick = (e: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(e.target as Node)
+      ) {
         setProfileOpen(false);
       }
     };
@@ -181,7 +184,7 @@ function ProductTopNav({
                     {guestName}
                   </p>
                 </div>
-                <div className="py-1">
+                <div className="py-1 *:!transform-none hover:!transform-none">
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
                     onClick={() => {
@@ -189,7 +192,7 @@ function ProductTopNav({
                       onOpenBookmarks?.();
                     }}
                   >
-                    <span className="hover:translate-x-1.5 transition-transform duration-150 inline-block">Bookmarks</span>
+                    Bookmarks
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
@@ -198,7 +201,7 @@ function ProductTopNav({
                       onOpenSettings?.();
                     }}
                   >
-                    <span className="hover:translate-x-1.5 transition-transform duration-150 inline-block">Settings</span>
+                    Settings
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
@@ -207,13 +210,13 @@ function ProductTopNav({
                       onOpenNotifications?.();
                     }}
                   >
-                    <span className="hover:translate-x-1.5 transition-transform duration-150 inline-block">Profile</span>
+                    Profile
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#f6823c] hover:bg-[#fbf7f2]"
                     onClick={() => setProfileOpen(false)}
                   >
-                    <span className="hover:translate-x-1.5 transition-transform duration-150 inline-block">{guestName.startsWith("Anonymous-") ? "Sign In" : "Log Out"}</span>
+                    {guestName.startsWith("Anonymous-") ? "Sign In" : "Log Out"}
                   </button>
                 </div>
               </motion.div>

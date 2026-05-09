@@ -599,7 +599,7 @@ function LeftPanel({
           </button>
         </div>
         <button
-          className="flex w-full items-center justify-between py-2 text-left text-[12px] font-semibold text-[#3a2218] hover:text-[#25140b]"
+          className="flex w-full items-center justify-between py-3 text-left text-[12px] font-semibold text-[#3a2218] hover:text-[#25140b]"
           onClick={() => {
             const next = !searchOpen;
             setSearchOpen(next);
@@ -607,9 +607,7 @@ function LeftPanel({
           }}
           type="button"
         >
-          <span className="hover:translate-x-1.5 transition-transform duration-150">
-            Search Scripture
-          </span>
+          <span>Search Scripture</span>
           {searchOpen ? (
             <ChevronUp className="h-3.5 w-3.5 text-[#9b8878]" />
           ) : (
@@ -799,9 +797,7 @@ function LeftPanel({
           }
           type="button"
         >
-          <span className="hover:translate-x-1.5 transition-transform duration-150">
-            Full Index
-          </span>
+          <span>Full Index</span>
           {indexOpen ? (
             <ChevronUp className="h-3.5 w-3.5 text-[#9b8878]" />
           ) : (
