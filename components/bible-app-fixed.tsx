@@ -1139,10 +1139,26 @@ function PassagePicker({
   const [draftBook, setDraftBook] = useState(selectedPassage.book);
   const [draftChapter, setDraftChapter] = useState(selectedPassage.chapter);
   const ref = useOutsideClick<HTMLDivElement>(open, () => setOpen(false));
+  const chapterScrollRef = useRef<HTMLDivElement>(null);
+  const verseScrollRef = useRef<HTMLDivElement>(null);
   const selectedBook = bibleIndex.find(({ book }) => book === draftBook) ?? bibleIndex[0];
   const selectedChapter =
     selectedBook.chapters.find(({ chapter }) => chapter === draftChapter) ??
     selectedBook.chapters[0];
+  const oldTestamentBooks = bibleIndex.filter(({ book }) => book !== "John");
+  const newTestamentBooks = bibleIndex.filter(({ book }) => book === "John");
+  const elasticTransition = {
+    duration: 0.42,
+    ease: [0.34, 1.56, 0.64, 1],
+  } as const;
+  const elasticItemMotion = (index: number, step = 0.018) => ({
+    animate: { opacity: 1, y: [ -20, 4, 0 ] },
+    initial: { opacity: 0, y: -20 },
+    transition: {
+      ...elasticTransition,
+      delay: Math.min(index, 32) * step,
+    },
+  });
 
   useEffect(() => {
     if (!open) {
@@ -1150,6 +1166,15 @@ function PassagePicker({
       setDraftChapter(selectedPassage.chapter);
     }
   }, [open, selectedPassage]);
+
+  useEffect(() => {
+    chapterScrollRef.current?.scrollTo({ top: 0 });
+    verseScrollRef.current?.scrollTo({ top: 0 });
+  }, [draftBook]);
+
+  useEffect(() => {
+    verseScrollRef.current?.scrollTo({ top: 0 });
+  }, [draftChapter]);
 
   return (
     <div className="relative" ref={ref}>
@@ -1165,92 +1190,136 @@ function PassagePicker({
         {open && (
           <motion.section
             animate={{ opacity: 1, y: 0 }}
-            className="absolute left-0 top-[calc(100%+6px)] z-40 grid w-[520px] grid-cols-[160px_140px_1fr] items-start border border-[#e5d6c9] bg-white shadow-[0_18px_44px_rgba(31,18,9,0.12)]"
-            exit={{ opacity: 0, y: -4 }}
-            initial={{ opacity: 0, y: -4 }}
-            layout
-            transition={{ duration: 0.2, ease: [0.215, 0.61, 0.355, 1] }}
+            className="absolute left-0 top-[calc(100%+6px)] z-40 grid h-[380px] w-[620px] grid-cols-[170px_150px_1fr] items-stretch overflow-hidden border border-[#e5d6c9] bg-white shadow-[0_18px_44px_rgba(31,18,9,0.12)]"
+            exit={{ opacity: 0, scale: 0.95, y: -8 }}
+            initial={{ opacity: 0, scale: 0.97, y: -10 }}
+            transition={elasticTransition}
           >
-            <div className="max-h-[320px] overflow-y-auto border-r border-[#f1e8df] p-2">
+            <div className="flex min-h-0 flex-col border-r border-[#f1e8df] p-2">
               <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9b8878]">
                 Book
               </p>
-              {bibleIndex.map(({ book }) => (
-                <button
-                  className={cn(
-                    "w-full px-2 py-2 text-left text-[12px] font-semibold text-[#5d493a] hover:text-[#25140b]",
-                    draftBook === book && "text-[#f6823c]",
-                  )}
-                  key={book}
-                  onClick={() => {
-                    const firstChapter = bibleIndex.find(
-                      (item) => item.book === book,
-                    )?.chapters[0]?.chapter;
-                    setDraftBook(book);
-                    setDraftChapter(firstChapter ?? 1);
-                  }}
-                  type="button"
-                >
-                  {book}
-                </button>
-              ))}
+              <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto">
+                <p className="px-2 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#f6823c]">
+                  Old Testament
+                </p>
+                {oldTestamentBooks.map(({ book }, index) => (
+                  <motion.button
+                    className={cn(
+                      "w-full px-2 py-2 text-left text-[12px] font-semibold text-[#5d493a] hover:text-[#25140b]",
+                      draftBook === book && "text-[#f6823c]",
+                    )}
+                    key={book}
+                    onClick={() => {
+                      const firstChapter = bibleIndex.find(
+                        (item) => item.book === book,
+                      )?.chapters[0]?.chapter;
+                      setDraftBook(book);
+                      setDraftChapter(firstChapter ?? 1);
+                    }}
+                    type="button"
+                    {...elasticItemMotion(index)}
+                  >
+                    {book}
+                  </motion.button>
+                ))}
+                <p className="mt-2 border-t border-[#f1e8df] px-2 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#f6823c]">
+                  New Testament
+                </p>
+                {newTestamentBooks.map(({ book }, index) => (
+                  <motion.button
+                    className={cn(
+                      "w-full px-2 py-2 text-left text-[12px] font-semibold text-[#5d493a] hover:text-[#25140b]",
+                      draftBook === book && "text-[#f6823c]",
+                    )}
+                    key={book}
+                    onClick={() => {
+                      const firstChapter = bibleIndex.find(
+                        (item) => item.book === book,
+                      )?.chapters[0]?.chapter;
+                      setDraftBook(book);
+                      setDraftChapter(firstChapter ?? 1);
+                    }}
+                    type="button"
+                    {...elasticItemMotion(oldTestamentBooks.length + index)}
+                  >
+                    {book}
+                  </motion.button>
+                ))}
+              </div>
             </div>
-            <div className="max-h-[320px] overflow-y-auto border-r border-[#f1e8df] p-2">
+            <div className="flex min-h-0 flex-col border-r border-[#f1e8df] p-2">
               <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9b8878]">
                 Chapter
               </p>
-              {selectedBook.chapters.map(({ chapter }) => (
-                <button
-                  className={cn(
-                    "w-full px-2 py-2 text-left text-[12px] font-medium text-[#5d493a] hover:text-[#25140b]",
-                    draftChapter === chapter && "font-semibold text-[#f6823c]",
-                  )}
-                  key={chapter}
-                  onClick={() => setDraftChapter(chapter)}
-                  type="button"
-                >
-                  Chapter {chapter}
-                </button>
-              ))}
+              <div
+                className="bible-app-scroll min-h-0 flex-1 overflow-y-auto"
+                ref={chapterScrollRef}
+              >
+                <AnimatePresence mode="popLayout">
+                  <motion.div key={draftBook}>
+                    {selectedBook.chapters.map(({ chapter }, index) => (
+                      <motion.button
+                        className={cn(
+                          "w-full px-2 py-2 text-left text-[12px] font-medium text-[#5d493a] hover:text-[#25140b]",
+                          draftChapter === chapter &&
+                            "font-semibold text-[#f6823c]",
+                        )}
+                        key={chapter}
+                        onClick={() => setDraftChapter(chapter)}
+                        type="button"
+                        {...elasticItemMotion(index)}
+                      >
+                        Chapter {chapter}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </div>
-            <div className="max-h-[320px] overflow-y-auto p-2">
+            <div className="flex min-h-0 flex-col p-2">
               <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9b8878]">
                 Verse
               </p>
-              <motion.div
-                className="grid grid-cols-5 gap-1"
-                key={`${draftBook}-${draftChapter}`}
-                layout
-                transition={{ duration: 0.2, ease: [0.215, 0.61, 0.355, 1] }}
+              <div
+                className="bible-app-scroll min-h-0 flex-1 overflow-y-auto"
+                ref={verseScrollRef}
               >
-                {Array.from(
-                  { length: Math.min(selectedChapter.verses, 36) },
-                  (_, index) => index + 1,
-                ).map((verse) => (
-                  <motion.button
-                    className={cn(
-                      "flex h-8 items-center justify-center text-[12px] font-medium text-[#7a6758] hover:text-[#f6823c]",
-                      selectedPassage.book === draftBook &&
-                        selectedPassage.chapter === draftChapter &&
-                        selectedPassage.verse === verse &&
-                        "font-semibold text-[#f6823c]",
-                    )}
-                    key={verse}
-                    layout
-                    onClick={() => {
-                      onPassageChange({
-                        book: draftBook,
-                        chapter: draftChapter,
-                        verse,
-                      });
-                      setOpen(false);
-                    }}
-                    type="button"
+                <AnimatePresence mode="popLayout">
+                  <motion.div
+                    className="grid grid-cols-6 gap-1"
+                    key={`${draftBook}-${draftChapter}`}
                   >
-                    {verse}
-                  </motion.button>
-                ))}
-              </motion.div>
+                    {Array.from(
+                      { length: Math.min(selectedChapter.verses, 72) },
+                      (_, index) => index + 1,
+                    ).map((verse, index) => (
+                      <motion.button
+                        className={cn(
+                          "flex h-8 items-center justify-center text-[12px] font-medium text-[#7a6758] hover:text-[#f6823c]",
+                          selectedPassage.book === draftBook &&
+                            selectedPassage.chapter === draftChapter &&
+                            selectedPassage.verse === verse &&
+                            "font-semibold text-[#f6823c]",
+                        )}
+                        key={verse}
+                        onClick={() => {
+                          onPassageChange({
+                            book: draftBook,
+                            chapter: draftChapter,
+                            verse,
+                          });
+                          setOpen(false);
+                        }}
+                        type="button"
+                        {...elasticItemMotion(index, 0.009)}
+                      >
+                        {verse}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </div>
           </motion.section>
         )}
