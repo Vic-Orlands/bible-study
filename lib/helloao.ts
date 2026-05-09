@@ -1,3 +1,5 @@
+import { db } from "./db";
+
 const HELLO_AO_API_BASE = "https://bible.helloao.org/api";
 
 export type HelloAoContentPart =
@@ -95,9 +97,17 @@ export async function fetchHelloAoChapter(
   bookId: string,
   chapter: number,
 ) {
+  const cacheId = `${translationId}-${bookId}-${chapter}`;
+  try {
+    const cached = await db.chapters.get(cacheId);
+    if (cached) return cached.data as HelloAoChapterResponse;
+  } catch (e) {
+    console.error("Dexie get error:", e);
+  }
+
   try {
     const response = await fetch(
-      `${HELLO_AO_API_BASE}/${translationId}/${bookId}/${chapter}.json`,
+      `/api/helloao?path=${translationId}/${bookId}/${chapter}.json`,
     );
 
     if (!response.ok) {
@@ -106,16 +116,41 @@ export async function fetchHelloAoChapter(
       );
     }
 
-    return (await response.json()) as HelloAoChapterResponse;
+    const data = await response.json();
+    try {
+      await db.chapters.put({
+        id: cacheId,
+        translationId,
+        bookId,
+        chapter,
+        data,
+        timestamp: Date.now(),
+      });
+    } catch (e) {
+      console.error("Dexie put error:", e);
+    }
+    return data as HelloAoChapterResponse;
   } catch (error) {
     console.error("Failed to fetch HelloAO chapter", error);
+    try {
+      const cached = await db.chapters.get(cacheId);
+      if (cached) return cached.data as HelloAoChapterResponse;
+    } catch (e) {}
     throw error;
   }
 }
 
 export async function fetchHelloAoBooks(translationId = "BSB") {
+  const cacheId = `${translationId}-books`;
   try {
-    const response = await fetch(`${HELLO_AO_API_BASE}/${translationId}/books.json`);
+    const cached = await db.books.get(cacheId);
+    if (cached) return cached.data as HelloAoBooksResponse;
+  } catch (e) {}
+
+  try {
+    const response = await fetch(
+      `/api/helloao?path=${translationId}/books.json`,
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -123,9 +158,22 @@ export async function fetchHelloAoBooks(translationId = "BSB") {
       );
     }
 
-    return (await response.json()) as HelloAoBooksResponse;
+    const data = await response.json();
+    try {
+      await db.books.put({
+        id: cacheId,
+        translationId,
+        data,
+        timestamp: Date.now(),
+      });
+    } catch (e) {}
+    return data as HelloAoBooksResponse;
   } catch (error) {
     console.error("Failed to fetch HelloAO books", error);
+    try {
+      const cached = await db.books.get(cacheId);
+      if (cached) return cached.data as HelloAoBooksResponse;
+    } catch (e) {}
     throw error;
   }
 }

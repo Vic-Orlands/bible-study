@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Bell, BookOpen, CalendarDays, ChevronDown, Users } from "lucide-react";
 
 import BibleLogo from "@/components/logo";
@@ -19,18 +19,36 @@ const navItems = [
   { href: "/community", label: "Community", icon: Users },
 ];
 
-export function ProductShell({ children, onOpenNotifications }: { children: ReactNode, onOpenNotifications?: () => void }) {
+export function ProductShell({
+  children,
+  onOpenNotifications,
+  onOpenBookmarks,
+}: {
+  children: ReactNode;
+  onOpenNotifications?: () => void;
+  onOpenBookmarks?: () => void;
+}) {
   return (
     <main className="bible-app flex h-screen flex-col overflow-hidden bg-white">
-      <ProductTopNav onOpenNotifications={onOpenNotifications} />
+      <ProductTopNav
+        onOpenNotifications={onOpenNotifications}
+        onOpenBookmarks={onOpenBookmarks}
+      />
       {children}
     </main>
   );
 }
 
-function ProductTopNav({ onOpenNotifications }: { onOpenNotifications?: () => void }) {
+function ProductTopNav({
+  onOpenNotifications,
+  onOpenBookmarks,
+}: {
+  onOpenNotifications?: () => void;
+  onOpenBookmarks?: () => void;
+}) {
   const pathname = usePathname();
   const [isOnline, setIsOnline] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
   const guestName = useStudyStore((s) => s.guestName);
 
   useEffect(() => {
@@ -74,7 +92,10 @@ function ProductTopNav({ onOpenNotifications }: { onOpenNotifications?: () => vo
                 <motion.span
                   className="absolute inset-x-0 bottom-0 h-0.5 bg-[#f6823c]"
                   layoutId="top-nav-indicator"
-                  transition={{ duration: 0.22, ease: [0.645, 0.045, 0.355, 1] }}
+                  transition={{
+                    duration: 0.22,
+                    ease: [0.645, 0.045, 0.355, 1],
+                  }}
                 />
               )}
             </Link>
@@ -91,24 +112,90 @@ function ProductTopNav({ onOpenNotifications }: { onOpenNotifications?: () => vo
           type="button"
         >
           {isOnline ? (
-            <CheckCircleIcon animateOnParentHover className="h-3.5 w-3.5" size={14} />
+            <CheckCircleIcon
+              animateOnParentHover
+              className="h-3.5 w-3.5"
+              size={14}
+            />
           ) : (
             <WifiIcon animateOnParentHover className="h-3.5 w-3.5" size={14} />
           )}
           {isOnline ? "Online" : "Offline"}
         </button>
-        <button className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#3a2218]" type="button" onClick={onOpenNotifications}>
+        <button
+          className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#3a2218]"
+          type="button"
+          onClick={onOpenNotifications}
+        >
           <Bell className="h-4 w-4" />
         </button>
-        <div className="flex items-center gap-2 cursor-pointer hover:bg-[#fbf7f2] p-1 pr-2 rounded-full transition-colors duration-150">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3a2218] text-[11px] font-semibold text-[#f6823c]">
-            {guestName.startsWith("Anonymous-") ? "AN" : guestName.slice(0, 2).toUpperCase()}
+        <div className="relative">
+          <div
+            className="flex items-center gap-2 cursor-pointer hover:bg-[#fbf7f2] p-1 pr-2 rounded-full transition-colors duration-150"
+            onClick={() => setProfileOpen((o) => !o)}
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3a2218] text-[11px] font-semibold text-[#f6823c]">
+              {guestName.startsWith("Anonymous-")
+                ? "AN"
+                : guestName.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="hidden flex-col justify-center md:flex">
+              <span className="text-[12px] font-semibold leading-tight text-[#25140b]">
+                {guestName}
+              </span>
+              <span className="text-[10px] leading-tight text-[#7a6758]">
+                guest@biblestudy.app
+              </span>
+            </div>
+            <ChevronDown className="h-3 w-3 text-[#7a6758]" />
           </div>
-          <div className="hidden flex-col justify-center md:flex">
-            <span className="text-[12px] font-semibold leading-tight text-[#25140b]">{guestName}</span>
-            <span className="text-[10px] leading-tight text-[#7a6758]">guest@biblestudy.app</span>
-          </div>
-          <ChevronDown className="h-3 w-3 text-[#7a6758]" />
+
+          <AnimatePresence>
+            {profileOpen && (
+              <motion.div
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute right-0 top-[calc(100$+6px)] z-30 w-56 border border-[#e5d6c9] bg-white shadow-[0_14px_36px_rgba(31,18,9,0.10)]"
+                exit={{ opacity: 0, y: -4 }}
+                initial={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16, ease: [0.215, 0.61, 0.355, 1] }}
+              >
+                <div className="px-4 py-2 border-b border-[#f1e8df]">
+                  <p className="text-[13px] font-semibold text-[#25140b]">
+                    {guestName}
+                  </p>
+                </div>
+                <div className="py-1">
+                  <button
+                    className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      onOpenBookmarks?.();
+                    }}
+                  >
+                    Bookmarks
+                  </button>
+                  <button
+                    className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Settings
+                  </button>
+                  <button
+                    className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Profile
+                  </button>
+                  <button
+                    className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#f6823c] hover:bg-[#fbf7f2]"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Log out / Sign in
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

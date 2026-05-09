@@ -1,31 +1,30 @@
-import { DeepgramClient, type Deepgram } from "@deepgram/sdk";
+import { DeepgramClient } from "@deepgram/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
-const deepgram = new DeepgramClient({ apiKey: process.env.DEEPGRAM_API_KEY! });
+const deepgram = new DeepgramClient({ apiKey: process.env.DEEPGRAM_API_KEY! } as any);
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const audio = formData.get("audio") as File | null;
+    const { url } = await req.json();
 
-    if (!audio) {
+    if (!url) {
       return NextResponse.json(
-        { error: "No audio file provided" },
+        { error: "No audio url provided" },
         { status: 400 },
       );
     }
 
-    const buffer = Buffer.from(await audio.arrayBuffer());
+    const response = await (deepgram.listen as any).v1.transcribeUrl(
+      { url },
+      {
+        model: "nova-3",
+        smart_format: true,
+        language: "en",
+      }
+    );
 
-    const response = await deepgram.listen.v1.media.transcribeFile(buffer, {
-      model: "nova-3",
-      smart_format: true,
-      language: "en",
-    });
-
-    const typed = response as Deepgram.ListenV1Response;
     const transcript =
-      typed?.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
+      response?.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
 
     return NextResponse.json({ transcript });
   } catch (err) {

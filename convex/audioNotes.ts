@@ -12,23 +12,16 @@ export const listForPassage = query({
       .withIndex("by_passage", (q) =>
         q
           .eq("passageBook", args.passageBook)
-          .eq("passageChapter", args.passageChapter)
+          .eq("passageChapter", args.passageChapter),
       )
       .order("desc")
       .collect();
-    return await Promise.all(
-      notes.map(async (note) => ({
-        ...note,
-        url: note.storageId ? await ctx.storage.getUrl(note.storageId) : null,
-      }))
-    );
-  },
-});
 
-export const generateUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.storage.generateUploadUrl();
+    // We already store the public R2 audioUrl, so we just map and return the data directly
+    return notes.map((note) => ({
+      ...note,
+      url: note.audioUrl,
+    }));
   },
 });
 
@@ -39,7 +32,10 @@ export const create = mutation({
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.optional(v.number()),
-    storageId: v.optional(v.id("_storage")),
+    audioUrl: v.string(),
+    audioKey: v.string(),
+    size: v.number(),
+    mimeType: v.string(),
     duration: v.number(),
     waveform: v.optional(v.array(v.number())),
   },
@@ -50,11 +46,14 @@ export const create = mutation({
       passageBook: args.passageBook,
       passageChapter: args.passageChapter,
       passageVerse: args.passageVerse,
-      storageId: args.storageId,
+      audioUrl: args.audioUrl,
+      audioKey: args.audioKey,
+      size: args.size,
+      mimeType: args.mimeType,
       duration: args.duration,
       waveform: args.waveform,
       transcript: undefined,
-      isProcessing: !!args.storageId,
+      isProcessing: true,
     });
   },
 });
@@ -82,9 +81,10 @@ export const remove = mutation({
     if (!note || note.guestId !== args.guestId) {
       return;
     }
-    if (note.storageId) {
-      await ctx.storage.delete(note.storageId);
-    }
+
+    // Note: To be fully secure, the client should also make an API call to
+    // delete the object from R2 bucket, or we can use an Edge Function cron job.
+    // For now, we simply delete the record from Convex.
     await ctx.db.delete(args.id);
   },
 });

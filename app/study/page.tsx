@@ -163,16 +163,10 @@ export default function BibleApp() {
   const setRightTab = useStudyStore((s) => s.setRightTab);
   const setCommentTarget = useStudyStore((s) => s.setCommentTarget);
 
-  const [storeReady, setStoreReady] = useState(() =>
-    useStudyStore.persist.hasHydrated(),
-  );
+  const [storeReady, setStoreReady] = useState(false);
 
   useEffect(() => {
-    if (useStudyStore.persist.hasHydrated()) {
-      setStoreReady(true);
-      return;
-    }
-    return useStudyStore.persist.onFinishHydration(() => setStoreReady(true));
+    setStoreReady(true);
   }, []);
 
   const { leftOpen, rightOpen } = sidebars;
@@ -237,7 +231,10 @@ export default function BibleApp() {
   );
 
   return (
-    <ProductShell onOpenNotifications={() => setNotificationsOpen(true)}>
+    <ProductShell
+      onOpenNotifications={() => setNotificationsOpen(true)}
+      onOpenBookmarks={() => setBookmarksOpen(true)}
+    >
       <div className="flex flex-1 overflow-hidden bg-white">
         {!storeReady ? (
           <div className="min-w-0 flex-1 bg-white" />
@@ -379,6 +376,7 @@ function LeftPanel({
   selectedPassage,
   visibleVersions,
   onCollapse,
+  onOpenBookmarks,
   onPassageChange,
 }: {
   bibleBooks: BibleBookIndex[];
@@ -399,7 +397,7 @@ function LeftPanel({
     chapterKeyFor(selectedPassage),
   );
   const [activeFilter, setActiveFilter] = useState<
-    "All" | "Old Testament" | "New Testament"
+    "All" | "Old Testament" | "New Testament" | "Bookmarks" | "Notes"
   >("All");
 
   useEffect(() => {
@@ -514,24 +512,50 @@ function LeftPanel({
               )}
             </div>
 
-            <div className="mb-2 mt-3 flex flex-wrap items-center gap-1.5">
-              {(["All", "Old Testament", "New Testament"] as const).map(
-                (filter) => (
+            <div className="mb-2 mt-3 flex items-center gap-1 overflow-x-auto whitespace-nowrap hide-scrollbar pb-1">
+              {(
+                [
+                  "All",
+                  "Old Testament",
+                  "New Testament",
+                  "Bookmarks",
+                  "Notes",
+                ] as const
+              ).map((filter) => {
+                const isActive = activeFilter === filter;
+                return (
                   <button
                     className={cn(
-                      "cta-button px-3 py-1 text-[11px] font-semibold",
-                      activeFilter === filter
-                        ? "bg-[#3a2218] text-white"
-                        : "border border-[#e5d6c9] bg-white text-[#3a2218]",
+                      "relative px-3 py-1.5 text-[11px] font-medium transition-colors",
+                      isActive
+                        ? "text-[#25140b] font-semibold"
+                        : "text-[#7a6758] hover:text-[#25140b]",
                     )}
                     key={filter}
-                    onClick={() => setActiveFilter(filter)}
+                    onClick={() => {
+                      setActiveFilter(filter);
+                      if (filter === "Bookmarks" && onOpenBookmarks) {
+                        onOpenBookmarks();
+                      }
+                    }}
                     type="button"
                   >
+                    {isActive && (
+                      <motion.div
+                        layoutId="left-panel-filter-indicator"
+                        className="absolute inset-0 rounded-full border border-[#e5d6c9] bg-[#fff3e8]"
+                        style={{ zIndex: -1 }}
+                        transition={{
+                          type: "spring",
+                          bounce: 0.2,
+                          duration: 0.5,
+                        }}
+                      />
+                    )}
                     {filter}
                   </button>
-                ),
-              )}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1249,35 +1273,37 @@ function Reader({
                       value={versionSearch}
                     />
                   </div>
-                  {availableTranslations.map(({ label, name }) => {
-                    const selected = visibleVersions.includes(label);
-                    return (
-                      <button
-                        className={cn(
-                          "flex w-full items-center justify-between px-3 py-2 text-left text-[12px] font-semibold text-[#3a2218] hover:bg-[#fbf7f2]",
-                          selected &&
-                            "cursor-default text-[#b09d8d] hover:bg-white",
-                        )}
-                        disabled={selected}
-                        key={label}
-                        onClick={() => handleVersionChoice(label)}
-                        title={name}
-                        type="button"
-                      >
-                        {label}
-                        {selected && (
-                          <span className="text-[10px] font-medium text-[#9b8878]">
-                            Selected
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                  {availableTranslations.length === 0 && (
-                    <p className="px-3 py-2 text-[12px] font-medium text-[#9b8878]">
-                      No translations found
-                    </p>
-                  )}
+                  <div className="max-h-64 overflow-y-auto bible-app-scroll">
+                    {availableTranslations.map(({ label, name }) => {
+                      const selected = visibleVersions.includes(label);
+                      return (
+                        <button
+                          className={cn(
+                            "flex w-full items-center justify-between px-3 py-2 text-left text-[12px] font-semibold text-[#3a2218] hover:bg-[#fbf7f2]",
+                            selected &&
+                              "cursor-default text-[#b09d8d] hover:bg-white",
+                          )}
+                          disabled={selected}
+                          key={label}
+                          onClick={() => handleVersionChoice(label)}
+                          title={name}
+                          type="button"
+                        >
+                          {label}
+                          {selected && (
+                            <span className="text-[10px] font-medium text-[#9b8878]">
+                              Selected
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {availableTranslations.length === 0 && (
+                      <p className="px-3 py-2 text-[12px] font-medium text-[#9b8878]">
+                        No translations found
+                      </p>
+                    )}
+                  </div>
                 </motion.section>
               )}
             </AnimatePresence>
@@ -1909,6 +1935,14 @@ function PublicStudy({
   const toggle = (name: string) =>
     setReplyingTo((c) => (c === name ? null : name));
 
+  const guestId = useStudyStore((s) => s.guestId);
+  const comments = useQuery(api.comments.listForPassage, {
+    passageBook: selectedPassage.book,
+    passageChapter: selectedPassage.chapter,
+  });
+
+  const toggleLike = useMutation(api.comments.toggleLike);
+
   return (
     <div className="flex h-full min-h-0 flex-col px-4 py-4">
       <div className="mb-3 flex shrink-0 items-center justify-between">
@@ -1916,7 +1950,9 @@ function PublicStudy({
           <span className="text-[13px] font-semibold text-[#25140b]">
             Public Study
           </span>
-          <span className="ml-2 text-[11px] text-[#9b8878]">12 members</span>
+          <span className="ml-2 text-[11px] text-[#9b8878]">
+            {comments?.length ?? 0} comments
+          </span>
         </div>
         <button
           className="cta-button flex items-center gap-1.5 border border-[#e5d6c9] px-2.5 py-1.5 text-[11px] font-semibold text-[#3a2218] hover:bg-[#fbf7f2]"
@@ -1931,8 +1967,6 @@ function PublicStudy({
         {[
           "https://i.pravatar.cc/96?u=bible-grace",
           "https://i.pravatar.cc/96?u=bible-ethan",
-          "https://i.pravatar.cc/96?u=bible-miriam",
-          "https://i.pravatar.cc/96?u=bible-aaron",
         ].map((src, i) => (
           <img
             alt=""
@@ -1950,46 +1984,35 @@ function PublicStudy({
       </div>
 
       <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto pr-1">
-        <ChatMessage
-          avatar="https://i.pravatar.cc/96?u=bible-grace"
-          isReplying={replyingTo === "Grace M."}
-          likes={12}
-          name="Grace M."
-          onReply={() => toggle("Grace M.")}
-          reference="Genesis 1:1"
-          time="2h ago"
-        >
-          <p className="font-serif text-[13px] leading-relaxed text-[#3a2218]">
-            "In the beginning" — the opening words ground everything in God's
-            sovereign creative act. Nothing precedes Him.
+        {comments === undefined ? (
+          <p className="text-[12px] text-[#7a6758]">Loading feed...</p>
+        ) : comments.length === 0 ? (
+          <p className="text-[12px] text-[#7a6758]">
+            Be the first to comment on this chapter.
           </p>
-        </ChatMessage>
-        <ChatMessage
-          avatar="https://i.pravatar.cc/96?u=bible-ethan"
-          isReplying={replyingTo === "Ethan L."}
-          likeIcon="heart"
-          likes={8}
-          name="Ethan L."
-          onReply={() => toggle("Ethan L.")}
-          reference="Genesis 1:2"
-          time="1h ago"
-        >
-          <p className="font-serif text-[13px] leading-relaxed text-[#3a2218]">
-            The formless void before creation reminds me that order is a gift,
-            not a given.
-          </p>
-        </ChatMessage>
-        <ChatMessage
-          avatar="https://i.pravatar.cc/96?u=bible-miriam"
-          isReplying={replyingTo === "Miriam A."}
-          likes={5}
-          name="Miriam A."
-          onReply={() => toggle("Miriam A.")}
-          reference="Genesis 1:3"
-          time="28m ago"
-        >
-          <VoiceNoteBubble />
-        </ChatMessage>
+        ) : (
+          comments.map((comment) => (
+            <ChatMessage
+              key={comment._id}
+              avatar={`https://ui-avatars.com/api/?name=${comment.guestName}&background=random`}
+              isReplying={replyingTo === comment._id}
+              likeIcon={comment.likes.includes(guestId) ? "heart" : "thumb"}
+              likes={comment.likes.length}
+              name={comment.guestName}
+              onReply={() => toggle(comment._id)}
+              onLike={() => toggleLike({ id: comment._id, guestId })}
+              reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
+              time={new Date(comment._creationTime).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            >
+              <p className="font-serif text-[13px] leading-relaxed text-[#3a2218]">
+                {comment.content}
+              </p>
+            </ChatMessage>
+          ))
+        )}
       </div>
 
       <Composer target={commentTarget} selectedPassage={selectedPassage} />
@@ -2227,6 +2250,7 @@ function ChatMessage({
   likes,
   name,
   onReply,
+  onLike,
   reference,
   time,
 }: {
@@ -2237,6 +2261,7 @@ function ChatMessage({
   likes: number;
   name: string;
   onReply: () => void;
+  onLike?: () => void;
   reference: string;
   time: string;
 }) {
@@ -2275,13 +2300,27 @@ function ChatMessage({
         >
           <MessageCircle className="h-3.5 w-3.5" />
         </button>
-        <button
-          className="flex items-center gap-1.5 text-[11px] font-semibold text-[#7a6758] hover:text-[#3a2218]"
+        <motion.button
+          className={cn(
+            "flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold hover:text-[#f6823c]",
+            likeIcon === "heart"
+              ? "text-[#f6823c] bg-[#fff3e8]"
+              : "text-[#7a6758]",
+          )}
           type="button"
+          onClick={onLike}
+          whileTap={{ scale: 0.8 }}
+          animate={likeIcon === "heart" ? { scale: [1, 1.2, 1] } : {}}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
         >
-          <LikeIcon className="h-3.5 w-3.5" />
+          <LikeIcon
+            className={cn(
+              "h-3.5 w-3.5",
+              likeIcon === "heart" && "fill-current",
+            )}
+          />
           {likes}
-        </button>
+        </motion.button>
       </div>
 
       <div
@@ -2388,14 +2427,15 @@ function ChatInput({
       >
         <Mic className="h-3.5 w-3.5" />
       </button>
-      <button
+      <motion.button
         aria-label="Send message"
         className="icon-button flex h-7 w-7 items-center justify-center bg-[#3a2218] text-white hover:bg-[#1f1209]"
         type="button"
         onClick={onSend}
+        whileTap={{ scale: 0.8 }}
       >
         <SendHorizontal className="h-3.5 w-3.5" />
-      </button>
+      </motion.button>
     </div>
   );
 }
@@ -2435,6 +2475,127 @@ function AudioNotesPanel({
 }: {
   selectedPassage: PassageSelection;
 }) {
+  const guestId = useStudyStore((s) => s.guestId);
+  const guestName = useStudyStore((s) => s.guestName);
+  const notes = useQuery(api.audioNotes.listForPassage, {
+    passageBook: selectedPassage.book,
+    passageChapter: selectedPassage.chapter,
+  });
+  const createAudioNote = useMutation(api.audioNotes.create);
+  const updateTranscript = useMutation(api.audioNotes.updateTranscript);
+  const deleteAudioNote = useMutation(api.audioNotes.remove);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [pendingUploads, setPendingUploads] = useState<any[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        chunksRef.current = [];
+
+        // Optimistic UI: Immediately show processing note
+        const tempId = Date.now().toString();
+        const optimisticNote = {
+          _id: tempId,
+          guestName,
+          _creationTime: Date.now(),
+          isProcessing: true,
+          transcript: "Uploading...",
+        };
+        setPendingUploads((prev) => [optimisticNote, ...prev]);
+
+        try {
+          // 1. Get signed URL from our Next.js API
+          const presignRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filename: "audio-note.webm",
+              contentType: "audio/webm",
+            }),
+          });
+          const { uploadUrl, publicUrl, key } = await presignRes.json();
+
+          // 2. Upload to Cloudflare R2 via PUT (wait for it before proceeding)
+          setPendingUploads((prev) =>
+            prev.map((p) =>
+              p._id === tempId ? { ...p, transcript: "Saving to R2..." } : p,
+            ),
+          );
+          await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": "audio/webm" },
+            body: blob,
+          });
+
+          setPendingUploads((prev) =>
+            prev.map((p) =>
+              p._id === tempId ? { ...p, transcript: "Transcribing..." } : p,
+            ),
+          );
+
+          // 3. Create DB record with R2 URL
+          const noteId = await createAudioNote({
+            guestId,
+            guestName,
+            passageBook: selectedPassage.book,
+            passageChapter: selectedPassage.chapter,
+            passageVerse: selectedPassage.verse,
+            audioUrl: publicUrl,
+            audioKey: key,
+            size: blob.size,
+            mimeType: "audio/webm",
+            duration: 0,
+          });
+
+          // Remove from pending since Convex will now show it as isProcessing=true
+          setPendingUploads((prev) => prev.filter((p) => p._id !== tempId));
+
+          // 4. Trigger Deepgram transcript with R2 URL
+          const trRes = await fetch("/api/transcribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: publicUrl }),
+          });
+          const { transcript } = await trRes.json();
+
+          if (transcript) {
+            await updateTranscript({ id: noteId, transcript });
+          } else {
+            await updateTranscript({
+              id: noteId,
+              transcript: "Transcription failed.",
+            });
+          }
+        } catch (e) {
+          toast.error("Failed to process audio");
+          setPendingUploads((prev) => prev.filter((p) => p._id !== tempId));
+        }
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      toast.error("Microphone access denied");
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current?.stream.getTracks().forEach((t) => t.stop());
+    setIsRecording(false);
+  };
+
+  const allNotes = [...pendingUploads, ...(notes || [])];
+
   return (
     <div className="bible-app-scroll h-full overflow-y-auto px-4 py-4">
       <div className="mb-4 flex items-center justify-between">
@@ -2446,23 +2607,76 @@ function AudioNotesPanel({
             Recordings, uploads, playback, and transcripts
           </p>
         </div>
-        <button
-          className="cta-button flex items-center gap-1.5 border border-[#e5d6c9] px-2.5 py-1.5 text-[11px] font-semibold text-[#3a2218] hover:bg-[#fbf7f2]"
+        <motion.button
+          className={cn(
+            "cta-button flex items-center gap-1.5 border border-[#e5d6c9] px-2.5 py-1.5 text-[11px] font-semibold",
+            isRecording
+              ? "bg-[#fff3e8] text-[#f6823c]"
+              : "bg-white text-[#3a2218] hover:bg-[#fbf7f2]",
+          )}
           type="button"
+          onClick={isRecording ? stopRecording : startRecording}
+          whileTap={{ scale: 0.9 }}
         >
-          <Mic className="h-3 w-3" />
-          Record
-        </button>
+          {isRecording ? (
+            <span className="h-2 w-2 bg-[#f6823c] rounded-full animate-pulse" />
+          ) : (
+            <Mic className="h-3 w-3" />
+          )}
+          {isRecording ? "Stop" : "Record"}
+        </motion.button>
       </div>
       <div className="space-y-3">
-        <AudioNote />
-        <AudioNote />
+        {notes === undefined && pendingUploads.length === 0 ? (
+          <p className="text-[12px] text-[#7a6758]">Loading audio notes...</p>
+        ) : allNotes.length === 0 ? (
+          <p className="text-[12px] text-[#7a6758]">No audio notes yet.</p>
+        ) : (
+          allNotes.map((n) => (
+            <AudioNote
+              key={n._id}
+              note={n}
+              onDelete={() => deleteAudioNote({ id: n._id, guestId })}
+            />
+          ))
+        )}
       </div>
     </div>
   );
 }
 
-function AudioNote({ compact = false }: { compact?: boolean }) {
+function AudioNote({
+  note,
+  compact = false,
+  onDelete,
+}: {
+  note: any;
+  compact?: boolean;
+  onDelete?: () => void;
+}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (note.url) {
+      audioRef.current = new Audio(note.url);
+      audioRef.current.onended = () => setIsPlaying(false);
+    }
+    return () => {
+      if (audioRef.current) audioRef.current.pause();
+    };
+  }, [note.url]);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
   return (
     <section
       className={cn(
@@ -2478,19 +2692,36 @@ function AudioNote({ compact = false }: { compact?: boolean }) {
       </div>
       <div className="mb-2 flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center bg-[#3a2218] text-[10px] font-semibold text-[#f6823c]">
-          PA
+          {note.guestName.startsWith("Anonymous-")
+            ? "AN"
+            : note.guestName.slice(0, 2).toUpperCase()}
         </div>
         <span className="text-[11px] font-medium text-[#3a2218]">
-          Pastor Aaron
+          {note.guestName}
         </span>
-        <span className="text-[10px] text-[#9b8878]">· Today, 9:41 AM</span>
+        <span className="text-[10px] text-[#9b8878]">
+          · {new Date(note._creationTime).toLocaleDateString()}
+        </span>
+        {onDelete && (
+          <button
+            className="ml-auto text-[#9b8878] hover:text-[#f6823c]"
+            onClick={onDelete}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
       </div>
       <div className="mb-2 flex items-center gap-2">
         <button
           className="icon-button flex h-[38px] w-[38px] items-center justify-center border-2 border-[#3a2218] text-[#3a2218] hover:bg-[#3a2218] hover:text-white"
           type="button"
+          onClick={togglePlay}
         >
-          <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
+          {isPlaying ? (
+            <span className="h-2 w-2 bg-current" />
+          ) : (
+            <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
+          )}
         </button>
         <div className="flex h-8 flex-1 items-center gap-0.5 overflow-hidden">
           {waveform.map((h, i) => (
