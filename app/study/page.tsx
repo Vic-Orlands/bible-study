@@ -35,6 +35,7 @@ import { type BibleVerse } from "@/lib/helloao";
 import {
   useBibleBooks,
   useBibleChapters,
+  useAllChapterVerses,
   useVerseCount,
   translations,
   formatPassage,
@@ -195,6 +196,22 @@ export default function BibleApp() {
     selectedPassage.chapter,
   );
 
+  const [searchActive, setSearchActive] = useState(false);
+
+  const allChapterQueries = useAllChapterVerses(
+    bookId,
+    selectedPassage.chapter,
+    searchActive,
+  );
+
+  const allChapterVerses = useMemo(() => {
+    const map: Record<string, BibleVerse[]> = {};
+    for (const q of allChapterQueries) {
+      if (q.data) map[q.data.label] = q.data.verses;
+    }
+    return map;
+  }, [allChapterQueries]);
+
   const chapterVerses = useMemo(() => {
     const map: Record<string, BibleVerse[]> = {};
     for (const q of chapterQueries) {
@@ -266,6 +283,7 @@ export default function BibleApp() {
             <AnimatePresence initial={false}>
               {leftOpen && (
                 <LeftPanel
+                  allChapterVerses={allChapterVerses}
                   bibleBooks={bibleBooks}
                   bibleBooksError={bibleBooksError}
                   bibleBooksLoading={bibleBooksLoading}
@@ -278,6 +296,7 @@ export default function BibleApp() {
                     setBookmarksOpen(true);
                   }}
                   onPassageChange={handlePassageChange}
+                  onSearchActive={setSearchActive}
                 />
               )}
             </AnimatePresence>
@@ -505,6 +524,7 @@ export default function BibleApp() {
 }
 
 function LeftPanel({
+  allChapterVerses,
   bibleBooks,
   bibleBooksError,
   bibleBooksLoading,
@@ -514,7 +534,9 @@ function LeftPanel({
   onCollapse,
   onOpenBookmarks,
   onPassageChange,
+  onSearchActive,
 }: {
+  allChapterVerses: Record<string, BibleVerse[]>;
   bibleBooks: BibleBookIndex[];
   bibleBooksError: string | null;
   bibleBooksLoading: boolean;
@@ -524,6 +546,7 @@ function LeftPanel({
   onCollapse: () => void;
   onOpenBookmarks?: () => void;
   onPassageChange: (selection: PassageSelection) => void;
+  onSearchActive: (active: boolean) => void;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
@@ -566,7 +589,9 @@ function LeftPanel({
     const q = debouncedTerm.trim().toLowerCase();
     if (q.length < 2) return [];
     const hits: SearchHit[] = [];
-    for (const [label, verses] of Object.entries(chapterVerses)) {
+    const source =
+      Object.keys(allChapterVerses).length > 0 ? allChapterVerses : chapterVerses;
+    for (const [label, verses] of Object.entries(source)) {
       for (const { number, text } of verses) {
         if (text.toLowerCase().includes(q)) {
           hits.push({
@@ -580,7 +605,11 @@ function LeftPanel({
       }
     }
     return hits.slice(0, 30);
-  }, [debouncedTerm, chapterVerses, selectedPassage]);
+  }, [debouncedTerm, chapterVerses, allChapterVerses, selectedPassage]);
+
+  useEffect(() => {
+    onSearchActive(debouncedTerm.trim().length >= 2);
+  }, [debouncedTerm, onSearchActive]);
 
   const filteredBibleBooks = useMemo(
     () =>

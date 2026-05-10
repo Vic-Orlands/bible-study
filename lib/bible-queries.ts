@@ -158,3 +158,35 @@ export function useBibleChapters(
     }),
   });
 }
+
+export function useAllChapterVerses(
+  bookId: string | undefined,
+  chapter: number,
+  enabled: boolean,
+) {
+  return useQueries({
+    queries: translations.map(({ label, translationId }) => ({
+      queryKey: ["bible-chapter-all", label, bookId, chapter],
+      queryFn: async (): Promise<{ label: string; verses: BibleVerse[] }> => {
+        try {
+          const data = await fetchHelloAoChapter(
+            translationId,
+            bookId!,
+            chapter,
+          );
+          return { label, verses: extractChapterVerses(data) };
+        } catch (error) {
+          console.error(
+            "useAllChapterVerses queryFn failed for",
+            label,
+            error,
+          );
+          throw error;
+        }
+      },
+      enabled: !!bookId && enabled,
+      staleTime: Infinity,
+      gcTime: Infinity,
+    })),
+  });
+}
