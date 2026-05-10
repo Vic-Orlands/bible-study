@@ -8,7 +8,7 @@ import { fetchHelloAoChapter, extractChapterVerses } from "@/lib/helloao";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const VERSE_REGEX = /((?:[123]\s)?[A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(\d+):(\d+)/g;
+const VERSE_REGEX = /((?:(?:[123]|I{1,3})\s)?[A-Za-z][A-Za-z]*(?:\s[A-Za-z][A-Za-z]*)?)\s+(\d+):(\d+)/gi;
 
 export function RichScriptureText({ text, className }: { text: string; className?: string }) {
   const parts = text.split(VERSE_REGEX);
@@ -39,6 +39,16 @@ export function RichScriptureText({ text, className }: { text: string; className
   return <div className={cn("rich-scripture-text whitespace-pre-wrap", className)}>{result}</div>;
 }
 
+function normalizeBookForApi(rawBook: string): string {
+  return rawBook
+    .replace(/^(I{1,3})\s+/, (match) => {
+      const count = match.trim().length;
+      return count + "";
+    })
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\s+/g, "");
+}
+
 function VerseLink({ book, chapter, verse, reference }: { book: string; chapter: number; verse: number; reference: string }) {
   const [isHovered, setIsHovered] = useState(false);
   const [previewText, setPreviewText] = useState<string | null>(null);
@@ -60,7 +70,7 @@ function VerseLink({ book, chapter, verse, reference }: { book: string; chapter:
     let active = true;
     if (isHovered && !previewText) {
       setLoading(true);
-      fetchHelloAoChapter("BSB", book.replace(/\s+/g, ""), chapter)
+      fetchHelloAoChapter("BSB", normalizeBookForApi(book), chapter)
         .then((data) => {
           if (!active) return;
           const verses = extractChapterVerses(data);
