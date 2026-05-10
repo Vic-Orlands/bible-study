@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { motion } from "motion/react";
 import {
@@ -85,7 +86,7 @@ function CommunityRail() {
       <RailBlock title="Popular Studies">
         {popularStudies.map(([title, meta, avatar]) => (
           <button className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-[#fbf7f2]" key={title} type="button">
-            <img alt="" className="h-8 w-8 rounded-full object-cover" src={avatar} />
+            <Image alt="" className="h-8 w-8 rounded-full object-cover" height={32} src={avatar} width={32} />
             <span className="min-w-0">
               <span className="block truncate text-[13px] font-semibold text-[#3a2218]">{title}</span>
               <span className="block truncate text-[11px] font-medium text-[#9b8878]">{meta}</span>
@@ -232,7 +233,7 @@ function Comment({
 }) {
   return (
     <article className="mb-5 flex gap-3">
-      <img alt="" className="h-8 w-8 rounded-full object-cover" src={avatar} />
+      <Image alt="" className="h-8 w-8 rounded-full object-cover" height={32} src={avatar} width={32} />
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center gap-2">
           <span className="text-[13px] font-semibold text-[#25140b]">{name}</span>
