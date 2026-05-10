@@ -775,7 +775,7 @@ function LeftPanel({
               )}
             </div>
 
-            <div className="flex items-center mt-1 gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex items-center mt-1 w-full overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {(
                 [
                   "All",
@@ -2730,7 +2730,7 @@ function PublicStudy({
             return (
               <div key={comment._id}>
                 <ChatMessage
-                  avatar={`https://ui-avatars.com/api/?name=${comment.userId || "Anonymous"}&background=random`}
+                  avatar={`https://ui-avatars.com/api/?name=${getDisplayName(comment.userId, comment.userName)}&background=random&size=128`}
                   initialContent={comment.content}
                   isOwner={comment.userId === userId}
                   isReplying={replyingTo === comment._id}
@@ -2785,7 +2785,7 @@ function PublicStudy({
                               return (
                                 <ChatMessage
                                   key={reply._id}
-                                  avatar={`https://ui-avatars.com/api/?name=${reply.userId || "Anonymous"}&background=random`}
+                                  avatar={`https://ui-avatars.com/api/?name=${getDisplayName(reply.userId, reply.userName)}&background=random&size=128`}
                                   initialContent={reply.content}
                                   isOwner={reply.userId === userId}
                                   isReply={true}
@@ -3366,9 +3366,11 @@ function ChatMessage({
   };
 
   return (
-    <motion.div
-      layout
-      transition={{ duration: 0.18, ease: [0.215, 0.61, 0.355, 1] }}
+    <div
+      className={cn(
+        "transition-all duration-200",
+        flashHeart && "scale-110",
+      )}
     >
       <div className="flex gap-2.5">
         <Image
@@ -3530,7 +3532,7 @@ function ChatMessage({
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
