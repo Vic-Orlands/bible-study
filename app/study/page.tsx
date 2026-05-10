@@ -2209,6 +2209,7 @@ function PublicStudy({
 }) {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
   const [optimisticLikes, setOptimisticLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
   const toggle = (id: string) =>
     setReplyingTo((c) => (c === id ? null : id));
@@ -2222,6 +2223,24 @@ function PublicStudy({
 
   const toggleLike = useMutation(api.comments.toggleLike);
   const createComment = useMutation(api.comments.create);
+  const removeComment = useMutation(api.comments.remove);
+
+  const threads = useMemo(() => {
+    if (!comments) return { topLevel: [], repliesByParent: {} as Record<string, typeof comments> };
+    const topLevel = comments.filter((c) => !c.parentId);
+    const repliesByParent: Record<string, typeof comments> = {};
+    for (const c of comments) {
+      if (c.parentId) {
+        if (!repliesByParent[c.parentId]) repliesByParent[c.parentId] = [];
+        repliesByParent[c.parentId].push(c);
+      }
+    }
+    // Sort replies oldest first
+    for (const key of Object.keys(repliesByParent)) {
+      repliesByParent[key].sort((a, b) => a._creationTime - b._creationTime);
+    }
+    return { topLevel, repliesByParent };
+  }, [comments]);
 
   const handleLike = async (commentId: string, currentLikes: string[]) => {
     const alreadyLiked = currentLikes.includes(guestId);
@@ -2260,11 +2279,27 @@ function PublicStudy({
       });
       setReplyText((prev) => ({ ...prev, [commentId]: "" }));
       setReplyingTo(null);
+      setExpandedReplies((prev) => ({ ...prev, [commentId]: true }));
     } catch (e) {
       console.error(e);
       toast.error("Failed to send reply.");
     }
   };
+
+  const handleDelete = async (commentId: string) => {
+    try {
+      await removeComment({ id: commentId as Id<"comments">, guestId });
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete comment.");
+    }
+  };
+
+  const toggleReplies = (commentId: string) => {
+    setExpandedReplies((prev) => ({ ...prev, [commentId]: !prev[commentId] }));
+  };
+
+  const totalComments = comments?.length ?? 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col px-4 py-4">
@@ -2274,7 +2309,7 @@ function PublicStudy({
             Public Study
           </span>
           <span className="ml-2 text-[11px] text-[#9b8878]">
-            {comments?.length ?? 0} comments
+            {totalComments} comments
           </span>
         </div>
         <button
@@ -2316,34 +2351,98 @@ function PublicStudy({
             Be the first to comment on this chapter.
           </p>
         ) : (
-          comments.map((comment) => {
+          threads.topLevel.map((comment) => {
             const optimistic = optimisticLikes[comment._id];
             const likesCount = optimistic?.count ?? comment.likes.length;
             const isLiked = optimistic?.liked ?? comment.likes.includes(guestId);
+            const replies = threads.repliesByParent[comment._id] ?? [];
+            const isExpanded = expandedReplies[comment._id];
+
             return (
-              <ChatMessage
-                key={comment._id}
-                avatar={`https://ui-avatars.com/api/?name=${comment.guestName}&background=random`}
-                isReplying={replyingTo === comment._id}
-                likeIcon={isLiked ? "heart" : "thumb"}
-                likes={likesCount}
-                name={comment.guestName}
-                onReply={() => toggle(comment._id)}
-                onLike={() => handleLike(comment._id, comment.likes)}
-                reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
-                replyValue={replyText[comment._id] ?? ""}
-                onReplyChange={(v) => setReplyText((prev) => ({ ...prev, [comment._id]: v }))}
-                onReplySend={() => handleReplySend(comment._id)}
-                time={new Date(comment._creationTime).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              >
-                <RichScriptureText
-                  text={comment.content}
-                  className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
-                />
-              </ChatMessage>
+              <div key={comment._id}>
+                <ChatMessage
+                  avatar={`https://ui-avatars.com/api/?name=${comment.guestName}&background=random`}
+                  isOwner={comment.guestId === guestId}
+                  isReplying={replyingTo === comment._id}
+                  likeIcon={isLiked ? "heart" : "thumb"}
+                  likes={likesCount}
+                  name={comment.guestName}
+                  onDelete={() => handleDelete(comment._id)}
+                  onReply={() => toggle(comment._id)}
+                  onLike={() => handleLike(comment._id, comment.likes)}
+                  reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
+                  replyValue={replyText[comment._id] ?? ""}
+                  onReplyChange={(v) => setReplyText((prev) => ({ ...prev, [comment._id]: v }))}
+                  onReplySend={() => handleReplySend(comment._id)}
+                  time={new Date(comment._creationTime).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                >
+                  <RichScriptureText
+                    text={comment.content}
+                    className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
+                  />
+                </ChatMessage>
+
+                {replies.length > 0 && (
+                  <div className="ml-4 mt-1">
+                    <button
+                      className="mb-2 flex items-center gap-1 text-[11px] font-semibold text-[#9b8878] hover:text-[#f6823c] transition-colors"
+                      onClick={() => toggleReplies(comment._id)}
+                      type="button"
+                    >
+                      <span className="h-px w-6 bg-[#e5d6c9]" />
+                      {isExpanded
+                        ? `Hide replies (${replies.length})`
+                        : `View ${replies.length} reply${replies.length > 1 ? "ies" : ""}`}
+                    </button>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          animate={{ height: "auto", opacity: 1 }}
+                          className="overflow-hidden"
+                          exit={{ height: 0, opacity: 0 }}
+                          initial={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                        >
+                          <div className="border-l-2 border-[#f1e8df] pl-3">
+                            {replies.map((reply) => {
+                              const ropt = optimisticLikes[reply._id];
+                              const rLikes = ropt?.count ?? reply.likes.length;
+                              const rIsLiked = ropt?.liked ?? reply.likes.includes(guestId);
+                              return (
+                                <ChatMessage
+                                  key={reply._id}
+                                  avatar={`https://ui-avatars.com/api/?name=${reply.guestName}&background=random`}
+                                  isOwner={reply.guestId === guestId}
+                                  isReply={true}
+                                  likeIcon={rIsLiked ? "heart" : "thumb"}
+                                  likes={rLikes}
+                                  name={reply.guestName}
+                                  onDelete={() => handleDelete(reply._id)}
+                                  onLike={() => handleLike(reply._id, reply.likes)}
+                                  reference={`${reply.passageBook} ${reply.passageChapter}:${reply.passageVerse}`}
+                                  time={new Date(reply._creationTime).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                >
+                                  <RichScriptureText
+                                    text={reply.content}
+                                    className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
+                                  />
+                                </ChatMessage>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </div>
             );
           })
         )}
@@ -2580,10 +2679,13 @@ function ActivityPanel({
 function ChatMessage({
   avatar,
   children,
+  isOwner = false,
+  isReply = false,
   isReplying,
   likeIcon = "thumb",
   likes,
   name,
+  onDelete,
   onReply,
   onLike,
   reference,
@@ -2594,11 +2696,14 @@ function ChatMessage({
 }: {
   avatar: string;
   children: React.ReactNode;
-  isReplying: boolean;
+  isOwner?: boolean;
+  isReply?: boolean;
+  isReplying?: boolean;
   likeIcon?: "heart" | "thumb";
   likes: number;
   name: string;
-  onReply: () => void;
+  onDelete?: () => void;
+  onReply?: () => void;
   onLike?: () => void;
   reference: string;
   replyValue?: string;
@@ -2619,21 +2724,30 @@ function ChatMessage({
 
   return (
     <motion.div
-      className="mb-3 border border-[#f1e8df] bg-[#fbf7f2] p-3"
+      className={cn(
+        "border bg-[#fbf7f2]",
+        isReply ? "mb-2 border-[#f1e8df]/60 p-2.5" : "mb-3 border-[#f1e8df] p-3",
+      )}
       layout
       transition={{ duration: 0.18, ease: [0.215, 0.61, 0.355, 1] }}
     >
-      <div className="mb-2 flex items-start gap-2">
+      <div className={cn("flex items-start gap-2", isReply ? "mb-1.5" : "mb-2")}>
         <Image
           alt=""
-          className="h-7 w-7 rounded-full object-cover"
-          height={28}
+          className={cn(
+            "rounded-full object-cover",
+            isReply ? "h-6 w-6" : "h-7 w-7",
+          )}
+          height={isReply ? 24 : 28}
           src={avatar}
-          width={28}
+          width={isReply ? 24 : 28}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[12px] font-semibold text-[#25140b]">
+            <span className={cn(
+              "font-semibold text-[#25140b]",
+              isReply ? "text-[11px]" : "text-[12px]",
+            )}>
               {name}
             </span>
             <span className="bg-[#fff3e8] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
@@ -2646,15 +2760,29 @@ function ChatMessage({
 
       {children}
 
-      <div className="mt-3 flex items-center justify-between">
-        <button
-          aria-label={`Reply to ${name}`}
-          className="icon-button flex h-7 w-7 items-center justify-center text-[#7a6758] hover:bg-transparent hover:text-[#3a2218]"
-          onClick={onReply}
-          type="button"
-        >
-          <MessageCircle className="h-3.5 w-3.5" />
-        </button>
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex items-center gap-0.5">
+          {onReply && (
+            <button
+              aria-label={`Reply to ${name}`}
+              className="icon-button flex h-7 w-7 items-center justify-center text-[#7a6758] hover:bg-transparent hover:text-[#3a2218]"
+              onClick={onReply}
+              type="button"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {isOwner && onDelete && (
+            <button
+              aria-label="Delete comment"
+              className="icon-button flex h-7 w-7 items-center justify-center text-[#9b8878] hover:bg-transparent hover:text-[#a24723]"
+              onClick={onDelete}
+              type="button"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-1.5">
           {flashHeart && (
             <motion.div
@@ -2688,26 +2816,28 @@ function ChatMessage({
         </div>
       </div>
 
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
-          isReplying
-            ? "grid-rows-[1fr] opacity-100"
-            : "grid-rows-[0fr] opacity-0",
-        )}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="mt-3 border-t border-[#f1e8df] pt-3">
-            <ChatInput
-              compact
-              onChange={onReplyChange}
-              onSend={onReplySend}
-              placeholder={`Reply to ${name}…`}
-              value={replyValue}
-            />
+      {isReplying !== undefined && (
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+            isReplying
+              ? "grid-rows-[1fr] opacity-100"
+              : "grid-rows-[0fr] opacity-0",
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div className="mt-3 border-t border-[#f1e8df] pt-3">
+              <ChatInput
+                compact
+                onChange={onReplyChange}
+                onSend={onReplySend}
+                placeholder={`Reply to ${name}…`}
+                value={replyValue}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </motion.div>
   );
 }
