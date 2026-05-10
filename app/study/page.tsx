@@ -57,6 +57,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { MagnifyingGlassIcon } from "@/components/ui/magnifying-glass";
+import { RichScriptureText } from "@/components/rich-scripture-text";
 
 type SearchHit = {
   book: string;
@@ -370,7 +371,7 @@ export default function BibleApp() {
                   className="group relative flex items-center border border-[#f1e8df] bg-white hover:border-[#f6823c] transition-colors"
                 >
                   <button
-                    className="flex-1 text-left p-4"
+                    className="flex-1 text-left p-4 !transform-none hover:!transform-none"
                     onClick={() => {
                       handlePassageChange({
                         book: b.passageBook,
@@ -403,7 +404,7 @@ export default function BibleApp() {
                         >
                           <button
                             onClick={() => setDeletingId(null)}
-                            className="p-2 text-[#7a6758] hover:text-[#3a2218] transition-colors"
+                            className="p-2 text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#3a2218] transition-colors"
                             title="Cancel"
                           >
                             <X className="h-4 w-4" />
@@ -1866,6 +1867,7 @@ function TranslationVerses({
   verses: BibleVerse[];
 }) {
   const mp = translationColumnMotion(visibleCount);
+  const flashingVerse = useStudyStore((s) => s.flashingVerse);
   return (
     <motion.div
       animate={mp.animate}
@@ -1888,40 +1890,56 @@ function TranslationVerses({
           )}
           {!isLoading &&
             !error &&
-            verses.map(({ number, text }) => (
-              <div
-                className={cn(
-                  "group relative flex gap-3 px-2 py-2 transition-colors duration-150 ease-out hover:bg-[#fbf7f2]",
-                  number === selectedPassage.verse && "bg-[#fff3e8]",
-                )}
-                data-verse={number}
-                key={`${label}-${selectedPassage.book}-${selectedPassage.chapter}-${number}`}
-              >
-                <span className="min-w-4 pt-0.5 text-[11px] font-semibold leading-tight text-[#f6823c]">
-                  {number}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-serif text-[14px] leading-[1.65] text-[#25140b]">
-                    {text}
-                  </p>
-                  <button
-                    aria-label={`Comment on ${label} ${selectedPassage.book} ${selectedPassage.chapter}:${number}`}
-                    className={cn(
-                      "absolute right-2 top-2 hidden h-7 w-7 items-center justify-center bg-white/80 text-[#9b8878] backdrop-blur-sm transition-colors duration-150 ease-out hover:text-[#3a2218] group-hover:flex",
-                      number === selectedPassage.verse && "flex",
-                    )}
-                    onClick={() =>
-                      onComment(
-                        `${label} ${selectedPassage.book} ${selectedPassage.chapter}:${number}`,
-                      )
-                    }
-                    type="button"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
+            verses.map(({ number, text }) => {
+              const verseKey = `${selectedPassage.book}-${selectedPassage.chapter}-${number}`;
+              const isFlashing = flashingVerse === verseKey;
+              return (
+                <motion.div
+                  animate={
+                    isFlashing
+                      ? {
+                          backgroundColor: ["#ffffff", "#fff3e8", "#ffffff"],
+                        }
+                      : {}
+                  }
+                  className={cn(
+                    "group relative flex gap-3 px-2 py-2 transition-colors duration-150 ease-out hover:bg-[#fbf7f2]",
+                    number === selectedPassage.verse && "bg-[#fff3e8]",
+                  )}
+                  data-verse={number}
+                  key={`${label}-${selectedPassage.book}-${selectedPassage.chapter}-${number}`}
+                  transition={
+                    isFlashing
+                      ? { duration: 1.5, repeat: 1, ease: "easeInOut" }
+                      : {}
+                  }
+                >
+                  <span className="min-w-4 pt-0.5 text-[11px] font-semibold leading-tight text-[#f6823c]">
+                    {number}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-serif text-[14px] leading-[1.65] text-[#25140b]">
+                      {text}
+                    </p>
+                    <button
+                      aria-label={`Comment on ${label} ${selectedPassage.book} ${selectedPassage.chapter}:${number}`}
+                      className={cn(
+                        "absolute right-2 top-2 hidden h-7 w-7 items-center justify-center bg-white/80 text-[#9b8878] backdrop-blur-sm transition-colors duration-150 ease-out hover:text-[#3a2218] group-hover:flex",
+                        number === selectedPassage.verse && "flex",
+                      )}
+                      onClick={() =>
+                        onComment(
+                          `${label} ${selectedPassage.book} ${selectedPassage.chapter}:${number}`,
+                        )
+                      }
+                      type="button"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
         </div>
       </article>
     </motion.div>
@@ -2163,9 +2181,10 @@ function PublicStudy({
                 minute: "2-digit",
               })}
             >
-              <p className="font-serif text-[13px] leading-relaxed text-[#3a2218]">
-                {comment.content}
-              </p>
+              <RichScriptureText
+                text={comment.content}
+                className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
+              />
             </ChatMessage>
           ))
         )}
@@ -2220,9 +2239,10 @@ function PersonalNotes({
                   v{note.passageVerse}
                 </span>
               </div>
-              <p className="font-serif text-[13px] leading-relaxed text-[#3a2218]">
-                {note.content}
-              </p>
+              <RichScriptureText
+                text={note.content}
+                className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
+              />
             </article>
           ))
         )}
