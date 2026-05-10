@@ -135,11 +135,13 @@ function AvatarStack() {
   return (
     <div className="flex items-center">
       {members.map((src, index) => (
-        <img
+        <Image
           alt=""
           className={cn("h-8 w-8 rounded-full border-2 border-white object-cover shadow-sm", index > 0 && "-ml-3")}
+          height={32}
           key={src}
           src={src}
+          width={32}
         />
       ))}
     </div>

@@ -29,6 +29,7 @@ import {
   X,
   Bell,
 } from "lucide-react";
+import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
@@ -235,7 +236,7 @@ export default function BibleApp() {
     (target: string) => {
       const parts = target.split(" ");
       const passage = parts.slice(1).join(" ");
-      setVersePrefill(`@{${passage}} `);
+      setVersePrefill(passage);
       setCommentTarget(target);
       if (rightTab !== "Study" && rightTab !== "Notes") {
         setRightTab("Notes");
@@ -2196,14 +2197,16 @@ function PublicStudy({
           "https://i.pravatar.cc/96?u=bible-grace",
           "https://i.pravatar.cc/96?u=bible-ethan",
         ].map((src, i) => (
-          <img
+          <Image
             alt=""
             className={cn(
               "h-8 w-8 rounded-full border-2 border-white object-cover shadow-sm",
               i > 0 && "-ml-3",
             )}
+            height={32}
             key={src}
             src={src}
+            width={32}
           />
         ))}
         <div className="-ml-3 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-[#fbf7f2] text-[11px] font-semibold text-[#7a6758] shadow-sm">
@@ -2527,10 +2530,12 @@ function ChatMessage({
       transition={{ duration: 0.18, ease: [0.215, 0.61, 0.355, 1] }}
     >
       <div className="mb-2 flex items-start gap-2">
-        <img
+        <Image
           alt=""
           className="h-7 w-7 rounded-full object-cover"
+          height={28}
           src={avatar}
+          width={28}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between gap-2">
@@ -2550,7 +2555,7 @@ function ChatMessage({
       <div className="mt-3 flex items-center justify-between">
         <button
           aria-label={`Reply to ${name}`}
-          className="icon-button flex h-7 w-7 items-center justify-center text-[#7a6758] hover:bg-white hover:text-[#3a2218]"
+          className="icon-button flex h-7 w-7 items-center justify-center text-[#7a6758] hover:bg-transparent hover:text-[#3a2218]"
           onClick={onReply}
           type="button"
         >
@@ -2655,13 +2660,12 @@ function Composer({
 
   const handleSend = async () => {
     const text = content.trim();
-    console.log("handleSend called, text:", text, "isSending:", isSending);
     if (!text || isSending) return;
     setIsSending(true);
     setContent("");
+    setVersePrefill(null);
     try {
       if (rightTab === "Study") {
-        console.log("Creating comment...");
         await createComment({
           guestId,
           guestName,
@@ -2671,9 +2675,7 @@ function Composer({
           translationLabel: "BSB",
           content: text,
         });
-        console.log("Comment created successfully");
       } else {
-        console.log("Creating note...");
         await createNote({
           guestId,
           guestName,
@@ -2683,7 +2685,6 @@ function Composer({
           content: text,
           type: "observation",
         });
-        console.log("Note created successfully");
       }
     } catch (e) {
       console.error("Send failed:", e);
@@ -2693,18 +2694,6 @@ function Composer({
       setIsSending(false);
     }
   };
-
-  useEffect(() => {
-    if (versePrefill) {
-      setContent((prev) => {
-        if (prev.trim() === "") {
-          return versePrefill;
-        }
-        return prev + versePrefill;
-      });
-      setVersePrefill(null);
-    }
-  }, [versePrefill, setVersePrefill]);
 
   return (
     <motion.div
@@ -2730,6 +2719,20 @@ function Composer({
           <Link2 className="h-3 w-3" />
         </button>
       </div>
+      {versePrefill && (
+        <div className="flex items-center gap-2 border-b border-[#f1e8df] bg-[#fff3e8] px-3 py-1.5">
+          <span className="text-[11px] font-semibold text-[#25140b]">Reference(s):</span>
+          <span className="text-[11px] text-[#7a6758]">{versePrefill}</span>
+          <button
+            aria-label="Clear reference"
+            className="icon-button ml-auto flex h-5 w-5 items-center justify-center text-[#9b8878] hover:text-[#3a2218]"
+            onClick={() => setVersePrefill(null)}
+            type="button"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
       <ChatInput
         onChange={(v) => setContent(v)}
         onSend={handleSend}
