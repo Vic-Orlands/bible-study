@@ -160,10 +160,16 @@ function ProductTopNav({
                 : guestName.slice(0, 2).toUpperCase()}
             </div>
             <div className="hidden flex-col justify-center md:flex">
-              <span className="text-[12px] font-semibold leading-tight text-[#25140b]">
+              <span
+                className="text-[12px] font-semibold leading-tight text-[#25140b]"
+                suppressHydrationWarning
+              >
                 {guestName}
               </span>
-              <span className="text-[10px] leading-tight text-[#7a6758]">
+              <span
+                className="text-[10px] leading-tight text-[#7a6758]"
+                suppressHydrationWarning
+              >
                 guest@biblestudy.app
               </span>
             </div>

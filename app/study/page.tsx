@@ -232,10 +232,12 @@ export default function BibleApp() {
   const handleVerseComment = useCallback(
     (target: string) => {
       setCommentTarget(target);
-      setRightTab("Notes");
+      if (rightTab !== "Study" && rightTab !== "Notes") {
+        setRightTab("Notes");
+      }
       patchSidebars({ rightOpen: true });
     },
-    [setCommentTarget, setRightTab, patchSidebars],
+    [setCommentTarget, setRightTab, patchSidebars, rightTab],
   );
 
   return (
@@ -2545,8 +2547,67 @@ function Composer({
   target: string;
   selectedPassage: PassageSelection;
 }) {
+  const [content, setContent] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const guestId = useStudyStore((s) => s.guestId);
+  const guestName = useStudyStore((s) => s.guestName);
+  const rightTab = useStudyStore((s) => s.rightTab);
+  const createComment = useMutation(api.comments.create);
+  const createNote = useMutation(api.notes.create);
+
+  const handleSend = async () => {
+    const text = content.trim();
+    if (!text || isSending) return;
+    setIsSending(true);
+    setContent("");
+    try {
+      if (rightTab === "Study") {
+        await createComment({
+          guestId,
+          guestName,
+          passageBook: selectedPassage.book,
+          passageChapter: selectedPassage.chapter,
+          passageVerse: selectedPassage.verse,
+          translationLabel: "BSB",
+          content: text,
+        });
+      } else {
+        await createNote({
+          guestId,
+          guestName,
+          passageBook: selectedPassage.book,
+          passageChapter: selectedPassage.chapter,
+          passageVerse: selectedPassage.verse,
+          content: text,
+          type: "observation",
+        });
+      }
+    } catch (e) {
+      setContent(text);
+      toast.error("Failed to send.");
+      console.error(e);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  useEffect(() => {
+    if (target) {
+      setContent((prev) => {
+        if (prev.trim() === "" || prev === target + " ") {
+          return target + " ";
+        }
+        return prev;
+      });
+    }
+  }, [target]);
+
   return (
-    <div className="mt-4 shrink-0 overflow-hidden border-[1.5px] border-[#e5d6c9] bg-white focus-within:border-[#f6823c]">
+    <motion.div
+      animate={isSending ? { y: [0, -8, 0] } : {}}
+      className="mt-4 shrink-0 overflow-hidden border-[1.5px] border-[#e5d6c9] bg-white focus-within:border-[#f6823c]"
+      transition={{ duration: 0.25 }}
+    >
       <div className="flex items-center gap-2 border-b border-[#f1e8df] px-3 py-2">
         {["B", "I", "U"].map((item) => (
           <button
@@ -2565,8 +2626,13 @@ function Composer({
           <Link2 className="h-3 w-3" />
         </button>
       </div>
-      <ChatInput placeholder={`Write a note on ${target}…`} />
-    </div>
+      <ChatInput
+        onChange={(v) => setContent(v)}
+        onSend={handleSend}
+        placeholder={`Write a note on ${target}…`}
+        value={content}
+      />
+    </motion.div>
   );
 }
 
@@ -2592,7 +2658,15 @@ function ChatInput({
     >
       <input
         className="min-w-0 flex-1 bg-transparent text-[13px] text-[#3a2218] outline-none placeholder:text-[#9b8878]"
+        onChange={(e) => onChange?.(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            onSend?.();
+          }
+        }}
         placeholder={placeholder}
+        value={value ?? ""}
       />
       <button
         aria-label="Record voice note"
