@@ -501,6 +501,8 @@ export default function BibleApp() {
           <SettingsSheet />
         )}
       </BottomSheet>
+
+      <BottomDrawerPanel selectedPassage={selectedPassage} />
     </ProductShell>
   );
 }
@@ -2658,9 +2660,9 @@ function PublicStudy({
           <span className="text-[13px] font-semibold text-[#25140b]">
             Public Study
           </span>
-          <span className="ml-2 text-[11px] text-[#9b8878]">
+          <div className="mt-0.5 text-[11px] text-[#9b8878]">
             {totalComments} total · {topLevelCount} comments · {repliesCount} replies
-          </span>
+          </div>
         </div>
         <button
           className="cta-button flex items-center gap-1.5 border border-[#e5d6c9] px-2.5 py-1.5 text-[11px] font-semibold text-[#3a2218] hover:bg-[#fbf7f2]"
@@ -2712,7 +2714,8 @@ function PublicStudy({
       </div>
 
       <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto pr-1">
-        {comments === undefined ? (
+        <div className="flex flex-col gap-4">
+          {comments === undefined ? (
           <p className="text-[12px] text-[#7a6758]">Loading feed...</p>
         ) : comments.length === 0 ? (
           <p className="text-[12px] text-[#7a6758]">
@@ -2817,6 +2820,7 @@ function PublicStudy({
             );
           })
         )}
+        </div>
       </div>
 
       <Composer
@@ -2829,6 +2833,73 @@ function PublicStudy({
         selectedPassage={selectedPassage}
       />
     </div>
+  );
+}
+
+type DrawerTab = "Parallel" | "Cross-Refs" | "Interlinear";
+
+function BottomDrawerPanel({ selectedPassage }: { selectedPassage: PassageSelection }) {
+  const [activeTab, setActiveTab] = useState<DrawerTab>("Cross-Refs");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const tabContent = activeTab === "Cross-Refs" ? (
+    <CrossRefsPanel selectedPassage={selectedPassage} />
+  ) : activeTab === "Parallel" ? (
+    <CommentaryPanel selectedPassage={selectedPassage} />
+  ) : (
+    <div className="flex flex-col items-center justify-center h-full text-center px-4">
+      <div className="mb-3 text-3xl">📜</div>
+      <p className="text-[13px] font-semibold text-[#3a2218]">Interlinear</p>
+      <p className="mt-1 text-[11px] text-[#9b8878]">Word-by-word translation coming soon.</p>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="fixed inset-x-0 bottom-[60px] z-40 border-t border-[#f1e8df] bg-white/95 backdrop-blur-sm">
+        <div className="flex">
+          {(["Parallel", "Cross-Refs", "Interlinear"] as DrawerTab[]).map((tab) => (
+            <button
+              className={cn(
+                "flex-1 py-2.5 text-[12px] font-semibold transition-colors",
+                activeTab === tab ? "text-[#f6823c]" : "text-[#9b8878]",
+              )}
+              key={tab}
+              onClick={() => {
+                if (activeTab === tab && isOpen) {
+                  setIsOpen(false);
+                } else {
+                  setActiveTab(tab);
+                  setIsOpen(true);
+                }
+              }}
+              type="button"
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            animate={{ y: 0 }}
+            className="fixed inset-x-0 bottom-[97px] z-40 flex h-[40vh] flex-col border-t border-[#f1e8df] bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+            exit={{ y: "100%" }}
+            initial={{ y: "100%" }}
+            transition={{ duration: 0.3, ease: [0.215, 0.61, 0.355, 1] }}
+          >
+            <div className="flex items-center justify-center border-b border-[#f1e8df] py-2">
+              <div className="h-1 w-8 rounded-full bg-[#e5d6c9]" />
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden">
+              {tabContent}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -3422,7 +3493,7 @@ function ChatMessage({
               <MoreHorizontal className="h-3.5 w-3.5" />
             </button>
             {showMenu && (
-              <div className="absolute right-0 top-7 z-10 w-32 rounded-lg border border-[#f1e8df] bg-white py-1 shadow-md">
+              <div className="absolute left-0 top-7 z-50 w-32 rounded-lg border border-[#f1e8df] bg-white py-1 shadow-md">
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#3a2218] hover:bg-[#fbf7f2]"
                   onClick={() => {
@@ -3568,49 +3639,6 @@ function Composer({
           </button>
         </div>
       )}
-      <div className="flex items-center gap-2 border-b border-[#f1e8df] px-3 py-2">
-        <button
-          aria-label="Bold"
-          className="flex h-6 w-6 items-center justify-center text-[12px] font-bold text-[#3a2218] hover:text-[#f6823c] disabled:opacity-40"
-          disabled={isSending}
-          onClick={() => setContent((c) => `**${c}**`)}
-          title="Bold"
-          type="button"
-        >
-          B
-        </button>
-        <button
-          aria-label="Italic"
-          className="flex h-6 w-6 items-center justify-center text-[12px] italic text-[#3a2218] hover:text-[#f6823c] disabled:opacity-40"
-          disabled={isSending}
-          onClick={() => setContent((c) => `*${c}*`)}
-          title="Italic"
-          type="button"
-        >
-          <em>I</em>
-        </button>
-        <button
-          aria-label="Underline"
-          className="flex h-6 w-6 items-center justify-center text-[12px] underline text-[#3a2218] hover:text-[#f6823c] disabled:opacity-40"
-          disabled={isSending}
-          onClick={() => setContent((c) => `<u>${c}</u>`)}
-          title="Underline"
-          type="button"
-        >
-          U
-        </button>
-        <span className="mx-1 h-4 w-px bg-[#e5d6c9]" />
-        <button
-          aria-label="Link"
-          className="flex h-6 w-6 items-center justify-center text-[#3a2218] hover:text-[#f6823c] disabled:opacity-40"
-          disabled={isSending}
-          onClick={() => setContent((c) => `[${c}](url)`)}
-          title="Link"
-          type="button"
-        >
-          <Link2 className="h-3 w-3" />
-        </button>
-      </div>
       <ChatInput
         disabled={isSending}
         onChange={(v) => setContent(v)}
