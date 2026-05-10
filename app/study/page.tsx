@@ -61,7 +61,10 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { MagnifyingGlassIcon } from "@/components/ui/magnifying-glass";
 import { RichScriptureText } from "@/components/rich-scripture-text";
 
-function getDisplayName(userId: string | undefined, userName: string | undefined): string {
+function getDisplayName(
+  userId: string | undefined,
+  userName: string | undefined,
+): string {
   if (userName) return userName;
   if (!userId) return "Anonymous";
   if (userId === "anonymous") return "Anonymous";
@@ -375,6 +378,7 @@ export default function BibleApp() {
           </>
         )}
       </div>
+
       <Toaster />
 
       <BottomSheet
@@ -495,16 +499,10 @@ export default function BibleApp() {
           </div>
         )}
 
-        {sheetView === "profile" && (
-          <ProfileSheet bookmarks={bookmarks} />
-        )}
+        {sheetView === "profile" && <ProfileSheet bookmarks={bookmarks} />}
 
-        {sheetView === "settings" && (
-          <SettingsSheet />
-        )}
+        {sheetView === "settings" && <SettingsSheet />}
       </BottomSheet>
-
-      <BottomDrawerPanel selectedPassage={selectedPassage} />
     </ProductShell>
   );
 }
@@ -553,7 +551,9 @@ function SettingsSheet() {
           >
             <span className="text-xs font-bold">-</span>
           </button>
-          <span className="text-xs text-[#9b8878] w-8 text-center">{fontSize}px</span>
+          <span className="text-xs text-[#9b8878] w-8 text-center">
+            {fontSize}px
+          </span>
           <button
             className="icon-button flex h-6 w-6 items-center justify-center text-[#7a6758] hover:text-[#3a2218]"
             onClick={() => setFontSize((v) => Math.min(20, v + 1))}
@@ -570,7 +570,11 @@ function SettingsSheet() {
 function ProfileSheet({
   bookmarks,
 }: {
-  bookmarks: { passageBook: string; passageChapter: number; passageVerse: number }[];
+  bookmarks: {
+    passageBook: string;
+    passageChapter: number;
+    passageVerse: number;
+  }[];
 }) {
   const auth = useConvexAuth();
   const identity = useQuery(api.auth.getUserIdentity);
@@ -586,14 +590,20 @@ function ProfileSheet({
         </div>
         <div>
           <h3 className="text-lg font-bold text-[#25140b]">{userName}</h3>
-          <p className="text-sm text-[#7a6758]">{identity?.email ?? "guest@biblestudy.app"}</p>
+          <p className="text-sm text-[#7a6758]">
+            {identity?.email ?? "guest@biblestudy.app"}
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="border border-[#f1e8df] bg-[#fbf7f2] p-3 text-center">
-          <p className="text-lg font-semibold text-[#25140b]">{bookmarks.length}</p>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-[#9b8878]">Bookmarks</p>
+          <p className="text-lg font-semibold text-[#25140b]">
+            {bookmarks.length}
+          </p>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-[#9b8878]">
+            Bookmarks
+          </p>
         </div>
       </div>
 
@@ -622,7 +632,11 @@ function LeftPanel({
   bibleBooks: BibleBookIndex[];
   bibleBooksError: string | null;
   bibleBooksLoading: boolean;
-  bookmarks: { passageBook: string; passageChapter: number; passageVerse: number }[];
+  bookmarks: {
+    passageBook: string;
+    passageChapter: number;
+    passageVerse: number;
+  }[];
   chapterVerses: Record<string, BibleVerse[]>;
   selectedPassage: PassageSelection;
   visibleVersions: string[];
@@ -673,7 +687,9 @@ function LeftPanel({
     if (q.length < 2) return [];
     const hits: SearchHit[] = [];
     const source =
-      Object.keys(allChapterVerses).length > 0 ? allChapterVerses : chapterVerses;
+      Object.keys(allChapterVerses).length > 0
+        ? allChapterVerses
+        : chapterVerses;
     for (const [label, verses] of Object.entries(source)) {
       for (const { number, text } of verses) {
         if (text.toLowerCase().includes(q)) {
@@ -830,7 +846,9 @@ function LeftPanel({
           <section className="px-3">
             {["Bookmarks", "Notes", "Study", "Audio"].includes(activeFilter) ? (
               <FilterResults
-                activeFilter={activeFilter as "Bookmarks" | "Notes" | "Study" | "Audio"}
+                activeFilter={
+                  activeFilter as "Bookmarks" | "Notes" | "Study" | "Audio"
+                }
                 bookmarks={bookmarks}
                 chapterVerses={chapterVerses}
                 onPassageChange={onPassageChange}
@@ -842,7 +860,8 @@ function LeftPanel({
                   <>
                     <div className="mb-2">
                       <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
-                        Matches in {selectedPassage.book} {selectedPassage.chapter}
+                        Matches in {selectedPassage.book}{" "}
+                        {selectedPassage.chapter}
                       </span>
                     </div>
 
@@ -984,7 +1003,11 @@ function FilterResults({
   selectedPassage,
 }: {
   activeFilter: "Bookmarks" | "Notes" | "Study" | "Audio";
-  bookmarks: { passageBook: string; passageChapter: number; passageVerse: number }[];
+  bookmarks: {
+    passageBook: string;
+    passageChapter: number;
+    passageVerse: number;
+  }[];
   chapterVerses: Record<string, BibleVerse[]>;
   onPassageChange: (selection: PassageSelection) => void;
   selectedPassage: PassageSelection;
@@ -996,24 +1019,35 @@ function FilterResults({
   const notes = useQuery(
     api.notes.listForPassage,
     activeFilter === "Notes"
-      ? { passageBook: selectedPassage.book, passageChapter: selectedPassage.chapter }
+      ? {
+          passageBook: selectedPassage.book,
+          passageChapter: selectedPassage.chapter,
+        }
       : "skip",
   );
   const comments = useQuery(
     api.comments.list,
     activeFilter === "Study"
-      ? { passageBook: selectedPassage.book, passageChapter: selectedPassage.chapter }
+      ? {
+          passageBook: selectedPassage.book,
+          passageChapter: selectedPassage.chapter,
+        }
       : "skip",
   );
   const audioNotes = useQuery(
     api.audioNotes.listForPassage,
     activeFilter === "Audio"
-      ? { passageBook: selectedPassage.book, passageChapter: selectedPassage.chapter }
+      ? {
+          passageBook: selectedPassage.book,
+          passageChapter: selectedPassage.chapter,
+        }
       : "skip",
   );
 
   const chapterBookmarks = bookmarks.filter(
-    (b) => b.passageBook === selectedPassage.book && b.passageChapter === selectedPassage.chapter,
+    (b) =>
+      b.passageBook === selectedPassage.book &&
+      b.passageChapter === selectedPassage.chapter,
   );
 
   const getVerseText = (verse: number) => {
@@ -1036,7 +1070,9 @@ function FilterResults({
       <>
         <div className="mb-2">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
-            {chapterBookmarks.length} bookmark{chapterBookmarks.length > 1 ? "s" : ""} in {selectedPassage.book} {selectedPassage.chapter}
+            {chapterBookmarks.length} bookmark
+            {chapterBookmarks.length > 1 ? "s" : ""} in {selectedPassage.book}{" "}
+            {selectedPassage.chapter}
           </span>
         </div>
         {chapterBookmarks.map((b) => (
@@ -1083,7 +1119,8 @@ function FilterResults({
       <>
         <div className="mb-2">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
-            {notes.length} note{notes.length > 1 ? "s" : ""} in {selectedPassage.book} {selectedPassage.chapter}
+            {notes.length} note{notes.length > 1 ? "s" : ""} in{" "}
+            {selectedPassage.book} {selectedPassage.chapter}
           </span>
         </div>
         {notes.map((note) => (
@@ -1121,7 +1158,8 @@ function FilterResults({
     if (topLevel.length === 0) {
       return (
         <p className="text-[12px] text-[#7a6758] py-4 text-center">
-          No public comments in {selectedPassage.book} {selectedPassage.chapter}.
+          No public comments in {selectedPassage.book} {selectedPassage.chapter}
+          .
         </p>
       );
     }
@@ -1129,7 +1167,8 @@ function FilterResults({
       <>
         <div className="mb-2">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
-            {topLevel.length} comment{topLevel.length > 1 ? "s" : ""} in {selectedPassage.book} {selectedPassage.chapter}
+            {topLevel.length} comment{topLevel.length > 1 ? "s" : ""} in{" "}
+            {selectedPassage.book} {selectedPassage.chapter}
           </span>
         </div>
         {topLevel.map((comment) => (
@@ -1175,7 +1214,8 @@ function FilterResults({
       <>
         <div className="mb-2">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
-            {items.length} audio note{items.length > 1 ? "s" : ""} in {selectedPassage.book} {selectedPassage.chapter}
+            {items.length} audio note{items.length > 1 ? "s" : ""} in{" "}
+            {selectedPassage.book} {selectedPassage.chapter}
           </span>
         </div>
         {items.map((note) => (
@@ -1194,7 +1234,7 @@ function FilterResults({
             <div className="mb-1 flex items-center gap-2">
               <Mic className="h-3 w-3 text-[#f6823c]" />
               <span className="text-[13px] font-semibold text-[#25140b]">
-{getDisplayName(note.userId, note.userId)}
+                {getDisplayName(note.userId, note.userId)}
               </span>
               <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
                 v{note.passageVerse}
@@ -1526,7 +1566,11 @@ function Reader({
   bibleBooks: BibleBookIndex[];
   bibleBooksError: string | null;
   bibleBooksLoading: boolean;
-  bookmarks: { passageBook: string; passageChapter: number; passageVerse: number }[];
+  bookmarks: {
+    passageBook: string;
+    passageChapter: number;
+    passageVerse: number;
+  }[];
   chapterErrors: Record<string, string>;
   chapterLoading: boolean;
   chapterVerses: Record<string, BibleVerse[]>;
@@ -1852,7 +1896,9 @@ function Reader({
             onClick={onBookmark}
             type="button"
           >
-            <Bookmark className={cn("h-4 w-4", isBookmarked && "fill-current")} />
+            <Bookmark
+              className={cn("h-4 w-4", isBookmarked && "fill-current")}
+            />
           </button>
         </motion.div>
       </div>
@@ -1893,6 +1939,8 @@ function Reader({
           </div>
         </div>
       </div>
+
+      <BottomDrawerPanel selectedPassage={selectedPassage} />
 
       <ReaderFooter />
     </section>
@@ -2245,7 +2293,11 @@ function TranslationVerses({
   visibleCount,
   verses,
 }: {
-  bookmarks: { passageBook: string; passageChapter: number; passageVerse: number }[];
+  bookmarks: {
+    passageBook: string;
+    passageChapter: number;
+    passageVerse: number;
+  }[];
   error?: string;
   isLoading: boolean;
   label: string;
@@ -2372,38 +2424,9 @@ function TranslationVerses({
 }
 
 function ReaderFooter() {
-  const [activeTab, setActiveTab] = useState("Parallel");
   return (
-    <>
-      <div className="flex h-11 shrink-0 items-center gap-6 border-t border-[#f1e8df] bg-white px-5">
-        {["Parallel", "Cross-Refs", "Notes", "Interlinear"].map((tab) => (
-          <button
-            className={cn(
-              "relative flex h-full items-center gap-1.5 text-[12px]",
-              activeTab === tab
-                ? "font-semibold text-[#25140b]"
-                : "text-[#7a6758]",
-            )}
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            type="button"
-          >
-            {tab === "Parallel" && (
-              <List className="h-3.5 w-3.5" />
-            )}
-            {tab}
-            {activeTab === tab && (
-              <motion.span
-                className="absolute inset-x-0 bottom-0 h-0.5 bg-[#f6823c] shadow-[0_-1px_4px_rgba(246,130,60,0.4)]"
-                layoutId="reader-tab-indicator"
-                transition={{ duration: 0.22, ease: [0.645, 0.045, 0.355, 1] }}
-              />
-            )}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#f1e8df] bg-white px-5 py-2.5">
+    <div className="flex shrink-0 items-center justify-center border-t border-[#f1e8df] bg-white">
+      <div className="flex w-full max-w-6xl items-center justify-between gap-3 px-5 py-2.5">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center bg-[#fbf7f2]">
             <BookOpen className="h-4 w-4 text-[#3a2218]" />
@@ -2427,7 +2450,7 @@ function ReaderFooter() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -2533,14 +2556,20 @@ function PublicStudy({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyingToName, setReplyingToName] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
-  const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
-  const [optimisticLikes, setOptimisticLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
+  const [expandedReplies, setExpandedReplies] = useState<
+    Record<string, boolean>
+  >({});
+  const [optimisticLikes, setOptimisticLikes] = useState<
+    Record<string, { count: number; liked: boolean }>
+  >({});
   const [sendingComment, setSendingComment] = useState(false);
-  const [sendingReplies, setSendingReplies] = useState<Record<string, boolean>>({});
+  const [sendingReplies, setSendingReplies] = useState<Record<string, boolean>>(
+    {},
+  );
   const toggle = (id: string, name?: string) => {
     setReplyingTo((c) => {
       const next = c === id ? null : id;
-      setReplyingToName(next ? name ?? null : null);
+      setReplyingToName(next ? (name ?? null) : null);
       return next;
     });
   };
@@ -2560,7 +2589,11 @@ function PublicStudy({
   const removeComment = useMutation(api.comments.remove);
 
   const threads = useMemo(() => {
-    if (!comments) return { topLevel: [], repliesByParent: {} as Record<string, typeof comments> };
+    if (!comments)
+      return {
+        topLevel: [],
+        repliesByParent: {} as Record<string, typeof comments>,
+      };
     const topLevel = comments.filter((c) => !c.parentId);
     const repliesByParent: Record<string, typeof comments> = {};
     for (const c of comments) {
@@ -2578,7 +2611,9 @@ function PublicStudy({
 
   const handleLike = async (commentId: string, currentLikes: string[]) => {
     const alreadyLiked = currentLikes.includes(userId);
-    const newCount = alreadyLiked ? currentLikes.length - 1 : currentLikes.length + 1;
+    const newCount = alreadyLiked
+      ? currentLikes.length - 1
+      : currentLikes.length + 1;
     setOptimisticLikes((prev) => ({
       ...prev,
       [commentId]: { count: newCount, liked: !alreadyLiked },
@@ -2636,7 +2671,10 @@ function PublicStudy({
 
   const handleEdit = async (commentId: string, newContent: string) => {
     try {
-      await updateComment({ id: commentId as Id<"comments">, content: newContent });
+      await updateComment({
+        id: commentId as Id<"comments">,
+        content: newContent,
+      });
     } catch (e) {
       console.error(e);
       toast.error("Failed to edit comment.");
@@ -2659,7 +2697,8 @@ function PublicStudy({
             Public Study
           </span>
           <div className="mt-0.5 text-[11px] text-[#9b8878]">
-            {totalComments} total · {topLevelCount} comments · {repliesCount} replies
+            {totalComments} total · {topLevelCount} comments · {repliesCount}{" "}
+            replies
           </div>
         </div>
         <button
@@ -2695,7 +2734,7 @@ function PublicStudy({
           "https://i.pravatar.cc/96?u=bible-ethan",
         ].map((src, i) => (
           <Image
-            alt=""
+            alt="User Avatar"
             className={cn(
               "h-8 w-8 rounded-full border-2 border-white object-cover shadow-sm",
               i > 0 && "-ml-3",
@@ -2714,110 +2753,132 @@ function PublicStudy({
       <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto pr-1">
         <div className="flex flex-col gap-4">
           {comments === undefined ? (
-          <p className="text-[12px] text-[#7a6758]">Loading feed...</p>
-        ) : comments.length === 0 ? (
-          <p className="text-[12px] text-[#7a6758]">
-            Be the first to comment on this chapter.
-          </p>
-        ) : (
-          threads.topLevel.map((comment) => {
-            const optimistic = optimisticLikes[comment._id];
-            const likesCount = optimistic?.count ?? comment.likes.length;
-            const isLiked = optimistic?.liked ?? comment.likes.includes(userId);
-            const replies = threads.repliesByParent[comment._id] ?? [];
-            const isExpanded = expandedReplies[comment._id];
+            <p className="text-[12px] text-[#7a6758]">Loading feed...</p>
+          ) : comments.length === 0 ? (
+            <p className="text-[12px] text-[#7a6758]">
+              Be the first to comment on this chapter.
+            </p>
+          ) : (
+            threads.topLevel.map((comment) => {
+              const optimistic = optimisticLikes[comment._id];
+              const likesCount = optimistic?.count ?? comment.likes.length;
+              const isLiked =
+                optimistic?.liked ?? comment.likes.includes(userId);
+              const replies = threads.repliesByParent[comment._id] ?? [];
+              const isExpanded = expandedReplies[comment._id];
 
-            return (
-              <div key={comment._id}>
-                <ChatMessage
-                  avatar={`https://ui-avatars.com/api/?name=${getDisplayName(comment.userId, comment.userName)}&background=random&size=128`}
-                  initialContent={comment.content}
-                  isOwner={comment.userId === userId}
-                  isReplying={replyingTo === comment._id}
-                  likeIcon={isLiked ? "heart" : "thumb"}
-                  likes={likesCount}
-                  name={getDisplayName(comment.userId, comment.userName)}
-                  onDelete={() => handleDelete(comment._id)}
-                  onEdit={(newContent) => handleEdit(comment._id, newContent)}
-                  onReply={() => toggle(comment._id, getDisplayName(comment.userId, comment.userName))}
-                  onLike={() => handleLike(comment._id, comment.likes)}
-                  reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
-                  replyValue={replyText[comment._id] ?? ""}
-                  onReplyChange={(v) => setReplyText((prev) => ({ ...prev, [comment._id]: v }))}
-                  onReplySend={() => handleReplySend(comment._id)}
-                  time={new Date(comment._creationTime).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                >
-                  <RichScriptureText
-                    text={comment.content}
-                    className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
-                  />
-                </ChatMessage>
+              return (
+                <div key={comment._id}>
+                  <ChatMessage
+                    avatar={`https://ui-avatars.com/api/?name=${getDisplayName(comment.userId, comment.userName)}&background=random&size=128`}
+                    initialContent={comment.content}
+                    isOwner={comment.userId === userId}
+                    isReplying={replyingTo === comment._id}
+                    likeIcon={isLiked ? "heart" : "thumb"}
+                    likes={likesCount}
+                    name={getDisplayName(comment.userId, comment.userName)}
+                    onDelete={() => handleDelete(comment._id)}
+                    onEdit={(newContent) => handleEdit(comment._id, newContent)}
+                    onReply={() =>
+                      toggle(
+                        comment._id,
+                        getDisplayName(comment.userId, comment.userName),
+                      )
+                    }
+                    onLike={() => handleLike(comment._id, comment.likes)}
+                    reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
+                    replyValue={replyText[comment._id] ?? ""}
+                    onReplyChange={(v) =>
+                      setReplyText((prev) => ({ ...prev, [comment._id]: v }))
+                    }
+                    onReplySend={() => handleReplySend(comment._id)}
+                    time={new Date(comment._creationTime).toLocaleTimeString(
+                      [],
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
+                  >
+                    <RichScriptureText
+                      text={comment.content}
+                      className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
+                    />
+                  </ChatMessage>
 
-                {replies.length > 0 && (
-                  <div className="ml-9 mt-0.5">
-                    <button
-                      className="text-[11px] font-semibold text-[#9b8878] hover:text-[#f6823c] transition-colors"
-                      onClick={() => toggleReplies(comment._id)}
-                      type="button"
-                    >
-                      {isExpanded
-                        ? `Hide replies`
-                        : `View ${replies.length} repl${replies.length > 1 ? "ies" : "y"}`}
-                    </button>
+                  {replies.length > 0 && (
+                    <div className="ml-9 mt-0.5">
+                      <button
+                        className="text-[11px] font-semibold text-[#9b8878] hover:text-[#f6823c] transition-colors"
+                        onClick={() => toggleReplies(comment._id)}
+                        type="button"
+                      >
+                        {isExpanded
+                          ? `Hide replies`
+                          : `View ${replies.length} repl${replies.length > 1 ? "ies" : "y"}`}
+                      </button>
 
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          animate={{ height: "auto", opacity: 1 }}
-                          className="overflow-hidden"
-                          exit={{ height: 0, opacity: 0 }}
-                          initial={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: "easeInOut" }}
-                        >
-                          <div className="mt-2 flex flex-col gap-3">
-                            {replies.map((reply) => {
-                              const ropt = optimisticLikes[reply._id];
-                              const rLikes = ropt?.count ?? reply.likes.length;
-                              const rIsLiked = ropt?.liked ?? reply.likes.includes(userId);
-                              return (
-                                <ChatMessage
-                                  key={reply._id}
-                                  avatar={`https://ui-avatars.com/api/?name=${getDisplayName(reply.userId, reply.userName)}&background=random&size=128`}
-                                  initialContent={reply.content}
-                                  isOwner={reply.userId === userId}
-                                  isReply={true}
-                                  likeIcon={rIsLiked ? "heart" : "thumb"}
-                                  likes={rLikes}
-                                  name={getDisplayName(reply.userId, reply.userName)}
-                                  onDelete={() => handleDelete(reply._id)}
-                                  onEdit={(newContent) => handleEdit(reply._id, newContent)}
-                                  onLike={() => handleLike(reply._id, reply.likes)}
-                                  reference={`${reply.passageBook} ${reply.passageChapter}:${reply.passageVerse}`}
-                                  time={new Date(reply._creationTime).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                >
-                                  <RichScriptureText
-                                    text={reply.content}
-                                    className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
-                                  />
-                                </ChatMessage>
-                              );
-                            })}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            animate={{ height: "auto", opacity: 1 }}
+                            className="overflow-hidden"
+                            exit={{ height: 0, opacity: 0 }}
+                            initial={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                          >
+                            <div className="mt-2 flex flex-col gap-3">
+                              {replies.map((reply) => {
+                                const ropt = optimisticLikes[reply._id];
+                                const rLikes =
+                                  ropt?.count ?? reply.likes.length;
+                                const rIsLiked =
+                                  ropt?.liked ?? reply.likes.includes(userId);
+                                return (
+                                  <ChatMessage
+                                    key={reply._id}
+                                    avatar={`https://ui-avatars.com/api/?name=${getDisplayName(reply.userId, reply.userName)}&background=random&size=128`}
+                                    initialContent={reply.content}
+                                    isOwner={reply.userId === userId}
+                                    isReply={true}
+                                    likeIcon={rIsLiked ? "heart" : "thumb"}
+                                    likes={rLikes}
+                                    name={getDisplayName(
+                                      reply.userId,
+                                      reply.userName,
+                                    )}
+                                    onDelete={() => handleDelete(reply._id)}
+                                    onEdit={(newContent) =>
+                                      handleEdit(reply._id, newContent)
+                                    }
+                                    onLike={() =>
+                                      handleLike(reply._id, reply.likes)
+                                    }
+                                    reference={`${reply.passageBook} ${reply.passageChapter}:${reply.passageVerse}`}
+                                    time={new Date(
+                                      reply._creationTime,
+                                    ).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  >
+                                    <RichScriptureText
+                                      text={reply.content}
+                                      className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
+                                    />
+                                  </ChatMessage>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -2836,24 +2897,36 @@ function PublicStudy({
 
 type DrawerTab = "parallel" | "commentary" | "cross-refs" | "interlinear";
 
-function BottomDrawerPanel({ selectedPassage }: { selectedPassage: PassageSelection }) {
+function BottomDrawerPanel({
+  selectedPassage,
+}: {
+  selectedPassage: PassageSelection;
+}) {
   const [activeTab, setActiveTab] = useState<DrawerTab>("parallel");
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <>
-      <div className="fixed inset-x-0 bottom-[60px] z-40 border-t border-[#f1e8df] bg-white/95 backdrop-blur-sm">
-        <div className="flex gap-1 px-3">
-          {([
-            { key: "parallel", label: "Parallel", icon: List },
-            { key: "commentary", label: "Commentary", icon: BookOpen },
-            { key: "cross-refs", label: "Cross-Refs", icon: Link2 },
-            { key: "interlinear", label: "Interlinear", icon: AlignLeft },
-          ] as { key: DrawerTab; label: string; icon: React.ComponentType<{ className?: string }> }[]).map(({ key, label, icon: Icon }) => (
+    <section className="relative">
+      <div className="flex shrink-0 items-center justify-center border-t border-[#f1e8df] bg-white pointer-events-none">
+        <div className="flex w-full gap-6 px-5 max-w-6xl pointer-events-auto">
+          {(
+            [
+              { key: "parallel", label: "Parallel", icon: List },
+              { key: "commentary", label: "Commentary", icon: BookOpen },
+              { key: "cross-refs", label: "Cross-Refs", icon: Link2 },
+              { key: "interlinear", label: "Interlinear", icon: AlignLeft },
+            ] as {
+              key: DrawerTab;
+              label: string;
+              icon: React.ComponentType<{ className?: string }>;
+            }[]
+          ).map(({ key, label, icon: Icon }) => (
             <button
               className={cn(
-                "flex items-center gap-1.5 py-2.5 text-[12px] font-semibold transition-colors",
-                activeTab === key ? "text-[#f6823c]" : "text-[#9b8878]",
+                "relative flex items-center gap-1.5 py-2.5 text-[12px] font-semibold transition-colors",
+                activeTab === key
+                  ? "font-semibold text-[#25140b]"
+                  : "text-[#7a6758]",
               )}
               key={key}
               onClick={() => {
@@ -2868,6 +2941,16 @@ function BottomDrawerPanel({ selectedPassage }: { selectedPassage: PassageSelect
             >
               <Icon className="h-3.5 w-3.5" />
               {label}
+              {activeTab === key && (
+                <motion.span
+                  className="absolute inset-x-0 bottom-0 h-0.5 bg-[#f6823c] shadow-[0_-1px_4px_rgba(246,130,60,0.4)]"
+                  layoutId="reader-tab-indicator"
+                  transition={{
+                    duration: 0.22,
+                    ease: [0.645, 0.045, 0.355, 1],
+                  }}
+                />
+              )}
             </button>
           ))}
         </div>
@@ -2876,40 +2959,57 @@ function BottomDrawerPanel({ selectedPassage }: { selectedPassage: PassageSelect
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            animate={{ y: 0 }}
-            className="fixed inset-x-0 bottom-[97px] z-40 flex max-h-[40vh] flex-col overflow-hidden border-t border-[#f1e8df] bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
-            exit={{ y: "100%" }}
-            initial={{ y: "100%" }}
+            animate={{ height: "auto", opacity: 1 }}
+            className="absolute inset-x-0 z-40 flex max-h-[60vh] flex-col overflow-hidden border-t border-[#f1e8df] bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+            exit={{ height: 0, opacity: 0 }}
+            initial={{ height: 0, opacity: 0 }}
+            style={{ bottom: "97px" }}
             transition={{ duration: 0.3, ease: [0.215, 0.61, 0.355, 1] }}
           >
             <div className="flex items-center justify-center border-b border-[#f1e8df] py-2">
               <div className="h-1 w-8 rounded-full bg-[#e5d6c9]" />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {activeTab === "parallel" && <ParallelPanel selectedPassage={selectedPassage} />}
-              {activeTab === "commentary" && <CommentaryPanel selectedPassage={selectedPassage} />}
-              {activeTab === "cross-refs" && <CrossRefsPanel selectedPassage={selectedPassage} />}
+              {activeTab === "parallel" && (
+                <ParallelPanel selectedPassage={selectedPassage} />
+              )}
+              {activeTab === "commentary" && (
+                <CommentaryPanel selectedPassage={selectedPassage} />
+              )}
+              {activeTab === "cross-refs" && (
+                <CrossRefsPanel selectedPassage={selectedPassage} />
+              )}
               {activeTab === "interlinear" && (
                 <div className="flex flex-col items-center justify-center h-full text-center px-4">
                   <div className="mb-3 text-3xl">📜</div>
-                  <p className="text-[13px] font-semibold text-[#3a2218]">Interlinear</p>
-                  <p className="mt-1 text-[11px] text-[#9b8878]">Word-by-word translation coming soon.</p>
+                  <p className="text-[13px] font-semibold text-[#3a2218]">
+                    Interlinear
+                  </p>
+                  <p className="mt-1 text-[11px] text-[#9b8878]">
+                    Word-by-word translation coming soon.
+                  </p>
                 </div>
               )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </section>
   );
 }
 
-function ParallelPanel({ selectedPassage }: { selectedPassage: PassageSelection }) {
+function ParallelPanel({
+  selectedPassage,
+}: {
+  selectedPassage: PassageSelection;
+}) {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-4">
       <div className="mb-3 text-3xl">📖</div>
       <p className="text-[13px] font-semibold text-[#3a2218]">Parallel View</p>
-      <p className="mt-1 text-[11px] text-[#9b8878]">Side-by-side translation comparison coming soon.</p>
+      <p className="mt-1 text-[11px] text-[#9b8878]">
+        Side-by-side translation comparison coming soon.
+      </p>
     </div>
   );
 }
@@ -2942,7 +3042,9 @@ function PersonalNotes({
       await updateNote({
         id: id as Id<"notes">,
         content,
-        ...(type && { type: type as "observation" | "interpretation" | "application" }),
+        ...(type && {
+          type: type as "observation" | "interpretation" | "application",
+        }),
       });
     } catch (e) {
       console.error(e);
@@ -3055,7 +3157,10 @@ function NoteCard({
             <div className="absolute right-0 top-7 z-10 w-36 rounded-lg border border-[#f1e8df] bg-white py-1 shadow-md">
               <button
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#3a2218] hover:bg-[#fbf7f2]"
-                onClick={() => { setShowMenu(false); setIsEditing(true); }}
+                onClick={() => {
+                  setShowMenu(false);
+                  setIsEditing(true);
+                }}
                 type="button"
               >
                 <span className="text-[13px]">✏️</span>
@@ -3063,7 +3168,10 @@ function NoteCard({
               </button>
               <button
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#a24723] hover:bg-[#fbf7f2]"
-                onClick={() => { setShowMenu(false); onDelete(); }}
+                onClick={() => {
+                  setShowMenu(false);
+                  onDelete();
+                }}
                 type="button"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -3366,16 +3474,11 @@ function ChatMessage({
   };
 
   return (
-    <div
-      className={cn(
-        "transition-all duration-200",
-        flashHeart && "scale-110",
-      )}
-    >
+    <div className="transition-all duration-200">
       <div className="flex gap-2.5">
         <Image
           alt=""
-          className="mt-0.5 h-9 w-9 shrink-0 rounded-full object-cover"
+          className="mt-0.5 h-7 w-7 shrink-0 rounded-full object-cover"
           height={36}
           priority
           src={avatar}
@@ -3383,25 +3486,28 @@ function ChatMessage({
         />
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className={cn(
-              "font-semibold text-[#25140b]",
-              isReply ? "text-[12px]" : "text-[13px]",
-            )}>
-              {name}
-            </span>
-            <span className={cn(
-              "text-[10px] text-[#9b8878]",
-              isReply ? "" : "text-[11px]",
-            )}>
-              {time}
-            </span>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h6
+                className={cn(
+                  "font-semibold text-[#25140b]",
+                  isReply ? "text-[12px]" : "text-[13px]",
+                )}
+              >
+                {name}
+              </h6>
+
+              <p className={cn("text-[10px] text-[#9b8878]")}>{time}</p>
+            </div>
+            <p className="text-[10px] text-[#9b8878]">{reference}</p>
           </div>
 
-          <div className={cn(
-            "mt-0.5 text-[13px] leading-[1.4] text-[#3a2218]",
-            isReply ? "text-[12px]" : "",
-          )}>
+          <div
+            className={cn(
+              "mt-0.5 text-[13px] leading-[1.4] text-[#3a2218]",
+              isReply ? "text-[12px]" : "",
+            )}
+          >
             {isEditing ? (
               <div>
                 <textarea
@@ -3466,31 +3572,27 @@ function ChatMessage({
                 Reply
               </button>
             )}
-
-            <span className="text-[10px] text-[#9b8878]">
-              {reference}
-            </span>
           </div>
 
-          {isReplying && (
-            <div
-              className={cn(
-                "grid transition-[grid-template-rows,opacity] duration-200 ease-out mt-2",
-                isReplying
-                  ? "grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0",
-              )}
+          {isReplying !== undefined && (
+            <motion.div
+              animate={{
+                height: isReplying ? "auto" : 0,
+                opacity: isReplying ? 1 : 0,
+                marginTop: isReplying ? 8 : 0,
+              }}
+              className="overflow-hidden"
+              initial={{ height: 0, opacity: 0, marginTop: 0 }}
+              transition={{ duration: 0.22, ease: [0.215, 0.61, 0.355, 1] }}
             >
-              <div className="min-h-0 overflow-hidden">
-                <ChatInput
-                  compact
-                  onChange={onReplyChange}
-                  onSend={onReplySend}
-                  placeholder={`Reply to ${name}…`}
-                  value={replyValue}
-                />
-              </div>
-            </div>
+              <ChatInput
+                compact
+                onChange={onReplyChange}
+                onSend={onReplySend}
+                placeholder={`Reply to ${name}…`}
+                value={replyValue}
+              />
+            </motion.div>
           )}
         </div>
 
@@ -3619,7 +3721,9 @@ function Composer({
     >
       {replyToName && (
         <div className="flex items-center gap-2 border-b border-[#f1e8df] bg-[#f0f9f0] px-3 py-1.5">
-          <span className="text-[11px] font-semibold text-[#2e6b3d]">Replying to @{replyToName}</span>
+          <span className="text-[11px] font-semibold text-[#2e6b3d]">
+            Replying to @{replyToName}
+          </span>
           <button
             aria-label="Cancel reply"
             className="icon-button ml-auto flex h-5 w-5 items-center justify-center text-[#9b8878] hover:text-[#3a2218]"
@@ -3632,7 +3736,9 @@ function Composer({
       )}
       {versePrefill && (
         <div className="flex items-center gap-2 border-b border-[#f1e8df] bg-[#fff3e8] px-3 py-1.5">
-          <span className="text-[11px] font-semibold text-[#25140b]">Reference(s):</span>
+          <span className="text-[11px] font-semibold text-[#25140b]">
+            Reference(s):
+          </span>
           <span className="text-[11px] text-[#7a6758]">{versePrefill}</span>
           <button
             aria-label="Clear reference"
@@ -3694,10 +3800,7 @@ function ChatInput({
     onChange?.(newText);
     requestAnimationFrame(() => {
       el.focus();
-      el.setSelectionRange(
-        start + prefix.length,
-        end + prefix.length,
-      );
+      el.setSelectionRange(start + prefix.length, end + prefix.length);
     });
   };
 
@@ -3839,7 +3942,9 @@ function CommentaryPanel({
     setLoading(true);
     setError(null);
     setContent(null);
-    fetch(`/api/helloao?path=commentaries/SWIFT/${bookId}/${selectedPassage.chapter}.json`)
+    fetch(
+      `/api/helloao?path=commentaries/SWIFT/${bookId}/${selectedPassage.chapter}.json`,
+    )
       .then((r) => {
         if (!r.ok) throw new Error("No commentary available");
         return r.json();
@@ -3857,7 +3962,9 @@ function CommentaryPanel({
           setLoading(false);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedPassage.book, selectedPassage.chapter]);
 
   const renderContent = (parts: any[]) => {
@@ -3886,7 +3993,9 @@ function CommentaryPanel({
         ) : error ? (
           <div className="flex flex-col items-center py-12 text-center">
             <div className="mb-3 text-3xl">📖</div>
-            <p className="text-[13px] font-semibold text-[#3a2218]">No commentary</p>
+            <p className="text-[13px] font-semibold text-[#3a2218]">
+              No commentary
+            </p>
             <p className="mt-1 text-[11px] text-[#9b8878]">{error}</p>
           </div>
         ) : content ? (
@@ -3894,7 +4003,10 @@ function CommentaryPanel({
             {content.chapter?.content?.map((item: any, i: number) => {
               if (item.type === "heading") {
                 return (
-                  <p key={i} className="mt-4 mb-2 text-[14px] font-semibold text-[#25140b]">
+                  <p
+                    key={i}
+                    className="mt-4 mb-2 text-[14px] font-semibold text-[#25140b]"
+                  >
                     {renderContent(item.content)}
                   </p>
                 );
@@ -3902,7 +4014,9 @@ function CommentaryPanel({
               if (item.type === "verse") {
                 return (
                   <p key={i} className="mb-2 font-serif">
-                    <span className="mr-1 font-semibold text-[#f6823c]">{item.number}</span>
+                    <span className="mr-1 font-semibold text-[#f6823c]">
+                      {item.number}
+                    </span>
                     {renderContent(item.content)}
                   </p>
                 );
@@ -3931,14 +4045,17 @@ function CrossRefsPanel({
     setLoading(true);
     setError(null);
     setCrossRefs([]);
-    fetch(`/api/helloao?path=d/open-cross-ref/${bookId}/${selectedPassage.chapter}.json`)
+    fetch(
+      `/api/helloao?path=d/open-cross-ref/${bookId}/${selectedPassage.chapter}.json`,
+    )
       .then((r) => {
         if (!r.ok) throw new Error("No cross-references available");
         return r.json();
       })
       .then((data) => {
         if (!cancelled) {
-          const refs = data.chapter?.crossReferences ?? data.crossReferences ?? [];
+          const refs =
+            data.chapter?.crossReferences ?? data.crossReferences ?? [];
           setCrossRefs(refs);
           setLoading(false);
         }
@@ -3950,15 +4067,20 @@ function CrossRefsPanel({
           setLoading(false);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedPassage.book, selectedPassage.chapter]);
 
   return (
     <div className="flex h-full min-h-0 flex-col px-4 py-4">
       <div className="mb-3 shrink-0">
-        <h2 className="text-[13px] font-semibold text-[#25140b]">Cross-References</h2>
+        <h2 className="text-[13px] font-semibold text-[#25140b]">
+          Cross-References
+        </h2>
         <p className="mt-0.5 text-[11px] text-[#9b8878]">
-          {crossRefs.length} refs for {selectedPassage.book} {selectedPassage.chapter}
+          {crossRefs.length} refs for {selectedPassage.book}{" "}
+          {selectedPassage.chapter}
         </p>
       </div>
       <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto pr-1">
@@ -3969,14 +4091,20 @@ function CrossRefsPanel({
         ) : error ? (
           <div className="flex flex-col items-center py-12 text-center">
             <div className="mb-3 text-3xl">🔗</div>
-            <p className="text-[13px] font-semibold text-[#3a2218]">No cross-refs</p>
+            <p className="text-[13px] font-semibold text-[#3a2218]">
+              No cross-refs
+            </p>
             <p className="mt-1 text-[11px] text-[#9b8878]">{error}</p>
           </div>
         ) : crossRefs.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-center">
             <div className="mb-3 text-3xl">🔗</div>
-            <p className="text-[13px] font-semibold text-[#3a2218]">No cross-references</p>
-            <p className="mt-1 text-[11px] text-[#9b8878]">Check back in a future update.</p>
+            <p className="text-[13px] font-semibold text-[#3a2218]">
+              No cross-references
+            </p>
+            <p className="mt-1 text-[11px] text-[#9b8878]">
+              Check back in a future update.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -3985,7 +4113,10 @@ function CrossRefsPanel({
               const toVerse = ref.target ?? ref.to ?? ref.ref ?? "?";
               const toText = ref.text ?? ref.content ?? ref.note ?? "";
               return (
-                <div key={i} className="border border-[#f1e8df] bg-[#fbf7f2] p-2.5">
+                <div
+                  key={i}
+                  className="border border-[#f1e8df] bg-[#fbf7f2] p-2.5"
+                >
                   <div className="mb-1 text-[11px] font-semibold text-[#f6823c]">
                     v{fromVerse} → {toVerse}
                   </div>
@@ -4225,7 +4356,9 @@ function AudioNote({
       </div>
       <div className="mb-2 flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center bg-[#3a2218] text-[10px] font-semibold text-[#f6823c]">
-          {(note.userName || note.userId || "Anonymous").slice(0, 2).toUpperCase()}
+          {(note.userName || note.userId || "Anonymous")
+            .slice(0, 2)
+            .toUpperCase()}
         </div>
         <span className="text-[11px] font-medium text-[#3a2218]">
           {note.userId || "Anonymous"}
