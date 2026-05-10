@@ -17,6 +17,7 @@ import {
   List,
   MessageCircle,
   Mic,
+  MoreHorizontal,
   Play,
   Search,
   SendHorizontal,
@@ -2726,16 +2727,15 @@ function PublicStudy({
                 </ChatMessage>
 
                 {replies.length > 0 && (
-                  <div className="ml-4 mt-1">
+                  <div className="ml-9 mt-0.5">
                     <button
-                      className="mb-2 flex items-center gap-1 text-[11px] font-semibold text-[#9b8878] hover:text-[#f6823c] transition-colors"
+                      className="text-[11px] font-semibold text-[#9b8878] hover:text-[#f6823c] transition-colors"
                       onClick={() => toggleReplies(comment._id)}
                       type="button"
                     >
-                      <span className="h-px w-6 bg-[#e5d6c9]" />
                       {isExpanded
-                        ? `Hide replies (${replies.length})`
-                        : `View ${replies.length} reply${replies.length > 1 ? "ies" : ""}`}
+                        ? `Hide replies`
+                        : `View ${replies.length} repl${replies.length > 1 ? "ies" : "y"}`}
                     </button>
 
                     <AnimatePresence>
@@ -2747,7 +2747,7 @@ function PublicStudy({
                           initial={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.25, ease: "easeInOut" }}
                         >
-                          <div className="border-l-2 border-[#f1e8df] pl-3">
+                          <div className="mt-2 flex flex-col gap-3">
                             {replies.map((reply) => {
                               const ropt = optimisticLikes[reply._id];
                               const rLikes = ropt?.count ?? reply.likes.length;
@@ -3080,6 +3080,8 @@ function ChatMessage({
   time: string;
 }) {
   const [flashHeart, setFlashHeart] = useState(false);
+  const [showReactions, setShowReactions] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const LikeIcon = likeIcon === "heart" ? Heart : ThumbsUp;
 
   const handleLike = () => {
@@ -3092,120 +3094,130 @@ function ChatMessage({
 
   return (
     <motion.div
-      className={cn(
-        "border bg-[#fbf7f2]",
-        isReply ? "mb-2 border-[#f1e8df]/60 p-2.5" : "mb-3 border-[#f1e8df] p-3",
-      )}
       layout
       transition={{ duration: 0.18, ease: [0.215, 0.61, 0.355, 1] }}
     >
-      <div className={cn("flex items-start gap-2", isReply ? "mb-1.5" : "mb-2")}>
+      <div className="flex gap-2.5">
         <Image
           alt=""
-          className={cn(
-            "rounded-full object-cover",
-            isReply ? "h-6 w-6" : "h-7 w-7",
-          )}
-          height={isReply ? 24 : 28}
+          className="mt-0.5 shrink-0 rounded-full object-cover"
+          height={isReply ? 28 : 36}
           src={avatar}
-          width={isReply ? 24 : 28}
+          width={isReply ? 28 : 36}
         />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center justify-between gap-2">
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
             <span className={cn(
               "font-semibold text-[#25140b]",
-              isReply ? "text-[11px]" : "text-[12px]",
+              isReply ? "text-[12px]" : "text-[13px]",
             )}>
               {name}
             </span>
-            <span className="bg-[#fff3e8] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
+            <span className={cn(
+              "text-[10px] text-[#9b8878]",
+              isReply ? "" : "text-[11px]",
+            )}>
+              {time}
+            </span>
+          </div>
+
+          <div className={cn(
+            "mt-0.5 text-[13px] leading-[1.4] text-[#3a2218]",
+            isReply ? "text-[12px]" : "",
+          )}>
+            {children}
+          </div>
+
+          <div className="mt-1 flex items-center gap-3">
+            <button
+              className={cn(
+                "flex items-center gap-1 text-[11px] font-semibold",
+                likeIcon === "heart"
+                  ? "text-[#f6823c]"
+                  : "text-[#7a6758] hover:text-[#f6823c]",
+              )}
+              onClick={handleLike}
+              type="button"
+            >
+              <motion.span
+                animate={flashHeart ? { scale: [1, 1.3, 0.9, 1] } : {}}
+                transition={{ duration: 0.3 }}
+              >
+                <LikeIcon
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    likeIcon === "heart" ? "fill-current" : "",
+                  )}
+                />
+              </motion.span>
+              {likes > 0 && likes}
+            </button>
+
+            {onReply && (
+              <button
+                className="text-[11px] font-semibold text-[#7a6758] hover:text-[#f6823c]"
+                onClick={onReply}
+                type="button"
+              >
+                Reply
+              </button>
+            )}
+
+            <span className="text-[10px] text-[#9b8878]">
               {reference}
             </span>
           </div>
-          <span className="text-[10px] text-[#9b8878]">{time}</span>
-        </div>
-      </div>
 
-      {children}
-
-      <div className="mt-2 flex items-center justify-between">
-        <div className="flex items-center gap-0.5">
-          {onReply && (
-            <button
-              aria-label={`Reply to ${name}`}
-              className="icon-button flex h-7 w-7 items-center justify-center text-[#7a6758] hover:bg-transparent hover:text-[#3a2218]"
-              onClick={onReply}
-              type="button"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-            </button>
-          )}
-          {isOwner && onDelete && (
-            <button
-              aria-label="Delete comment"
-              className="icon-button flex h-7 w-7 items-center justify-center text-[#9b8878] hover:bg-transparent hover:text-[#a24723]"
-              onClick={onDelete}
-              type="button"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5">
-          {flashHeart && (
-            <motion.div
-              animate={{ scale: [1, 1.4, 0], opacity: [1, 1, 0] }}
-              className="absolute"
-              initial={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              <Heart className="h-3.5 w-3.5 fill-current text-[#f6823c]" />
-            </motion.div>
-          )}
-          <motion.button
-            className={cn(
-              "flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold hover:text-[#f6823c]",
-              likeIcon === "heart"
-                ? "text-[#f6823c] bg-[#fff3e8]"
-                : "text-[#7a6758]",
-            )}
-            type="button"
-            onClick={handleLike}
-            whileTap={{ scale: 0.8 }}
-          >
-            <LikeIcon
+          {isReplying && (
+            <div
               className={cn(
-                "h-3.5 w-3.5",
-                likeIcon === "heart" && "fill-current",
+                "grid transition-[grid-template-rows,opacity] duration-200 ease-out mt-2",
+                isReplying
+                  ? "grid-rows-[1fr] opacity-100"
+                  : "grid-rows-[0fr] opacity-0",
               )}
-            />
-            {likes}
-          </motion.button>
-        </div>
-      </div>
-
-      {isReplying !== undefined && (
-        <div
-          className={cn(
-            "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
-            isReplying
-              ? "grid-rows-[1fr] opacity-100"
-              : "grid-rows-[0fr] opacity-0",
-          )}
-        >
-          <div className="min-h-0 overflow-hidden">
-            <div className="mt-3 border-t border-[#f1e8df] pt-3">
-              <ChatInput
-                compact
-                onChange={onReplyChange}
-                onSend={onReplySend}
-                placeholder={`Reply to ${name}…`}
-                value={replyValue}
-              />
+            >
+              <div className="min-h-0 overflow-hidden">
+                <ChatInput
+                  compact
+                  onChange={onReplyChange}
+                  onSend={onReplySend}
+                  placeholder={`Reply to ${name}…`}
+                  value={replyValue}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      )}
+
+        {isOwner && (
+          <div className="relative shrink-0">
+            <button
+              className="flex h-6 w-6 items-center justify-center text-[#9b8878] hover:text-[#a24723]"
+              onClick={() => setShowMenu((v) => !v)}
+              type="button"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 top-7 z-10 w-32 rounded-lg border border-[#f1e8df] bg-white py-1 shadow-md">
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#a24723] hover:bg-[#fbf7f2]"
+                  onClick={() => {
+                    setShowMenu(false);
+                    onDelete?.();
+                  }}
+                  type="button"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
