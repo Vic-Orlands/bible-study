@@ -291,6 +291,7 @@ export default function BibleApp() {
                   bibleBooks={bibleBooks}
                   bibleBooksError={bibleBooksError}
                   bibleBooksLoading={bibleBooksLoading}
+                  bookmarks={bookmarks}
                   chapterVerses={chapterVerses}
                   selectedPassage={selectedPassage}
                   visibleVersions={visibleVersions}
@@ -492,40 +493,107 @@ export default function BibleApp() {
         )}
 
         {sheetView === "profile" && (
-          <div className="p-4 flex flex-col gap-6">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-[#3a2218] flex items-center justify-center text-xl font-bold text-[#f6823c]">
-                {useStudyStore.getState().guestName.slice(0, 2).toUpperCase()}
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-[#25140b]">
-                  {useStudyStore.getState().guestName}
-                </h3>
-                <p className="text-sm text-[#7a6758]">guest@biblestudy.app</p>
-              </div>
-            </div>
-            <button className="w-full bg-[#3a2218] text-white py-3 rounded-lg font-semibold hover:bg-[#1f1209] transition-colors">
-              {useStudyStore.getState().guestName.startsWith("Anonymous-")
-                ? "Sign In to Sync"
-                : "Log Out"}
-            </button>
-          </div>
+          <ProfileSheet bookmarks={bookmarks} />
         )}
 
         {sheetView === "settings" && (
-          <div className="p-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between p-3 border border-[#f1e8df] bg-white">
-              <span className="text-sm font-medium">Dark Mode</span>
-              <div className="h-5 w-10 bg-[#e5d6c9] rounded-full" />
-            </div>
-            <div className="flex items-center justify-between p-3 border border-[#f1e8df] bg-white">
-              <span className="text-sm font-medium">FontSize</span>
-              <span className="text-xs text-[#9b8878]">14px</span>
-            </div>
-          </div>
+          <SettingsSheet />
         )}
       </BottomSheet>
     </ProductShell>
+  );
+}
+
+function SettingsSheet() {
+  const [darkMode, setDarkMode] = useState(false);
+  const [fontSize, setFontSize] = useState(14);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
+
+  return (
+    <div className="p-4 flex flex-col gap-4">
+      <div
+        className="flex items-center justify-between p-3 border border-[#f1e8df] bg-white cursor-pointer"
+        onClick={() => setDarkMode((v) => !v)}
+      >
+        <span className="text-sm font-medium">Dark Mode</span>
+        <button
+          className={cn(
+            "relative h-5 w-10 rounded-full transition-colors duration-200",
+            darkMode ? "bg-[#f6823c]" : "bg-[#e5d6c9]",
+          )}
+          type="button"
+        >
+          <span
+            className={cn(
+              "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200",
+              darkMode ? "left-5" : "left-0.5",
+            )}
+          />
+        </button>
+      </div>
+      <div className="flex items-center justify-between p-3 border border-[#f1e8df] bg-white">
+        <span className="text-sm font-medium">Font Size</span>
+        <div className="flex items-center gap-2">
+          <button
+            className="icon-button flex h-6 w-6 items-center justify-center text-[#7a6758] hover:text-[#3a2218]"
+            onClick={() => setFontSize((v) => Math.max(12, v - 1))}
+            type="button"
+          >
+            <span className="text-xs font-bold">-</span>
+          </button>
+          <span className="text-xs text-[#9b8878] w-8 text-center">{fontSize}px</span>
+          <button
+            className="icon-button flex h-6 w-6 items-center justify-center text-[#7a6758] hover:text-[#3a2218]"
+            onClick={() => setFontSize((v) => Math.min(20, v + 1))}
+            type="button"
+          >
+            <span className="text-xs font-bold">+</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileSheet({
+  bookmarks,
+}: {
+  bookmarks: { passageBook: string; passageChapter: number; passageVerse: number }[];
+}) {
+  const guestName = useStudyStore((s) => s.guestName);
+  const initials = guestName.slice(0, 2).toUpperCase();
+  const isAnonymous = guestName.startsWith("Anonymous-");
+
+  return (
+    <div className="p-4 flex flex-col gap-6">
+      <div className="flex items-center gap-4">
+        <div className="h-16 w-16 rounded-full bg-[#3a2218] flex items-center justify-center text-xl font-bold text-[#f6823c]">
+          {initials}
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-[#25140b]">{guestName}</h3>
+          <p className="text-sm text-[#7a6758]">guest@biblestudy.app</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="border border-[#f1e8df] bg-[#fbf7f2] p-3 text-center">
+          <p className="text-lg font-semibold text-[#25140b]">{bookmarks.length}</p>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-[#9b8878]">Bookmarks</p>
+        </div>
+      </div>
+
+      <button className="w-full bg-[#3a2218] text-white py-3 text-sm font-semibold hover:bg-[#1f1209] transition-colors">
+        {isAnonymous ? "Sign In to Sync" : "Log Out"}
+      </button>
+    </div>
   );
 }
 
@@ -534,6 +602,7 @@ function LeftPanel({
   bibleBooks,
   bibleBooksError,
   bibleBooksLoading,
+  bookmarks,
   chapterVerses,
   selectedPassage,
   visibleVersions,
@@ -546,6 +615,7 @@ function LeftPanel({
   bibleBooks: BibleBookIndex[];
   bibleBooksError: string | null;
   bibleBooksLoading: boolean;
+  bookmarks: { passageBook: string; passageChapter: number; passageVerse: number }[];
   chapterVerses: Record<string, BibleVerse[]>;
   selectedPassage: PassageSelection;
   visibleVersions: string[];
@@ -751,95 +821,107 @@ function LeftPanel({
       <div className="bible-app-scroll flex-1 overflow-y-auto py-3">
         {searchOpen && (
           <section className="px-3">
-            {hasQuery && showResults && (
+            {["Bookmarks", "Notes", "Study", "Audio"].includes(activeFilter) ? (
+              <FilterResults
+                activeFilter={activeFilter as "Bookmarks" | "Notes" | "Study" | "Audio"}
+                bookmarks={bookmarks}
+                chapterVerses={chapterVerses}
+                onPassageChange={onPassageChange}
+                selectedPassage={selectedPassage}
+              />
+            ) : (
               <>
-                <div className="mb-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
-                    Matches in {selectedPassage.book} {selectedPassage.chapter}
-                  </span>
-                </div>
-
-                {referenceMatch && (
-                  <button
-                    className="mb-2 w-full border-[1.5px] border-[#f6823c] bg-[#fff3e8] px-3 py-2.5 text-left"
-                    onClick={() => onPassageChange(referenceMatch)}
-                    type="button"
-                  >
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="text-[13px] font-semibold text-[#25140b]">
-                        {referenceMatch.book} {referenceMatch.chapter}:
-                        {referenceMatch.verse}
-                      </span>
-                      <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
-                        Jump to
+                {hasQuery && showResults && (
+                  <>
+                    <div className="mb-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
+                        Matches in {selectedPassage.book} {selectedPassage.chapter}
                       </span>
                     </div>
-                    <p className="text-[12px] leading-relaxed text-[#5d493a]">
-                      Navigate to this passage
-                    </p>
-                  </button>
+
+                    {referenceMatch && (
+                      <button
+                        className="mb-2 w-full border-[1.5px] border-[#f6823c] bg-[#fff3e8] px-3 py-2.5 text-left"
+                        onClick={() => onPassageChange(referenceMatch)}
+                        type="button"
+                      >
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="text-[13px] font-semibold text-[#25140b]">
+                            {referenceMatch.book} {referenceMatch.chapter}:
+                            {referenceMatch.verse}
+                          </span>
+                          <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
+                            Jump to
+                          </span>
+                        </div>
+                        <p className="text-[12px] leading-relaxed text-[#5d493a]">
+                          Navigate to this passage
+                        </p>
+                      </button>
+                    )}
+
+                    {searchHits.map((hit, index) => (
+                      <button
+                        className={cn(
+                          "mb-2 w-full border-[1.5px] border-transparent px-3 py-2.5 text-left hover:border-[#e5d6c9] hover:bg-[#fbf7f2]",
+                          index === 0 &&
+                            !referenceMatch &&
+                            "border-[#f6823c] bg-[#fff3e8]",
+                        )}
+                        key={`${hit.label}-${hit.verse}`}
+                        onClick={() =>
+                          onPassageChange({
+                            book: hit.book,
+                            chapter: hit.chapter,
+                            verse: hit.verse,
+                          })
+                        }
+                        type="button"
+                      >
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="text-[13px] font-semibold text-[#25140b]">
+                            {hit.book} {hit.chapter}:{hit.verse}
+                          </span>
+                          <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
+                            {hit.label}
+                          </span>
+                        </div>
+                        <p className="line-clamp-2 font-serif text-[12px] leading-relaxed text-[#5d493a]">
+                          {hit.text}
+                        </p>
+                      </button>
+                    ))}
+                  </>
                 )}
 
-                {searchHits.map((hit, index) => (
-                  <button
-                    className={cn(
-                      "mb-2 w-full border-[1.5px] border-transparent px-3 py-2.5 text-left hover:border-[#e5d6c9] hover:bg-[#fbf7f2]",
-                      index === 0 &&
-                        !referenceMatch &&
-                        "border-[#f6823c] bg-[#fff3e8]",
-                    )}
-                    key={`${hit.label}-${hit.verse}`}
-                    onClick={() =>
-                      onPassageChange({
-                        book: hit.book,
-                        chapter: hit.chapter,
-                        verse: hit.verse,
-                      })
-                    }
-                    type="button"
-                  >
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="text-[13px] font-semibold text-[#25140b]">
-                        {hit.book} {hit.chapter}:{hit.verse}
-                      </span>
-                      <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
-                        {hit.label}
-                      </span>
-                    </div>
-                    <p className="line-clamp-2 font-serif text-[12px] leading-relaxed text-[#5d493a]">
-                      {hit.text}
+                {hasQuery && debouncedTerm !== searchTerm && (
+                  <div className="flex items-center justify-center h-[10vh] opacity-60">
+                    <div className="h-4 w-4 border-2 border-[#f6823c] border-t-transparent rounded-full animate-spin" />
+                    <span className="ml-2 text-[11px] font-medium text-[#7a6758]">
+                      Searching...
+                    </span>
+                  </div>
+                )}
+                {!hasQuery && (
+                  <div className="flex flex-col items-center justify-center h-[10vh] border border-[#f1e8df] bg-[#fbf7f2] rounded-lg mt-2 px-3 py-4 text-center opacity-80">
+                    <MagnifyingGlassIcon
+                      animateOnParentHover
+                      className="text-[#9b8878] mb-1.5"
+                    />
+                    <p className="text-[10px] font-medium text-[#7a6758] leading-tight">
+                      Easily search the Scriptures across different versions
                     </p>
-                  </button>
-                ))}
+                  </div>
+                )}
               </>
             )}
-
-            {hasQuery && !showResults && (
-              <p className="px-1 py-1 text-[12px] font-medium text-[#9b8878]">
-                No matches in {selectedPassage.book} {selectedPassage.chapter}
-              </p>
-            )}
-
-            {hasQuery && debouncedTerm !== searchTerm && (
-              <div className="flex items-center justify-center h-[10vh] opacity-60">
-                <div className="h-4 w-4 border-2 border-[#f6823c] border-t-transparent rounded-full animate-spin" />
-                <span className="ml-2 text-[11px] font-medium text-[#7a6758]">
-                  Searching...
-                </span>
-              </div>
-            )}
-            {!hasQuery && (
-              <div className="flex flex-col items-center justify-center h-[10vh] border border-[#f1e8df] bg-[#fbf7f2] rounded-lg mt-2 px-3 py-4 text-center opacity-80">
-                <MagnifyingGlassIcon
-                  animateOnParentHover
-                  className="text-[#9b8878] mb-1.5"
-                />
-                <p className="text-[10px] font-medium text-[#7a6758] leading-tight">
-                  Easily search the Scriptures across different versions
-                </p>
-              </div>
-            )}
           </section>
+        )}
+
+        {hasQuery && !showResults && (
+          <p className="px-1 py-1 text-[12px] font-medium text-[#9b8878]">
+            No matches in {selectedPassage.book} {selectedPassage.chapter}
+          </p>
         )}
 
         <button
@@ -885,6 +967,240 @@ function LeftPanel({
       </div>
     </motion.aside>
   );
+}
+
+function FilterResults({
+  activeFilter,
+  bookmarks,
+  chapterVerses,
+  onPassageChange,
+  selectedPassage,
+}: {
+  activeFilter: "Bookmarks" | "Notes" | "Study" | "Audio";
+  bookmarks: { passageBook: string; passageChapter: number; passageVerse: number }[];
+  chapterVerses: Record<string, BibleVerse[]>;
+  onPassageChange: (selection: PassageSelection) => void;
+  selectedPassage: PassageSelection;
+}) {
+  const guestId = useStudyStore((s) => s.guestId);
+
+  const notes = useQuery(
+    api.notes.listForPassage,
+    activeFilter === "Notes"
+      ? { guestId, passageBook: selectedPassage.book, passageChapter: selectedPassage.chapter }
+      : "skip",
+  );
+  const comments = useQuery(
+    api.comments.listForPassage,
+    activeFilter === "Study"
+      ? { passageBook: selectedPassage.book, passageChapter: selectedPassage.chapter }
+      : "skip",
+  );
+  const audioNotes = useQuery(
+    api.audioNotes.listForPassage,
+    activeFilter === "Audio"
+      ? { passageBook: selectedPassage.book, passageChapter: selectedPassage.chapter }
+      : "skip",
+  );
+
+  const chapterBookmarks = bookmarks.filter(
+    (b) => b.passageBook === selectedPassage.book && b.passageChapter === selectedPassage.chapter,
+  );
+
+  const getVerseText = (verse: number) => {
+    for (const verses of Object.values(chapterVerses)) {
+      const v = verses.find((x) => x.number === verse);
+      if (v) return v.text;
+    }
+    return null;
+  };
+
+  if (activeFilter === "Bookmarks") {
+    if (chapterBookmarks.length === 0) {
+      return (
+        <p className="text-[12px] text-[#7a6758] py-4 text-center">
+          No bookmarks in {selectedPassage.book} {selectedPassage.chapter}.
+        </p>
+      );
+    }
+    return (
+      <>
+        <div className="mb-2">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
+            {chapterBookmarks.length} bookmark{chapterBookmarks.length > 1 ? "s" : ""} in {selectedPassage.book} {selectedPassage.chapter}
+          </span>
+        </div>
+        {chapterBookmarks.map((b) => (
+          <button
+            className="mb-2 w-full border-[1.5px] border-transparent px-3 py-2.5 text-left hover:border-[#e5d6c9] hover:bg-[#fbf7f2]"
+            key={`${b.passageBook}-${b.passageChapter}-${b.passageVerse}`}
+            onClick={() =>
+              onPassageChange({
+                book: b.passageBook,
+                chapter: b.passageChapter,
+                verse: b.passageVerse,
+              })
+            }
+            type="button"
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-[13px] font-semibold text-[#25140b]">
+                {b.passageBook} {b.passageChapter}:{b.passageVerse}
+              </span>
+            </div>
+            {(() => {
+              const text = getVerseText(b.passageVerse);
+              return text ? (
+                <p className="line-clamp-2 font-serif text-[12px] leading-relaxed text-[#5d493a]">
+                  {text}
+                </p>
+              ) : null;
+            })()}
+          </button>
+        ))}
+      </>
+    );
+  }
+
+  if (activeFilter === "Notes") {
+    if (!notes || notes.length === 0) {
+      return (
+        <p className="text-[12px] text-[#7a6758] py-4 text-center">
+          No notes in {selectedPassage.book} {selectedPassage.chapter}.
+        </p>
+      );
+    }
+    return (
+      <>
+        <div className="mb-2">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
+            {notes.length} note{notes.length > 1 ? "s" : ""} in {selectedPassage.book} {selectedPassage.chapter}
+          </span>
+        </div>
+        {notes.map((note) => (
+          <button
+            className="mb-2 w-full border-[1.5px] border-transparent px-3 py-2.5 text-left hover:border-[#e5d6c9] hover:bg-[#fbf7f2]"
+            key={note._id}
+            onClick={() =>
+              onPassageChange({
+                book: note.passageBook,
+                chapter: note.passageChapter,
+                verse: note.passageVerse ?? 1,
+              })
+            }
+            type="button"
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-[13px] font-semibold text-[#25140b] capitalize">
+                {note.type}
+              </span>
+              <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
+                v{note.passageVerse}
+              </span>
+            </div>
+            <p className="line-clamp-2 font-serif text-[12px] leading-relaxed text-[#5d493a]">
+              {note.content}
+            </p>
+          </button>
+        ))}
+      </>
+    );
+  }
+
+  if (activeFilter === "Study") {
+    const topLevel = comments?.filter((c) => !c.parentId) ?? [];
+    if (topLevel.length === 0) {
+      return (
+        <p className="text-[12px] text-[#7a6758] py-4 text-center">
+          No public comments in {selectedPassage.book} {selectedPassage.chapter}.
+        </p>
+      );
+    }
+    return (
+      <>
+        <div className="mb-2">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
+            {topLevel.length} comment{topLevel.length > 1 ? "s" : ""} in {selectedPassage.book} {selectedPassage.chapter}
+          </span>
+        </div>
+        {topLevel.map((comment) => (
+          <button
+            className="mb-2 w-full border-[1.5px] border-transparent px-3 py-2.5 text-left hover:border-[#e5d6c9] hover:bg-[#fbf7f2]"
+            key={comment._id}
+            onClick={() =>
+              onPassageChange({
+                book: comment.passageBook,
+                chapter: comment.passageChapter,
+                verse: comment.passageVerse,
+              })
+            }
+            type="button"
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-[13px] font-semibold text-[#25140b]">
+                {comment.guestName}
+              </span>
+              <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
+                v{comment.passageVerse}
+              </span>
+            </div>
+            <p className="line-clamp-2 font-serif text-[12px] leading-relaxed text-[#5d493a]">
+              {comment.content}
+            </p>
+          </button>
+        ))}
+      </>
+    );
+  }
+
+  if (activeFilter === "Audio") {
+    const items = audioNotes ?? [];
+    if (items.length === 0) {
+      return (
+        <p className="text-[12px] text-[#7a6758] py-4 text-center">
+          No audio notes in {selectedPassage.book} {selectedPassage.chapter}.
+        </p>
+      );
+    }
+    return (
+      <>
+        <div className="mb-2">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9b8878]">
+            {items.length} audio note{items.length > 1 ? "s" : ""} in {selectedPassage.book} {selectedPassage.chapter}
+          </span>
+        </div>
+        {items.map((note) => (
+          <button
+            className="mb-2 w-full border-[1.5px] border-transparent px-3 py-2.5 text-left hover:border-[#e5d6c9] hover:bg-[#fbf7f2]"
+            key={note._id}
+            onClick={() =>
+              onPassageChange({
+                book: note.passageBook,
+                chapter: note.passageChapter,
+                verse: note.passageVerse ?? 1,
+              })
+            }
+            type="button"
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <Mic className="h-3 w-3 text-[#f6823c]" />
+              <span className="text-[13px] font-semibold text-[#25140b]">
+                {note.guestName}
+              </span>
+              <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
+                v{note.passageVerse}
+              </span>
+            </div>
+            <p className="line-clamp-2 font-serif text-[12px] leading-relaxed text-[#5d493a]">
+              {note.transcript || "Processing audio..."}
+            </p>
+          </button>
+        ))}
+      </>
+    );
+  }
+
+  return null;
 }
 
 function ScriptureIndex({
@@ -2208,11 +2524,17 @@ function PublicStudy({
   selectedPassage: PassageSelection;
 }) {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyingToName, setReplyingToName] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
   const [optimisticLikes, setOptimisticLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
-  const toggle = (id: string) =>
-    setReplyingTo((c) => (c === id ? null : id));
+  const toggle = (id: string, name?: string) => {
+    setReplyingTo((c) => {
+      const next = c === id ? null : id;
+      setReplyingToName(next ? name ?? null : null);
+      return next;
+    });
+  };
 
   const guestId = useStudyStore((s) => s.guestId);
   const guestName = useStudyStore((s) => s.guestName);
@@ -2314,6 +2636,24 @@ function PublicStudy({
         </div>
         <button
           className="cta-button flex items-center gap-1.5 border border-[#e5d6c9] px-2.5 py-1.5 text-[11px] font-semibold text-[#3a2218] hover:bg-[#fbf7f2]"
+          onClick={async () => {
+            const url = `${window.location.origin}/study?book=${encodeURIComponent(selectedPassage.book)}&chapter=${selectedPassage.chapter}&verse=${selectedPassage.verse}`;
+            const title = `${selectedPassage.book} ${selectedPassage.chapter}:${selectedPassage.verse}`;
+            try {
+              if (navigator.share) {
+                await navigator.share({
+                  title: `Bible Study — ${title}`,
+                  text: `Check out this passage: ${title}`,
+                  url,
+                });
+              } else {
+                await navigator.clipboard.writeText(url);
+                toast.success("Link copied to clipboard!");
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }}
           type="button"
         >
           <Share2 className="h-3 w-3" />
@@ -2368,7 +2708,7 @@ function PublicStudy({
                   likes={likesCount}
                   name={comment.guestName}
                   onDelete={() => handleDelete(comment._id)}
-                  onReply={() => toggle(comment._id)}
+                  onReply={() => toggle(comment._id, comment.guestName)}
                   onLike={() => handleLike(comment._id, comment.likes)}
                   reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
                   replyValue={replyText[comment._id] ?? ""}
@@ -2448,7 +2788,15 @@ function PublicStudy({
         )}
       </div>
 
-      <Composer target={commentTarget} selectedPassage={selectedPassage} />
+      <Composer
+        onCancelReply={() => {
+          setReplyingTo(null);
+          setReplyingToName(null);
+        }}
+        replyToName={replyingToName}
+        target={commentTarget}
+        selectedPassage={selectedPassage}
+      />
     </div>
   );
 }
@@ -2466,6 +2814,16 @@ function PersonalNotes({
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
   });
+  const removeNote = useMutation(api.notes.remove);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await removeNote({ id: id as Id<"notes">, guestId });
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete note.");
+    }
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col px-4 py-4">
@@ -2493,9 +2851,19 @@ function PersonalNotes({
                 <span className="text-[12px] font-semibold text-[#25140b] capitalize">
                   {note.type}
                 </span>
-                <span className="text-[10px] text-[#9b8878]">
-                  v{note.passageVerse}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-[#9b8878]">
+                    v{note.passageVerse}
+                  </span>
+                  <button
+                    aria-label="Delete note"
+                    className="icon-button flex h-6 w-6 items-center justify-center text-[#9b8878] hover:text-[#a24723]"
+                    onClick={() => handleDelete(note._id)}
+                    type="button"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
               <RichScriptureText
                 text={note.content}
@@ -2866,9 +3234,13 @@ function VoiceNoteBubble() {
 }
 
 function Composer({
+  onCancelReply,
+  replyToName,
   target,
   selectedPassage,
 }: {
+  onCancelReply?: () => void;
+  replyToName?: string | null;
   target: string;
   selectedPassage: PassageSelection;
 }) {
@@ -2925,6 +3297,19 @@ function Composer({
       className="mt-4 shrink-0 overflow-hidden border-[1.5px] border-[#e5d6c9] bg-white focus-within:border-[#f6823c]"
       transition={{ duration: 0.25 }}
     >
+      {replyToName && (
+        <div className="flex items-center gap-2 border-b border-[#f1e8df] bg-[#f0f9f0] px-3 py-1.5">
+          <span className="text-[11px] font-semibold text-[#2e6b3d]">Replying to @{replyToName}</span>
+          <button
+            aria-label="Cancel reply"
+            className="icon-button ml-auto flex h-5 w-5 items-center justify-center text-[#9b8878] hover:text-[#3a2218]"
+            onClick={onCancelReply}
+            type="button"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
       {versePrefill && (
         <div className="flex items-center gap-2 border-b border-[#f1e8df] bg-[#fff3e8] px-3 py-1.5">
           <span className="text-[11px] font-semibold text-[#25140b]">Reference(s):</span>
