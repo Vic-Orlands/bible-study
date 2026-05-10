@@ -61,6 +61,13 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { MagnifyingGlassIcon } from "@/components/ui/magnifying-glass";
 import { RichScriptureText } from "@/components/rich-scripture-text";
 
+function getDisplayName(userId: string | undefined, userName: string | undefined): string {
+  if (userName) return userName;
+  if (!userId) return "Anonymous";
+  if (userId === "anonymous") return "Anonymous";
+  return `Anonymous-${userId.slice(0, 4)}`;
+}
+
 type SearchHit = {
   book: string;
   chapter: number;
@@ -1140,7 +1147,7 @@ function FilterResults({
           >
             <div className="mb-1 flex items-center gap-2">
               <span className="text-[13px] font-semibold text-[#25140b]">
-                {comment.userName || comment.userId || "Anonymous"}
+                {getDisplayName(comment.userId, comment.userName)}
               </span>
               <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
                 v{comment.passageVerse}
@@ -1187,7 +1194,7 @@ function FilterResults({
             <div className="mb-1 flex items-center gap-2">
               <Mic className="h-3 w-3 text-[#f6823c]" />
               <span className="text-[13px] font-semibold text-[#25140b]">
-                {note.userId || "Anonymous"}
+{getDisplayName(note.userId, note.userId)}
               </span>
               <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
                 v{note.passageVerse}
@@ -2729,10 +2736,10 @@ function PublicStudy({
                   isReplying={replyingTo === comment._id}
                   likeIcon={isLiked ? "heart" : "thumb"}
                   likes={likesCount}
-                  name={comment.userName || comment.userId || "Anonymous"}
+                  name={getDisplayName(comment.userId, comment.userName)}
                   onDelete={() => handleDelete(comment._id)}
                   onEdit={(newContent) => handleEdit(comment._id, newContent)}
-                  onReply={() => toggle(comment._id, comment.userName || comment.userId)}
+                  onReply={() => toggle(comment._id, getDisplayName(comment.userId, comment.userName))}
                   onLike={() => handleLike(comment._id, comment.likes)}
                   reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
                   replyValue={replyText[comment._id] ?? ""}
@@ -2784,7 +2791,7 @@ function PublicStudy({
                                   isReply={true}
                                   likeIcon={rIsLiked ? "heart" : "thumb"}
                                   likes={rLikes}
-                                  name={reply.userName || reply.userId || "Anonymous"}
+                                  name={getDisplayName(reply.userId, reply.userName)}
                                   onDelete={() => handleDelete(reply._id)}
                                   onEdit={(newContent) => handleEdit(reply._id, newContent)}
                                   onLike={() => handleLike(reply._id, reply.likes)}
@@ -3366,10 +3373,11 @@ function ChatMessage({
       <div className="flex gap-2.5">
         <Image
           alt=""
-          className="mt-0.5 shrink-0 rounded-full object-cover"
-          height={isReply ? 28 : 36}
+          className="mt-0.5 h-9 w-9 shrink-0 rounded-full object-cover"
+          height={36}
+          priority
           src={avatar}
-          width={isReply ? 28 : 36}
+          width={36}
         />
 
         <div className="min-w-0 flex-1">
