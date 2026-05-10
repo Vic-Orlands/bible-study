@@ -12,9 +12,7 @@ import {
   ChevronsRight,
   CheckCircle,
   Download,
-  FileText,
   Heart,
-  ImageIcon,
   Link2,
   List,
   MessageCircle,
@@ -25,9 +23,7 @@ import {
   Share2,
   ThumbsUp,
   Trash2,
-  Upload,
   X,
-  Bell,
 } from "lucide-react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
@@ -1932,7 +1928,7 @@ function TranslationVerses({
                     <button
                       aria-label={`Comment on ${label} ${selectedPassage.book} ${selectedPassage.chapter}:${number}`}
                       className={cn(
-                        "absolute right-2 top-2 hidden h-7 w-7 items-center justify-center bg-white/80 text-[#9b8878] backdrop-blur-sm transition-colors duration-150 ease-out hover:text-[#3a2218] group-hover:flex",
+                        "absolute right-2 top-0 bottom-0 my-auto hidden h-7 w-7 items-center justify-center bg-white/80 text-[#9b8878] rounded-full backdrop-blur-sm transition-colors duration-150 ease-out hover:text-[#3a2218] group-hover:flex",
                         number === selectedPassage.verse && "flex",
                       )}
                       onClick={() =>
@@ -2770,21 +2766,17 @@ function ChatInput({
   return (
     <div
       className={cn(
-        "flex items-end gap-2 bg-white px-3 py-2",
+        "flex flex-col gap-2 bg-white px-3 py-2",
         compact && "border border-[#e5d6c9]",
       )}
     >
       <textarea
         ref={textareaRef}
-        className="min-w-0 flex-1 resize-none overflow-y-auto bg-transparent text-[13px] leading-relaxed text-[#3a2218] outline-none placeholder:text-[#9b8878] bible-app-scroll py-1"
-        onChange={(e) => {
-          console.log("textarea onChange:", e.target.value);
-          onChange?.(e.target.value);
-        }}
+        className="w-full resize-none overflow-y-auto bg-transparent text-[13px] leading-relaxed text-[#3a2218] outline-none placeholder:text-[#9b8878] bible-app-scroll py-1"
+        onChange={(e) => onChange?.(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            console.log("Enter pressed, calling onSend");
             onSend?.();
           }
         }}
@@ -2792,7 +2784,7 @@ function ChatInput({
         rows={1}
         value={value ?? ""}
       />
-      <div className="mb-0.5 flex items-center gap-1">
+      <div className="flex items-center justify-end gap-1">
         <button
           aria-label="Record voice note"
           className="icon-button flex h-7 w-7 shrink-0 items-center justify-center text-[#7a6758] hover:bg-[#fff3e8] hover:text-[#3a2218]"
@@ -2804,10 +2796,7 @@ function ChatInput({
         <button
           aria-label="Send message"
           className="icon-button flex h-7 w-7 shrink-0 items-center justify-center bg-[#3a2218] text-white hover:bg-[#1f1209] active:scale-95"
-          onClick={() => {
-            console.log("Send button clicked");
-            onSend?.();
-          }}
+          onClick={() => onSend?.()}
           type="button"
         >
           <SendHorizontal className="h-3.5 w-3.5" />
