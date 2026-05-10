@@ -2964,7 +2964,7 @@ function AudioNotesPanel({
 
   return (
     <div className="bible-app-scroll h-full overflow-y-auto px-4 py-4">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <h2 className="text-[13px] font-semibold text-[#25140b]">
             Audio Notes
