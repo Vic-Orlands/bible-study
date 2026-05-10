@@ -15,12 +15,17 @@ export const getUserIdentity = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-    return {
-      userId: identity.subject,
-      fullName: identity.name ?? null,
-      email: identity.email ?? null,
-      pictureUrl: identity.pictureUrl ?? null,
-    };
+    if (identity) {
+      return {
+        userId: identity.subject,
+        fullName: identity.name ?? null,
+        email: identity.email ?? null,
+        pictureUrl: identity.pictureUrl ?? null,
+        identityId: null,
+        displayName: identity.name ?? identity.email ?? "Anonymous",
+        isAnonymous: false,
+      };
+    }
+    return null;
   },
 });

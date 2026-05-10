@@ -10,7 +10,18 @@ export default defineSchema({
     image: v.optional(v.string()),
   }).index("byEmail", ["email"]),
 
+  identities: defineTable({
+    ipHash: v.string(),
+    userId: v.optional(v.string()),
+    displayName: v.string(),
+    isAnonymous: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_ipHash", ["ipHash"])
+    .index("by_isAnonymous", ["isAnonymous"]),
+
   notes: defineTable({
+    identityId: v.optional(v.id("identities")),
     userId: v.optional(v.string()),
     guestId: v.optional(v.string()),
     passageBook: v.string(),
@@ -23,13 +34,12 @@ export default defineSchema({
       v.literal("application"),
     ),
   })
-    .index("by_user_passage", ["userId", "passageBook", "passageChapter"])
+    .index("by_identity", ["identityId"])
     .index("by_passage", ["passageBook", "passageChapter"]),
 
   comments: defineTable({
+    identityId: v.optional(v.id("identities")),
     userId: v.optional(v.string()),
-    userName: v.optional(v.string()),
-    guestId: v.optional(v.string()),
     guestName: v.optional(v.string()),
     passageBook: v.string(),
     passageChapter: v.number(),
@@ -39,28 +49,25 @@ export default defineSchema({
     parentId: v.optional(v.id("comments")),
     likes: v.array(v.string()),
   })
+    .index("by_identity", ["identityId"])
     .index("by_passage", ["passageBook", "passageChapter"])
     .index("by_parent", ["parentId"]),
 
   bookmarks: defineTable({
+    identityId: v.optional(v.id("identities")),
     userId: v.optional(v.string()),
     guestId: v.optional(v.string()),
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_passage", [
-      "userId",
-      "passageBook",
-      "passageChapter",
-      "passageVerse",
-    ]),
+    .index("by_identity", ["identityId"])
+    .index("by_passage", ["passageBook", "passageChapter"]),
 
   audioNotes: defineTable({
+    identityId: v.optional(v.id("identities")),
     userId: v.optional(v.string()),
     guestId: v.optional(v.string()),
-    guestName: v.optional(v.string()),
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.optional(v.number()),
@@ -73,8 +80,8 @@ export default defineSchema({
     isProcessing: v.boolean(),
     waveform: v.optional(v.array(v.number())),
   })
-    .index("by_passage", ["passageBook", "passageChapter"])
-    .index("by_user", ["userId"]),
+    .index("by_identity", ["identityId"])
+    .index("by_passage", ["passageBook", "passageChapter"]),
 
   notifications: defineTable({
     userId: v.string(),

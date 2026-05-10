@@ -1,6 +1,5 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { auth } from "./auth";
 
 export const list = query({
   args: {
@@ -8,10 +7,7 @@ export const list = query({
     passageChapter: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-
-    const byUser = await ctx.db
+    return await ctx.db
       .query("comments")
       .withIndex("by_passage", (q) =>
         q
@@ -20,33 +16,12 @@ export const list = query({
       )
       .order("desc")
       .collect();
-
-    if (!userId) return byUser;
-
-    const byGuest = await ctx.db
-      .query("comments")
-      .filter((q) => q.and(
-        q.eq(q.field("guestId"), userId),
-        q.eq(q.field("userId"), undefined),
-        q.eq(q.field("passageBook"), args.passageBook),
-        q.eq(q.field("passageChapter"), args.passageChapter)
-      ))
-      .collect();
-
-    const seen = new Set(byUser.map((c) => c._id.toString()));
-    const merged = [...byUser, ...byGuest.filter((c) => {
-      const key = c._id.toString();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })];
-
-    return merged.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
   },
 });
 
 export const create = mutation({
   args: {
+    identityId: v.optional(v.id("identities")),
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.number(),
@@ -56,11 +31,12 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const identityDoc = args.identityId ? await ctx.db.get(args.identityId) : null;
+    const displayName = identity?.name ?? identity?.email ?? identityDoc?.displayName ?? "Anonymous";
 
     const comment = await ctx.db.insert("comments", {
-      userId: identity.subject,
-      userName: identity.name ?? identity.email ?? "Anonymous",
+      identityId: args.identityId ?? undefined,
+      userId: identity?.subject ?? identityDoc?.userId ?? undefined,
       passageBook: args.passageBook,
       passageChapter: args.passageChapter,
       passageVerse: args.passageVerse,
@@ -70,28 +46,27 @@ export const create = mutation({
       likes: [],
     });
 
-const name = identity.name ?? identity.email ?? "Anonymous";
-  if (args.parentId) {
-    const parent = await ctx.db.get(args.parentId);
-    if (parent && parent.userId) {
-      await ctx.db.insert("notifications", {
-        userId: parent.userId,
-        type: "reply",
-        read: false,
-        actorName: name,
-        actorAvatar: identity.pictureUrl,
-        passageBook: args.passageBook,
-        passageChapter: args.passageChapter,
-        passageVerse: args.passageVerse,
-        commentId: comment,
-        preview: args.content.slice(0, 100),
-        createdAt: Date.now(),
-      });
+    if (args.parentId) {
+      const parent = await ctx.db.get(args.parentId);
+      if (parent && parent.userId) {
+        await ctx.db.insert("notifications", {
+          userId: parent.userId,
+          type: "reply",
+          read: false,
+          actorName: displayName,
+          actorAvatar: identity?.pictureUrl ?? undefined,
+          passageBook: args.passageBook,
+          passageChapter: args.passageChapter,
+          passageVerse: args.passageVerse,
+          commentId: comment,
+          preview: args.content.slice(0, 100),
+          createdAt: Date.now(),
+        });
+      }
     }
-  }
 
-  return comment;
-},
+    return comment;
+  },
 });
 
 export const toggleLike = mutation({
@@ -105,20 +80,21 @@ export const toggleLike = mutation({
     const comment = await ctx.db.get(args.id);
     if (!comment) throw new Error("Comment not found");
 
-    const already = comment.likes.includes(identity.subject);
+    const userId = identity.subject;
+    const already = comment.likes.includes(userId);
     await ctx.db.patch(args.id, {
       likes: already
-        ? comment.likes.filter((id) => id !== identity.subject)
-        : [...comment.likes, identity.subject],
+        ? comment.likes.filter((id) => id !== userId)
+        : [...comment.likes, userId],
     });
 
-    if (!already && comment.userId && comment.userId !== identity.subject) {
+    if (!already && comment.userId && comment.userId !== userId) {
       await ctx.db.insert("notifications", {
         userId: comment.userId,
         type: "like",
         read: false,
         actorName: identity.name ?? identity.email ?? "Anonymous",
-        actorAvatar: identity.pictureUrl,
+        actorAvatar: identity.pictureUrl ?? undefined,
         passageBook: comment.passageBook,
         passageChapter: comment.passageChapter,
         passageVerse: comment.passageVerse,
@@ -140,10 +116,8 @@ export const update = mutation({
     if (!identity) throw new Error("Not authenticated");
 
     const comment = await ctx.db.get(args.id);
-    if (!comment || comment.userId !== identity.subject) {
-      throw new Error("Not authorized");
-    }
-    if (!comment.userId) throw new Error("Not authorized");
+    if (!comment) throw new Error("Comment not found");
+    if (comment.userId !== identity.subject) throw new Error("Not authorized");
 
     await ctx.db.patch(args.id, { content: args.content });
   },
@@ -158,10 +132,8 @@ export const remove = mutation({
     if (!identity) throw new Error("Not authenticated");
 
     const comment = await ctx.db.get(args.id);
-    if (!comment || comment.userId !== identity.subject) {
-      throw new Error("Not authorized");
-    }
-    if (!comment.userId) throw new Error("Not authorized");
+    if (!comment) throw new Error("Comment not found");
+    if (comment.userId !== identity.subject) throw new Error("Not authorized");
 
     await ctx.db.delete(args.id);
   },

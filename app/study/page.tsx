@@ -180,18 +180,43 @@ export default function BibleApp() {
   const setCommentTarget = useStudyStore((s) => s.setCommentTarget);
   const setVersePrefill = useStudyStore((s) => s.setVersePrefill);
   const setHighlightedVerse = useStudyStore((s) => s.setHighlightedVerse);
+  const setIdentity = useStudyStore((s) => s.setIdentity);
+  const identityId = useStudyStore((s) => s.identityId);
+  const displayName = useStudyStore((s) => s.displayName);
+  const isAnonymousIdentity = useStudyStore((s) => s.isAnonymous);
 
+  const { leftOpen, rightOpen } = sidebars;
+  const auth = useConvexAuth();
+  const authIdentity = useQuery(api.auth.getUserIdentity);
   const [storeReady, setStoreReady] = useState(false);
 
   useEffect(() => {
     setStoreReady(true);
-  }, []);
 
-  const { leftOpen, rightOpen } = sidebars;
-  const auth = useConvexAuth();
-  const identity = useQuery(api.auth.getUserIdentity);
-  const userId = identity?.userId ?? "anonymous";
-  const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
+    const initIdentity = async () => {
+      if (auth.isLoading) return;
+      if (auth.isAuthenticated && authIdentity) {
+        setIdentity(null, authIdentity.fullName ?? authIdentity.email ?? "Anonymous", false);
+        return;
+      }
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_CONVEX_URL}/identity/anonymous`, {
+          method: "POST",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIdentity(data.identityId, data.displayName, data.isAnonymous);
+        }
+      } catch (e) {
+        console.error("Failed to get anonymous identity:", e);
+      }
+    };
+
+    initIdentity();
+  }, [auth.isLoading, auth.isAuthenticated, authIdentity, setIdentity]);
+
+  const userId = authIdentity?.userId ?? identityId ?? "anonymous";
+  const userName = authIdentity?.fullName ?? authIdentity?.email ?? displayName;
   const highlightedVerse = useStudyStore((s) => s.highlightedVerse);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -341,7 +366,8 @@ export default function BibleApp() {
               )}
               onBookmark={async () => {
                 const added = await toggleBookmark({
-                  passageBook: selectedPassage.book,
+                  identityId: useStudyStore.getState().identityId as any,
+passageBook: selectedPassage.book,
                   passageChapter: selectedPassage.chapter,
                   passageVerse: 1,
                 });
@@ -465,7 +491,8 @@ export default function BibleApp() {
                           <button
                             onClick={async () => {
                               await toggleBookmark({
-                                passageBook: b.passageBook,
+identityId: useStudyStore.getState().identityId as any,
+passageBook: b.passageBook,
                                 passageChapter: b.passageChapter,
                                 passageVerse: b.passageVerse,
                               });
@@ -1186,7 +1213,7 @@ function FilterResults({
           >
             <div className="mb-1 flex items-center gap-2">
               <span className="text-[13px] font-semibold text-[#25140b]">
-                {getDisplayName(comment.userId, comment.userName)}
+                {getDisplayName(comment.userId, comment.guestName)}
               </span>
               <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
                 v{comment.passageVerse}
@@ -2384,6 +2411,7 @@ function TranslationVerses({
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleBookmark({
+                            identityId: useStudyStore.getState().identityId as any,
                             passageBook: selectedPassage.book,
                             passageChapter: selectedPassage.chapter,
                             passageVerse: number,
@@ -2530,6 +2558,7 @@ function RightPanel({
             {tab === "Notes" && (
               <PersonalNotes
                 commentTarget={commentTarget}
+                identityId={useStudyStore.getState().identityId}
                 selectedPassage={selectedPassage}
               />
             )}
@@ -2575,9 +2604,10 @@ function PublicStudy({
   };
 
   const auth = useConvexAuth();
-  const identity = useQuery(api.auth.getUserIdentity);
-  const userId = identity?.userId ?? "anonymous";
-  const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
+  const identityId = useStudyStore((s) => s.identityId);
+  const displayName = useStudyStore((s) => s.displayName);
+  const userId = identityId ?? "anonymous";
+  const userName = displayName;
   const comments = useQuery(api.comments.list, {
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
@@ -2638,7 +2668,8 @@ function PublicStudy({
     setSendingReplies((prev) => ({ ...prev, [commentId]: true }));
     try {
       await createComment({
-        passageBook: parent.passageBook,
+        identityId: useStudyStore.getState().identityId as any,
+passageBook: parent.passageBook,
         passageChapter: parent.passageChapter,
         passageVerse: parent.passageVerse,
         translationLabel: parent.translationLabel,
@@ -2770,19 +2801,19 @@ function PublicStudy({
               return (
                 <div key={comment._id}>
                   <ChatMessage
-                    avatar={`https://ui-avatars.com/api/?name=${getDisplayName(comment.userId, comment.userName)}&background=random&size=128`}
+                    avatar={`https://ui-avatars.com/api/?name=${getDisplayName(comment.userId, comment.guestName)}&background=random&size=128`}
                     initialContent={comment.content}
                     isOwner={comment.userId === userId}
                     isReplying={replyingTo === comment._id}
                     likeIcon={isLiked ? "heart" : "thumb"}
                     likes={likesCount}
-                    name={getDisplayName(comment.userId, comment.userName)}
+                    name={getDisplayName(comment.userId, comment.guestName)}
                     onDelete={() => handleDelete(comment._id)}
                     onEdit={(newContent) => handleEdit(comment._id, newContent)}
                     onReply={() =>
                       toggle(
                         comment._id,
-                        getDisplayName(comment.userId, comment.userName),
+                        getDisplayName(comment.userId, comment.guestName),
                       )
                     }
                     onLike={() => handleLike(comment._id, comment.likes)}
@@ -2837,7 +2868,7 @@ function PublicStudy({
                                 return (
                                   <ChatMessage
                                     key={reply._id}
-                                    avatar={`https://ui-avatars.com/api/?name=${getDisplayName(reply.userId, reply.userName)}&background=random&size=128`}
+                                    avatar={`https://ui-avatars.com/api/?name=${getDisplayName(reply.userId, reply.guestName)}&background=random&size=128`}
                                     initialContent={reply.content}
                                     isOwner={reply.userId === userId}
                                     isReply={true}
@@ -2845,7 +2876,7 @@ function PublicStudy({
                                     likes={rLikes}
                                     name={getDisplayName(
                                       reply.userId,
-                                      reply.userName,
+                                      reply.guestName,
                                     )}
                                     onDelete={() => handleDelete(reply._id)}
                                     onEdit={(newContent) =>
@@ -2883,6 +2914,7 @@ function PublicStudy({
       </div>
 
       <Composer
+        identityId={identityId}
         onCancelReply={() => {
           setReplyingTo(null);
           setReplyingToName(null);
@@ -3016,9 +3048,11 @@ function ParallelPanel({
 function PersonalNotes({
   commentTarget,
   selectedPassage,
+  identityId,
 }: {
   commentTarget: string;
   selectedPassage: PassageSelection;
+  identityId: string | null;
 }) {
   const notes = useQuery(api.notes.listForPassage, {
     passageBook: selectedPassage.book,
@@ -3092,7 +3126,7 @@ function PersonalNotes({
         )}
       </div>
 
-      <Composer target={commentTarget} selectedPassage={selectedPassage} />
+      <Composer identityId={useStudyStore.getState().identityId} target={commentTarget} selectedPassage={selectedPassage} />
     </div>
   );
 }
@@ -3661,11 +3695,13 @@ function VoiceNoteBubble() {
 }
 
 function Composer({
+  identityId,
   onCancelReply,
   replyToName,
   target,
   selectedPassage,
 }: {
+  identityId: string | null;
   onCancelReply?: () => void;
   replyToName?: string | null;
   target: string;
@@ -3688,7 +3724,8 @@ function Composer({
     try {
       if (rightTab === "Study") {
         await createComment({
-          passageBook: selectedPassage.book,
+          identityId: useStudyStore.getState().identityId as any,
+passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
           translationLabel: "BSB",
@@ -3696,7 +3733,8 @@ function Composer({
         });
       } else {
         await createNote({
-          passageBook: selectedPassage.book,
+          identityId: useStudyStore.getState().identityId as any,
+passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
           content: text,
@@ -4209,6 +4247,7 @@ function AudioNotesPanel({
 
           // 3. Create DB record with R2 URL
           const noteId = await createAudioNote({
+            identityId: useStudyStore.getState().identityId as any,
             passageBook: selectedPassage.book,
             passageChapter: selectedPassage.chapter,
             passageVerse: selectedPassage.verse,

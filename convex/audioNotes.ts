@@ -7,10 +7,7 @@ export const listForPassage = query({
     passageChapter: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-
-    const byUser = await ctx.db
+    return await ctx.db
       .query("audioNotes")
       .withIndex("by_passage", (q) =>
         q
@@ -19,33 +16,12 @@ export const listForPassage = query({
       )
       .order("desc")
       .collect();
-
-    if (!userId) return byUser;
-
-    const byGuest = await ctx.db
-      .query("audioNotes")
-      .filter((q) => q.and(
-        q.eq(q.field("guestId"), userId),
-        q.eq(q.field("userId"), undefined),
-        q.eq(q.field("passageBook"), args.passageBook),
-        q.eq(q.field("passageChapter"), args.passageChapter)
-      ))
-      .collect();
-
-    const seen = new Set(byUser.map((a) => a._id.toString()));
-    const merged = [...byUser, ...byGuest.filter((a) => {
-      const key = a._id.toString();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })];
-
-    return merged.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
   },
 });
 
 export const create = mutation({
   args: {
+    identityId: v.optional(v.id("identities")),
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.optional(v.number()),
@@ -57,20 +33,17 @@ export const create = mutation({
     waveform: v.optional(v.array(v.number())),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
     return await ctx.db.insert("audioNotes", {
-      userId: identity.subject,
+      identityId: args.identityId ?? undefined,
       passageBook: args.passageBook,
       passageChapter: args.passageChapter,
-      passageVerse: args.passageVerse,
+      passageVerse: args.passageVerse ?? undefined,
       audioUrl: args.audioUrl,
       audioKey: args.audioKey,
       size: args.size,
       mimeType: args.mimeType,
       duration: args.duration,
-      waveform: args.waveform,
+      waveform: args.waveform ?? undefined,
       transcript: undefined,
       isProcessing: true,
     });
@@ -83,14 +56,6 @@ export const updateTranscript = mutation({
     transcript: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const note = await ctx.db.get(args.id);
-    if (!note || note.userId !== identity.subject) {
-      throw new Error("Not authorized");
-    }
-
     await ctx.db.patch(args.id, {
       transcript: args.transcript,
       isProcessing: false,
@@ -103,14 +68,6 @@ export const remove = mutation({
     id: v.id("audioNotes"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const note = await ctx.db.get(args.id);
-    if (!note || note.userId !== identity.subject) {
-      throw new Error("Not authorized");
-    }
-
     await ctx.db.delete(args.id);
   },
 });

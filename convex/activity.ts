@@ -60,8 +60,8 @@ export const recentForPassage = query({
 
     return comments.map((c) => ({
       type: "comment" as const,
-      userName: c.userName ?? c.guestName ?? "Anonymous",
-      userId: c.userId ?? c.guestId ?? "Anonymous",
+      userName: c.guestName ?? "Anonymous",
+      userId: c.userId ?? c.identityId ? String(c.identityId) : undefined,
       preview: c.content.slice(0, 100),
       _creationTime: c._creationTime,
     }));

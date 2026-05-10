@@ -20,6 +20,9 @@ type State = {
   flashingVerse: string | null;
   versePrefill: string | null;
   highlightedVerse: string | null;
+  identityId: string | null;
+  displayName: string;
+  isAnonymous: boolean;
 };
 
 type Actions = {
@@ -31,6 +34,7 @@ type Actions = {
   setFlashingVerse(v: string | null): void;
   setVersePrefill(v: string | null): void;
   setHighlightedVerse(v: string | null): void;
+  setIdentity(id: string | null, displayName: string, isAnonymous: boolean): void;
 };
 
 export const useStudyStore = create<State & Actions>()(
@@ -44,6 +48,9 @@ export const useStudyStore = create<State & Actions>()(
       flashingVerse: null,
       versePrefill: null,
       highlightedVerse: null,
+      identityId: null,
+      displayName: "Anonymous",
+      isAnonymous: true,
 
       setPassage(p: PassageSelection) {
         set({ selectedPassage: p, commentTarget: `${p.book} ${p.chapter}:${p.verse}` });
@@ -69,6 +76,9 @@ export const useStudyStore = create<State & Actions>()(
       },
       setCommentTarget(t: string) {
         set({ commentTarget: t });
+      },
+      setIdentity(id: string | null, displayName: string, isAnonymous: boolean) {
+        set({ identityId: id, displayName, isAnonymous });
       },
     }),
     {
