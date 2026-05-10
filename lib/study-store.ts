@@ -19,6 +19,7 @@ type State = {
   commentTarget: string;
   guestId: string;
   guestName: string;
+  flashingVerse: string | null;
 };
 
 type Actions = {
@@ -28,6 +29,7 @@ type Actions = {
   setRightTab(t: RightTab): void;
   setCommentTarget(t: string): void;
   setGuestName(name: string): void;
+  setFlashingVerse(v: string | null): void;
 };
 
 export const useStudyStore = create<State & Actions>()(
@@ -38,11 +40,16 @@ export const useStudyStore = create<State & Actions>()(
       sidebars: DEFAULT_SIDEBARS,
       rightTab: "Study" as RightTab,
       commentTarget: `${DEFAULT_PASSAGE.book} ${DEFAULT_PASSAGE.chapter}:${DEFAULT_PASSAGE.verse}`,
-      guestId: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
-      guestName: `Anonymous-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+      guestId: "",
+      guestName: "Anonymous",
+      flashingVerse: null,
 
       setPassage(p: PassageSelection) {
         set({ selectedPassage: p, commentTarget: `${p.book} ${p.chapter}:${p.verse}` });
+      },
+      setFlashingVerse(v: string | null) {
+        set({ flashingVerse: v });
+        if (v) setTimeout(() => set({ flashingVerse: null }), 2000);
       },
       setVisibleVersions(v: string[]) {
         set({ visibleVersions: v });

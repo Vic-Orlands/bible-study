@@ -2466,8 +2466,6 @@ function ChatMessage({
           type="button"
           onClick={onLike}
           whileTap={{ scale: 0.8 }}
-          animate={likeIcon === "heart" ? { scale: [1, 1.2, 1] } : {}}
-          transition={{ type: "spring", stiffness: 400, damping: 17 }}
         >
           <LikeIcon
             className={cn(
