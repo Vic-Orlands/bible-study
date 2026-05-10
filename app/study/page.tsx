@@ -166,6 +166,7 @@ export default function BibleApp() {
   const patchSidebars = useStudyStore((s) => s.patchSidebars);
   const setRightTab = useStudyStore((s) => s.setRightTab);
   const setCommentTarget = useStudyStore((s) => s.setCommentTarget);
+  const setVersePrefill = useStudyStore((s) => s.setVersePrefill);
 
   const [storeReady, setStoreReady] = useState(false);
 
@@ -231,13 +232,16 @@ export default function BibleApp() {
 
   const handleVerseComment = useCallback(
     (target: string) => {
+      const parts = target.split(" ");
+      const passage = parts.slice(1).join(" ");
+      setVersePrefill(`@{${passage}} `);
       setCommentTarget(target);
       if (rightTab !== "Study" && rightTab !== "Notes") {
         setRightTab("Notes");
       }
       patchSidebars({ rightOpen: true });
     },
-    [setCommentTarget, setRightTab, patchSidebars, rightTab],
+    [setCommentTarget, setRightTab, patchSidebars, rightTab, setVersePrefill],
   );
 
   return (
@@ -2552,16 +2556,20 @@ function Composer({
   const guestId = useStudyStore((s) => s.guestId);
   const guestName = useStudyStore((s) => s.guestName);
   const rightTab = useStudyStore((s) => s.rightTab);
+  const versePrefill = useStudyStore((s) => s.versePrefill);
+  const setVersePrefill = useStudyStore((s) => s.setVersePrefill);
   const createComment = useMutation(api.comments.create);
   const createNote = useMutation(api.notes.create);
 
   const handleSend = async () => {
     const text = content.trim();
+    console.log("handleSend called, text:", text, "isSending:", isSending);
     if (!text || isSending) return;
     setIsSending(true);
     setContent("");
     try {
       if (rightTab === "Study") {
+        console.log("Creating comment...");
         await createComment({
           guestId,
           guestName,
@@ -2571,7 +2579,9 @@ function Composer({
           translationLabel: "BSB",
           content: text,
         });
+        console.log("Comment created successfully");
       } else {
+        console.log("Creating note...");
         await createNote({
           guestId,
           guestName,
@@ -2581,26 +2591,28 @@ function Composer({
           content: text,
           type: "observation",
         });
+        console.log("Note created successfully");
       }
     } catch (e) {
+      console.error("Send failed:", e);
       setContent(text);
       toast.error("Failed to send.");
-      console.error(e);
     } finally {
       setIsSending(false);
     }
   };
 
   useEffect(() => {
-    if (target) {
+    if (versePrefill) {
       setContent((prev) => {
-        if (prev.trim() === "" || prev === target + " ") {
-          return target + " ";
+        if (prev.trim() === "") {
+          return versePrefill;
         }
-        return prev;
+        return prev + versePrefill;
       });
+      setVersePrefill(null);
     }
-  }, [target]);
+  }, [versePrefill, setVersePrefill]);
 
   return (
     <motion.div
@@ -2649,41 +2661,63 @@ function ChatInput({
   onChange?: (val: string) => void;
   onSend?: () => void;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      const newHeight = Math.min(el.scrollHeight, 140);
+      el.style.height = `${newHeight}px`;
+    }
+  }, [value]);
+
   return (
     <div
       className={cn(
-        "flex items-center gap-2 bg-white px-3 py-2",
+        "flex items-end gap-2 bg-white px-3 py-2",
         compact && "border border-[#e5d6c9]",
       )}
     >
-      <input
-        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#3a2218] outline-none placeholder:text-[#9b8878]"
-        onChange={(e) => onChange?.(e.target.value)}
+      <textarea
+        ref={textareaRef}
+        className="min-w-0 flex-1 resize-none overflow-y-auto bg-transparent text-[13px] leading-relaxed text-[#3a2218] outline-none placeholder:text-[#9b8878] bible-app-scroll py-1"
+        onChange={(e) => {
+          console.log("textarea onChange:", e.target.value);
+          onChange?.(e.target.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
+            console.log("Enter pressed, calling onSend");
             onSend?.();
           }
         }}
         placeholder={placeholder}
+        rows={1}
         value={value ?? ""}
       />
-      <button
-        aria-label="Record voice note"
-        className="icon-button flex h-7 w-7 items-center justify-center text-[#7a6758] hover:bg-[#fff3e8] hover:text-[#3a2218]"
-        type="button"
-      >
-        <Mic className="h-3.5 w-3.5" />
-      </button>
-      <motion.button
-        aria-label="Send message"
-        className="icon-button flex h-7 w-7 items-center justify-center bg-[#3a2218] text-white hover:bg-[#1f1209]"
-        type="button"
-        onClick={onSend}
-        whileTap={{ scale: 0.8 }}
-      >
-        <SendHorizontal className="h-3.5 w-3.5" />
-      </motion.button>
+      <div className="mb-0.5 flex items-center gap-1">
+        <button
+          aria-label="Record voice note"
+          className="icon-button flex h-7 w-7 shrink-0 items-center justify-center text-[#7a6758] hover:bg-[#fff3e8] hover:text-[#3a2218]"
+          onClick={() => toast("Voice note recording coming soon")}
+          type="button"
+        >
+          <Mic className="h-3.5 w-3.5" />
+        </button>
+        <button
+          aria-label="Send message"
+          className="icon-button flex h-7 w-7 shrink-0 items-center justify-center bg-[#3a2218] text-white hover:bg-[#1f1209] active:scale-95"
+          onClick={() => {
+            console.log("Send button clicked");
+            onSend?.();
+          }}
+          type="button"
+        >
+          <SendHorizontal className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

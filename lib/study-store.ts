@@ -20,6 +20,7 @@ type State = {
   guestId: string;
   guestName: string;
   flashingVerse: string | null;
+  versePrefill: string | null;
 };
 
 type Actions = {
@@ -30,6 +31,7 @@ type Actions = {
   setCommentTarget(t: string): void;
   setGuestName(name: string): void;
   setFlashingVerse(v: string | null): void;
+  setVersePrefill(v: string | null): void;
 };
 
 export const useStudyStore = create<State & Actions>()(
@@ -43,6 +45,7 @@ export const useStudyStore = create<State & Actions>()(
       guestId: "",
       guestName: "Anonymous",
       flashingVerse: null,
+      versePrefill: null,
 
       setPassage(p: PassageSelection) {
         set({ selectedPassage: p, commentTarget: `${p.book} ${p.chapter}:${p.verse}` });
@@ -50,6 +53,9 @@ export const useStudyStore = create<State & Actions>()(
       setFlashingVerse(v: string | null) {
         set({ flashingVerse: v });
         if (v) setTimeout(() => set({ flashingVerse: null }), 2000);
+      },
+      setVersePrefill(v: string | null) {
+        set({ versePrefill: v });
       },
       setVisibleVersions(v: string[]) {
         set({ visibleVersions: v });

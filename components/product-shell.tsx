@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence, scale } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Bell, BookOpen, CalendarDays, ChevronDown, Users } from "lucide-react";
 
 import BibleLogo from "@/components/logo";
@@ -54,8 +54,13 @@ function ProductTopNav({
   const pathname = usePathname();
   const [isOnline, setIsOnline] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const guestName = useStudyStore((s) => s.guestName);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const updateStatus = () => setIsOnline(window.navigator.onLine);
@@ -159,20 +164,16 @@ function ProductTopNav({
                 ? "AN"
                 : guestName.slice(0, 2).toUpperCase()}
             </div>
-            <div className="hidden flex-col justify-center md:flex">
-              <span
-                className="text-[12px] font-semibold leading-tight text-[#25140b]"
-                suppressHydrationWarning
-              >
-                {guestName}
-              </span>
-              <span
-                className="text-[10px] leading-tight text-[#7a6758]"
-                suppressHydrationWarning
-              >
-                guest@biblestudy.app
-              </span>
-            </div>
+            {mounted && (
+              <div className="hidden flex-col justify-center md:flex">
+                <span className="text-[12px] font-semibold leading-tight text-[#25140b]">
+                  {guestName}
+                </span>
+                <span className="text-[10px] leading-tight text-[#7a6758]">
+                  guest@biblestudy.app
+                </span>
+              </div>
+            )}
             <ChevronDown className="h-3 w-3 text-[#7a6758]" />
           </div>
 
