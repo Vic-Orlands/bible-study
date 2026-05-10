@@ -196,13 +196,20 @@ export default function BibleApp() {
     const initIdentity = async () => {
       if (auth.isLoading) return;
       if (auth.isAuthenticated && authIdentity) {
-        setIdentity(null, authIdentity.fullName ?? authIdentity.email ?? "Anonymous", false);
+        setIdentity(
+          null,
+          authIdentity.fullName ?? authIdentity.email ?? "Anonymous",
+          false,
+        );
         return;
       }
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_CONVEX_URL}/identity/anonymous`, {
-          method: "POST",
-        });
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_CONVEX_URL}/identity/anonymous`,
+          {
+            method: "POST",
+          },
+        );
         if (res.ok) {
           const data = await res.json();
           setIdentity(data.identityId, data.displayName, data.isAnonymous);
@@ -313,6 +320,12 @@ export default function BibleApp() {
         setSheetView("bookmarks");
         setBookmarksOpen(true);
       }}
+      onOpenProfile={() => {
+        setSheetView("profile");
+      }}
+      onOpenSignIn={() => {
+        setSheetView("login");
+      }}
     >
       <div className="flex flex-1 overflow-hidden bg-white">
         {!storeReady ? (
@@ -366,8 +379,9 @@ export default function BibleApp() {
               )}
               onBookmark={async () => {
                 const added = await toggleBookmark({
-                  identityId: (useStudyStore.getState().identityId ?? undefined) as any,
-passageBook: selectedPassage.book,
+                  identityId: (useStudyStore.getState().identityId ??
+                    undefined) as any,
+                  passageBook: selectedPassage.book,
                   passageChapter: selectedPassage.chapter,
                   passageVerse: 1,
                 });
@@ -420,7 +434,7 @@ passageBook: selectedPassage.book,
               ? "Settings"
               : sheetView === "profile"
                 ? "My Profile"
-                : "Welcome"
+                : "Sign In"
         }
       >
         {sheetView === "bookmarks" && (
@@ -491,8 +505,9 @@ passageBook: selectedPassage.book,
                           <button
                             onClick={async () => {
                               await toggleBookmark({
-identityId: (useStudyStore.getState().identityId ?? undefined) as any,
-passageBook: b.passageBook,
+                                identityId: (useStudyStore.getState()
+                                  .identityId ?? undefined) as any,
+                                passageBook: b.passageBook,
                                 passageChapter: b.passageChapter,
                                 passageVerse: b.passageVerse,
                               });
@@ -529,8 +544,81 @@ passageBook: b.passageBook,
         {sheetView === "profile" && <ProfileSheet bookmarks={bookmarks} />}
 
         {sheetView === "settings" && <SettingsSheet />}
+
+        {sheetView === "login" && <SignInSheet />}
       </BottomSheet>
     </ProductShell>
+  );
+}
+
+function SignInSheet() {
+  const auth = useConvexAuth();
+  const authActions = useAuthActions();
+  const [loading, setLoading] = useState(false);
+
+  const handleSignIn = async () => {
+    setLoading(true);
+    try {
+      await authActions.signIn("google");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to sign in.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-6 flex flex-col gap-6">
+      <div className="text-center">
+        <div className="h-16 w-16 rounded-full bg-[#3a2218] flex items-center justify-center mx-auto mb-4">
+          <BookOpen className="h-8 w-8 text-[#f6823c]" />
+        </div>
+        <h3 className="text-lg font-bold text-[#25140b]">
+          Sign in to Bible Study
+        </h3>
+        <p className="mt-2 text-[13px] text-[#7a6758]">
+          Sync your bookmarks, notes, and comments across all your devices.
+        </p>
+      </div>
+
+      <button
+        className="w-full flex items-center justify-center gap-3 bg-[#3a2218] text-white py-3 text-sm font-semibold hover:bg-[#1f1209] transition-colors disabled:opacity-60"
+        onClick={handleSignIn}
+        type="button"
+        disabled={loading}
+      >
+        {loading ? (
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+        ) : (
+          <>
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <path
+                fill="#fff"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.24-4.74 3.24-8.09z"
+              />
+              <path
+                fill="#fff"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#fff"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              />
+              <path
+                fill="#fff"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              />
+            </svg>
+            Continue with Google
+          </>
+        )}
+      </button>
+
+      <p className="text-[11px] text-[#9b8878] text-center">
+        By signing in, you agree to our terms of service and privacy policy.
+      </p>
+    </div>
   );
 }
 
@@ -2411,7 +2499,8 @@ function TranslationVerses({
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleBookmark({
-                            identityId: (useStudyStore.getState().identityId ?? undefined) as any,
+                            identityId: (useStudyStore.getState().identityId ??
+                              undefined) as any,
                             passageBook: selectedPassage.book,
                             passageChapter: selectedPassage.chapter,
                             passageVerse: number,
@@ -2649,7 +2738,10 @@ function PublicStudy({
       [commentId]: { count: newCount, liked: !alreadyLiked },
     }));
     try {
-      await toggleLike({ id: commentId as Id<"comments"> });
+      await toggleLike({
+        id: commentId as Id<"comments">,
+        identityId: identityId as Id<"identities"> | undefined,
+      });
     } catch (e) {
       console.error(e);
       setOptimisticLikes((prev) => {
@@ -2669,7 +2761,7 @@ function PublicStudy({
     try {
       await createComment({
         identityId: (useStudyStore.getState().identityId ?? undefined) as any,
-passageBook: parent.passageBook,
+        passageBook: parent.passageBook,
         passageChapter: parent.passageChapter,
         passageVerse: parent.passageVerse,
         translationLabel: parent.translationLabel,
@@ -3126,7 +3218,11 @@ function PersonalNotes({
         )}
       </div>
 
-      <Composer identityId={useStudyStore.getState().identityId} target={commentTarget} selectedPassage={selectedPassage} />
+      <Composer
+        identityId={useStudyStore.getState().identityId}
+        target={commentTarget}
+        selectedPassage={selectedPassage}
+      />
     </div>
   );
 }
@@ -3516,6 +3612,7 @@ function ChatMessage({
           priority
           src={avatar}
           width={36}
+          unoptimized
         />
 
         <div className="min-w-0 flex-1">
@@ -3605,6 +3702,45 @@ function ChatMessage({
                 Reply
               </button>
             )}
+
+            {isOwner && (
+              <div className="relative shrink-0 ml-auto">
+                <button
+                  className="flex h-6 w-6 items-center justify-center text-[#9b8878] hover:text-[#a24723]"
+                  onClick={() => setShowMenu((v) => !v)}
+                  type="button"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </button>
+
+                {showMenu && (
+                  <div className="absolute right-0 top-7 z-50 w-28 rounded-lg border border-[#f1e8df] bg-white p-1.5 shadow-md">
+                    <button
+                      className="flex w-full items-center gap-2 px-1.5 py-1.5 text-left text-[12px] text-[#3a2218] hover:bg-[#fbf7f2]"
+                      onClick={() => {
+                        setShowMenu(false);
+                        setIsEditing(true);
+                      }}
+                      type="button"
+                    >
+                      <span className="text-[13px]">✏️</span>
+                      Edit
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 px-1.5 py-1.5 text-left text-[12px] text-[#a24723] hover:bg-[#fbf7f2]"
+                      onClick={() => {
+                        setShowMenu(false);
+                        onDelete?.();
+                      }}
+                      type="button"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {isReplying !== undefined && (
@@ -3628,44 +3764,6 @@ function ChatMessage({
             </motion.div>
           )}
         </div>
-
-        {isOwner && (
-          <div className="relative shrink-0">
-            <button
-              className="flex h-6 w-6 items-center justify-center text-[#9b8878] hover:text-[#a24723]"
-              onClick={() => setShowMenu((v) => !v)}
-              type="button"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </button>
-            {showMenu && (
-              <div className="absolute left-0 top-7 z-50 w-32 rounded-lg border border-[#f1e8df] bg-white py-1 shadow-md">
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#3a2218] hover:bg-[#fbf7f2]"
-                  onClick={() => {
-                    setShowMenu(false);
-                    setIsEditing(true);
-                  }}
-                  type="button"
-                >
-                  <span className="text-[13px]">✏️</span>
-                  Edit
-                </button>
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#a24723] hover:bg-[#fbf7f2]"
-                  onClick={() => {
-                    setShowMenu(false);
-                    onDelete?.();
-                  }}
-                  type="button"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -3725,7 +3823,7 @@ function Composer({
       if (rightTab === "Study") {
         await createComment({
           identityId: (useStudyStore.getState().identityId ?? undefined) as any,
-passageBook: selectedPassage.book,
+          passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
           translationLabel: "BSB",
@@ -3734,7 +3832,7 @@ passageBook: selectedPassage.book,
       } else {
         await createNote({
           identityId: (useStudyStore.getState().identityId ?? undefined) as any,
-passageBook: selectedPassage.book,
+          passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
           content: text,
@@ -3983,7 +4081,10 @@ function CommentaryPanel({
       `/api/helloao?path=commentaries/SWIFT/${bookId}/${selectedPassage.chapter}.json`,
     )
       .then((r) => {
-        if (!r.ok) { setContent(null); return; }
+        if (!r.ok) {
+          setContent(null);
+          return;
+        }
         return r.json();
       })
       .then((data) => {
@@ -4086,7 +4187,10 @@ function CrossRefsPanel({
       `/api/helloao?path=d/open-cross-ref/${bookId}/${selectedPassage.chapter}.json`,
     )
       .then((r) => {
-        if (!r.ok) { setCrossRefs(undefined); return; }
+        if (!r.ok) {
+          setCrossRefs(undefined);
+          return;
+        }
         return r.json();
       })
       .then((data) => {
@@ -4247,7 +4351,8 @@ function AudioNotesPanel({
 
           // 3. Create DB record with R2 URL
           const noteId = await createAudioNote({
-            identityId: (useStudyStore.getState().identityId ?? undefined) as any,
+            identityId: (useStudyStore.getState().identityId ??
+              undefined) as any,
             passageBook: selectedPassage.book,
             passageChapter: selectedPassage.chapter,
             passageVerse: selectedPassage.verse,

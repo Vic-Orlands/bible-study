@@ -72,15 +72,18 @@ export const create = mutation({
 export const toggleLike = mutation({
   args: {
     id: v.id("comments"),
+    identityId: v.optional(v.id("identities")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const identityDoc = args.identityId ? await ctx.db.get(args.identityId) : null;
+    const userId = identity?.subject ?? identityDoc?.userId;
+
+    if (!userId) return;
 
     const comment = await ctx.db.get(args.id);
-    if (!comment) throw new Error("Comment not found");
+    if (!comment) return;
 
-    const userId = identity.subject;
     const already = comment.likes.includes(userId);
     await ctx.db.patch(args.id, {
       likes: already
@@ -88,13 +91,14 @@ export const toggleLike = mutation({
         : [...comment.likes, userId],
     });
 
+    const actorName = identity?.name ?? identity?.email ?? identityDoc?.displayName ?? "Anonymous";
     if (!already && comment.userId && comment.userId !== userId) {
       await ctx.db.insert("notifications", {
         userId: comment.userId,
         type: "like",
         read: false,
-        actorName: identity.name ?? identity.email ?? "Anonymous",
-        actorAvatar: identity.pictureUrl ?? undefined,
+        actorName,
+        actorAvatar: identity?.pictureUrl ?? undefined,
         passageBook: comment.passageBook,
         passageChapter: comment.passageChapter,
         passageVerse: comment.passageVerse,

@@ -10,7 +10,7 @@ import BibleLogo from "@/components/logo";
 import { CheckCircleIcon } from "@/components/ui/check-circle";
 import { WifiIcon } from "@/components/ui/wifi";
 import { NotificationsSheet } from "@/components/notifications-sheet";
-import { useConvexAuth } from "@convex-dev/auth/react";
+import { useConvexAuth, useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
@@ -26,18 +26,33 @@ export function ProductShell({
   children,
   onOpenSettings,
   onOpenBookmarks,
+  onOpenProfile,
+  onOpenSignIn,
 }: {
   children: ReactNode;
   onOpenSettings?: () => void;
   onOpenBookmarks?: () => void;
+  onOpenProfile?: () => void;
+  onOpenSignIn?: () => void;
 }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const auth = useConvexAuth();
+  const identity = useQuery(api.auth.getUserIdentity);
+
   return (
     <main className="bible-app flex h-screen flex-col overflow-hidden bg-white">
       <ProductTopNav
         onOpenSettings={onOpenSettings}
         onOpenBookmarks={onOpenBookmarks}
         onOpenNotifications={() => setNotificationsOpen(true)}
+        onOpenProfile={() => {
+          if (auth.isAuthenticated) onOpenProfile?.();
+          else onOpenSignIn?.();
+        }}
+        onOpenSignIn={onOpenSignIn}
+        profileOpen={profileOpen}
+        onProfileOpen={() => setProfileOpen((o) => !o)}
       />
       {children}
       <NotificationsSheet
@@ -52,17 +67,25 @@ function ProductTopNav({
   onOpenNotifications,
   onOpenSettings,
   onOpenBookmarks,
+  onOpenProfile,
+  onOpenSignIn,
+  profileOpen,
+  onProfileOpen,
 }: {
   onOpenNotifications: () => void;
   onOpenSettings?: () => void;
   onOpenBookmarks?: () => void;
+  onOpenProfile?: () => void;
+  onOpenSignIn?: () => void;
+  profileOpen: boolean;
+  onProfileOpen: () => void;
 }) {
   const pathname = usePathname();
   const [isOnline, setIsOnline] = useState(true);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const auth = useConvexAuth();
+  const authActions = useAuthActions();
   const identity = useQuery(api.auth.getUserIdentity);
   const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
   const userId = identity?.userId;
@@ -91,12 +114,12 @@ function ProductTopNav({
         profileMenuRef.current &&
         !profileMenuRef.current.contains(e.target as Node)
       ) {
-        setProfileOpen(false);
+        onProfileOpen();
       }
     };
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [profileOpen]);
+  }, [profileOpen, onProfileOpen]);
 
   return (
     <header className="z-10 flex h-14 shrink-0 items-center gap-4 border-b border-[#f1e8df] bg-white px-5">
@@ -166,7 +189,7 @@ function ProductTopNav({
         <div className="relative" ref={profileMenuRef}>
           <div
             className="flex items-center gap-2 cursor-pointer hover:bg-[#fbf7f2] p-1 pr-2 rounded-full transition-colors duration-150"
-            onClick={() => setProfileOpen((o) => !o)}
+            onClick={onProfileOpen}
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3a2218] text-[11px] font-semibold text-[#f6823c]">
               {userId ? userName.slice(0, 2).toUpperCase() : "AN"}
@@ -198,11 +221,11 @@ function ProductTopNav({
                     {userName}
                   </p>
                 </div>
-                <div className="py-1 *:!transform-none hover:!transform-none">
+<div className="py-1 *:!transform-none hover:!transform-none">
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
                     onClick={() => {
-                      setProfileOpen(false);
+                      onProfileOpen();
                       onOpenBookmarks?.();
                     }}
                   >
@@ -211,7 +234,7 @@ function ProductTopNav({
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
                     onClick={() => {
-                      setProfileOpen(false);
+                      onProfileOpen();
                       onOpenSettings?.();
                     }}
                   >
@@ -219,16 +242,27 @@ function ProductTopNav({
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
-                    onClick={() => {
-                      setProfileOpen(false);
-                      onOpenNotifications?.();
+onClick={() => {
+                      onProfileOpen();
+                      onOpenProfile?.();
                     }}
                   >
                     Profile
                   </button>
                   <button
-                    className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#f6823c] hover:bg-[#fbf7f2]"
-                    onClick={() => setProfileOpen(false)}
+                    className="w-full px-4 py-2 text-left text-[12px] font-semibold text-[#f6823c] hover:bg-[#fbf7f2]"
+                    onClick={async () => {
+                      onProfileOpen();
+                      if (userId) {
+                        try {
+                          await authActions.signOut();
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      } else {
+                        onOpenSignIn?.();
+                      }
+                    }}
                   >
                     {userId ? "Log Out" : "Sign In"}
                   </button>
