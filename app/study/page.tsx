@@ -1516,11 +1516,14 @@ function Reader({
 
           <button
             aria-label={`Bookmark ${formatPassage(selectedPassage)}`}
-            className="icon-button flex h-8 w-8 items-center justify-center border border-[#e5d6c9] text-[#7a6758] hover:border-[#f6823c] hover:bg-[#fbf7f2] hover:text-[#3a2218]"
+            className={cn(
+              "icon-button flex h-8 w-8 items-center justify-center border border-[#e5d6c9] text-[#7a6758] hover:border-[#f6823c] hover:bg-[#fbf7f2] hover:text-[#3a2218]",
+              isBookmarked && "bg-[#fff3e8] border-[#f6823c] text-[#f6823c]",
+            )}
             onClick={onBookmark}
             type="button"
           >
-            <Bookmark className="h-4 w-4" />
+            <Bookmark className={cn("h-4 w-4", isBookmarked && "fill-current")} />
           </button>
         </motion.div>
       </div>
@@ -1926,7 +1929,6 @@ function TranslationVerses({
   const flashingVerse = useStudyStore((s) => s.flashingVerse);
   const highlightedVerse = useStudyStore((s) => s.highlightedVerse);
   const setHighlightedVerse = useStudyStore((s) => s.setHighlightedVerse);
-  const setPassage = useStudyStore((s) => s.setPassage);
   const guestId = useStudyStore((s) => s.guestId);
   const toggleBookmark = useMutation(api.bookmarks.toggle);
   return (
@@ -1971,18 +1973,11 @@ function TranslationVerses({
                   }
                   className={cn(
                     "group relative flex gap-3 px-2 py-2 transition-colors duration-150 ease-out hover:bg-[#fbf7f2] cursor-pointer",
-                    number === selectedPassage.verse && "bg-[#fff3e8]",
                     highlightedVerse === verseKey && "bg-[#fff3e8]",
                   )}
                   data-verse={number}
                   key={`${label}-${selectedPassage.book}-${selectedPassage.chapter}-${number}`}
-                  onClick={() =>
-                    setPassage({
-                      book: selectedPassage.book,
-                      chapter: selectedPassage.chapter,
-                      verse: number,
-                    })
-                  }
+                  onClick={() => setHighlightedVerse(verseKey)}
                   transition={
                     isFlashing
                       ? { duration: 1.5, repeat: 1, ease: "easeInOut" }
@@ -1998,14 +1993,14 @@ function TranslationVerses({
                     </p>
                     <div
                       className={cn(
-                        "absolute right-2 top-0 bottom-0 my-auto hidden items-center gap-1",
-                        (number === selectedPassage.verse || highlightedVerse === verseKey) && "flex",
+                        "absolute right-2 -top-5 z-10 hidden w-fit items-center gap-0.5 rounded-full border border-[#e5d6c9] bg-[#fbf7f2] px-1 py-0.5 shadow-sm",
+                        highlightedVerse === verseKey && "flex",
                         "group-hover:flex",
                       )}
                     >
                       <button
                         aria-label={`Bookmark ${selectedPassage.book} ${selectedPassage.chapter}:${number}`}
-                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white/80 text-[#9b8878] backdrop-blur-sm transition-colors duration-150 ease-out hover:text-[#f6823c]"
+                        className="flex h-6 w-6 items-center justify-center text-[#9b8878] transition-colors duration-150 ease-out hover:text-[#f6823c]"
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleBookmark({
@@ -2019,14 +2014,14 @@ function TranslationVerses({
                       >
                         <Bookmark
                           className={cn(
-                            "h-3.5 w-3.5",
+                            "h-3 w-3",
                             isVerseBookmarked && "fill-current text-[#f6823c]",
                           )}
                         />
                       </button>
                       <button
                         aria-label={`Comment on ${label} ${selectedPassage.book} ${selectedPassage.chapter}:${number}`}
-                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white/80 text-[#9b8878] backdrop-blur-sm transition-colors duration-150 ease-out hover:text-[#3a2218]"
+                        className="flex h-6 w-6 items-center justify-center text-[#9b8878] transition-colors duration-150 ease-out hover:text-[#3a2218]"
                         onClick={(e) => {
                           e.stopPropagation();
                           setHighlightedVerse(verseKey);
@@ -2036,7 +2031,7 @@ function TranslationVerses({
                         }}
                         type="button"
                       >
-                        <MessageCircle className="h-3.5 w-3.5" />
+                        <MessageCircle className="h-3 w-3" />
                       </button>
                     </div>
                   </div>
