@@ -2065,7 +2065,7 @@ function ReaderFooter() {
             onClick={() => setActiveTab(tab)}
             type="button"
           >
-            {tab === "Parallel" && activeTab === tab && (
+            {tab === "Parallel" && (
               <List className="h-3.5 w-3.5" />
             )}
             {tab}
