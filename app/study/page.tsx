@@ -55,6 +55,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { MagnifyingGlassIcon } from "@/components/ui/magnifying-glass";
 import { RichScriptureText } from "@/components/rich-scripture-text";
@@ -2112,16 +2113,63 @@ function PublicStudy({
   selectedPassage: PassageSelection;
 }) {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const toggle = (name: string) =>
-    setReplyingTo((c) => (c === name ? null : name));
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [optimisticLikes, setOptimisticLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
+  const toggle = (id: string) =>
+    setReplyingTo((c) => (c === id ? null : id));
 
   const guestId = useStudyStore((s) => s.guestId);
+  const guestName = useStudyStore((s) => s.guestName);
   const comments = useQuery(api.comments.listForPassage, {
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
   });
 
   const toggleLike = useMutation(api.comments.toggleLike);
+  const createComment = useMutation(api.comments.create);
+
+  const handleLike = async (commentId: string, currentLikes: string[]) => {
+    const alreadyLiked = currentLikes.includes(guestId);
+    const newCount = alreadyLiked ? currentLikes.length - 1 : currentLikes.length + 1;
+    setOptimisticLikes((prev) => ({
+      ...prev,
+      [commentId]: { count: newCount, liked: !alreadyLiked },
+    }));
+    try {
+      await toggleLike({ id: commentId as Id<"comments">, guestId });
+    } catch (e) {
+      console.error(e);
+      setOptimisticLikes((prev) => {
+        const next = { ...prev };
+        delete next[commentId];
+        return next;
+      });
+    }
+  };
+
+  const handleReplySend = async (commentId: string) => {
+    const text = replyText[commentId]?.trim();
+    if (!text) return;
+    const parent = comments?.find((c) => c._id === commentId);
+    if (!parent) return;
+    try {
+      await createComment({
+        guestId,
+        guestName,
+        passageBook: parent.passageBook,
+        passageChapter: parent.passageChapter,
+        passageVerse: parent.passageVerse,
+        translationLabel: parent.translationLabel,
+        content: text,
+        parentId: commentId as Id<"comments">,
+      });
+      setReplyText((prev) => ({ ...prev, [commentId]: "" }));
+      setReplyingTo(null);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to send reply.");
+    }
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col px-4 py-4">
@@ -2171,28 +2219,36 @@ function PublicStudy({
             Be the first to comment on this chapter.
           </p>
         ) : (
-          comments.map((comment) => (
-            <ChatMessage
-              key={comment._id}
-              avatar={`https://ui-avatars.com/api/?name=${comment.guestName}&background=random`}
-              isReplying={replyingTo === comment._id}
-              likeIcon={comment.likes.includes(guestId) ? "heart" : "thumb"}
-              likes={comment.likes.length}
-              name={comment.guestName}
-              onReply={() => toggle(comment._id)}
-              onLike={() => toggleLike({ id: comment._id, guestId })}
-              reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
-              time={new Date(comment._creationTime).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            >
-              <RichScriptureText
-                text={comment.content}
-                className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
-              />
-            </ChatMessage>
-          ))
+          comments.map((comment) => {
+            const optimistic = optimisticLikes[comment._id];
+            const likesCount = optimistic?.count ?? comment.likes.length;
+            const isLiked = optimistic?.liked ?? comment.likes.includes(guestId);
+            return (
+              <ChatMessage
+                key={comment._id}
+                avatar={`https://ui-avatars.com/api/?name=${comment.guestName}&background=random`}
+                isReplying={replyingTo === comment._id}
+                likeIcon={isLiked ? "heart" : "thumb"}
+                likes={likesCount}
+                name={comment.guestName}
+                onReply={() => toggle(comment._id)}
+                onLike={() => handleLike(comment._id, comment.likes)}
+                reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
+                replyValue={replyText[comment._id] ?? ""}
+                onReplyChange={(v) => setReplyText((prev) => ({ ...prev, [comment._id]: v }))}
+                onReplySend={() => handleReplySend(comment._id)}
+                time={new Date(comment._creationTime).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              >
+                <RichScriptureText
+                  text={comment.content}
+                  className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
+                />
+              </ChatMessage>
+            );
+          })
         )}
       </div>
 
@@ -2434,6 +2490,9 @@ function ChatMessage({
   onReply,
   onLike,
   reference,
+  replyValue,
+  onReplyChange,
+  onReplySend,
   time,
 }: {
   avatar: string;
@@ -2445,30 +2504,45 @@ function ChatMessage({
   onReply: () => void;
   onLike?: () => void;
   reference: string;
+  replyValue?: string;
+  onReplyChange?: (v: string) => void;
+  onReplySend?: () => void;
   time: string;
 }) {
+  const [flashHeart, setFlashHeart] = useState(false);
   const LikeIcon = likeIcon === "heart" ? Heart : ThumbsUp;
+
+  const handleLike = () => {
+    if (likeIcon !== "heart") {
+      setFlashHeart(true);
+      setTimeout(() => setFlashHeart(false), 600);
+    }
+    onLike?.();
+  };
+
   return (
     <motion.div
       className="mb-3 border border-[#f1e8df] bg-[#fbf7f2] p-3"
       layout
       transition={{ duration: 0.18, ease: [0.215, 0.61, 0.355, 1] }}
     >
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex items-start gap-2">
         <img
           alt=""
           className="h-7 w-7 rounded-full object-cover"
           src={avatar}
         />
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="text-[12px] font-semibold text-[#25140b]">
-            {name}
-          </span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] font-semibold text-[#25140b]">
+              {name}
+            </span>
+            <span className="bg-[#fff3e8] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
+              {reference}
+            </span>
+          </div>
           <span className="text-[10px] text-[#9b8878]">{time}</span>
         </div>
-        <span className="bg-[#fff3e8] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
-          {reference}
-        </span>
       </div>
 
       {children}
@@ -2482,25 +2556,37 @@ function ChatMessage({
         >
           <MessageCircle className="h-3.5 w-3.5" />
         </button>
-        <motion.button
-          className={cn(
-            "flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold hover:text-[#f6823c]",
-            likeIcon === "heart"
-              ? "text-[#f6823c] bg-[#fff3e8]"
-              : "text-[#7a6758]",
+        <div className="flex items-center gap-1.5">
+          {flashHeart && (
+            <motion.div
+              animate={{ scale: [1, 1.4, 0], opacity: [1, 1, 0] }}
+              className="absolute"
+              initial={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <Heart className="h-3.5 w-3.5 fill-current text-[#f6823c]" />
+            </motion.div>
           )}
-          type="button"
-          onClick={onLike}
-          whileTap={{ scale: 0.8 }}
-        >
-          <LikeIcon
+          <motion.button
             className={cn(
-              "h-3.5 w-3.5",
-              likeIcon === "heart" && "fill-current",
+              "flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold hover:text-[#f6823c]",
+              likeIcon === "heart"
+                ? "text-[#f6823c] bg-[#fff3e8]"
+                : "text-[#7a6758]",
             )}
-          />
-          {likes}
-        </motion.button>
+            type="button"
+            onClick={handleLike}
+            whileTap={{ scale: 0.8 }}
+          >
+            <LikeIcon
+              className={cn(
+                "h-3.5 w-3.5",
+                likeIcon === "heart" && "fill-current",
+              )}
+            />
+            {likes}
+          </motion.button>
+        </div>
       </div>
 
       <div
@@ -2513,7 +2599,13 @@ function ChatMessage({
       >
         <div className="min-h-0 overflow-hidden">
           <div className="mt-3 border-t border-[#f1e8df] pt-3">
-            <ChatInput compact placeholder={`Reply to ${name}…`} />
+            <ChatInput
+              compact
+              onChange={onReplyChange}
+              onSend={onReplySend}
+              placeholder={`Reply to ${name}…`}
+              value={replyValue}
+            />
           </div>
         </div>
       </div>
