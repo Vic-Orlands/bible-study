@@ -166,6 +166,7 @@ export default function BibleApp() {
   const setRightTab = useStudyStore((s) => s.setRightTab);
   const setCommentTarget = useStudyStore((s) => s.setCommentTarget);
   const setVersePrefill = useStudyStore((s) => s.setVersePrefill);
+  const setHighlightedVerse = useStudyStore((s) => s.setHighlightedVerse);
 
   const [storeReady, setStoreReady] = useState(false);
 
@@ -241,9 +242,12 @@ export default function BibleApp() {
   const handlePassageChange = useCallback(
     (selection: PassageSelection) => {
       setPassage(selection);
+      setHighlightedVerse(
+        `${selection.book}-${selection.chapter}-${selection.verse}`,
+      );
       showToast(`Opened ${formatReference(selection)}`);
     },
-    [setPassage, showToast],
+    [setPassage, setHighlightedVerse, showToast],
   );
 
   const handleVerseComment = useCallback(
