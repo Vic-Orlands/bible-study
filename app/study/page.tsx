@@ -174,6 +174,7 @@ export default function BibleApp() {
 
   const { leftOpen, rightOpen } = sidebars;
   const guestId = useStudyStore((s) => s.guestId);
+  const highlightedVerse = useStudyStore((s) => s.highlightedVerse);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -301,19 +302,22 @@ export default function BibleApp() {
                 (b) =>
                   b.passageBook === selectedPassage.book &&
                   b.passageChapter === selectedPassage.chapter &&
-                  b.passageVerse === selectedPassage.verse,
+                  b.passageVerse === (highlightedVerse ? parseInt(highlightedVerse.split("-").pop()!) : selectedPassage.verse),
               )}
               onBookmark={async () => {
+                const verseToBookmark = highlightedVerse
+                  ? parseInt(highlightedVerse.split("-").pop()!)
+                  : selectedPassage.verse;
                 const added = await toggleBookmark({
                   guestId,
                   passageBook: selectedPassage.book,
                   passageChapter: selectedPassage.chapter,
-                  passageVerse: selectedPassage.verse,
+                  passageVerse: verseToBookmark,
                 });
                 showToast(
                   added
-                    ? `Bookmarked ${formatReference(selectedPassage)}`
-                    : `Removed bookmark for ${formatReference(selectedPassage)}`,
+                    ? `Bookmarked ${selectedPassage.book} ${selectedPassage.chapter}:${verseToBookmark}`
+                    : `Removed bookmark for ${selectedPassage.book} ${selectedPassage.chapter}:${verseToBookmark}`,
                 );
               }}
               onPassageChange={handlePassageChange}
@@ -389,6 +393,17 @@ export default function BibleApp() {
                     <span className="text-[14px] font-bold text-[#25140b]">
                       {b.passageBook} {b.passageChapter}:{b.passageVerse}
                     </span>
+                    {(() => {
+                      const versionKey = `${b.passageBook}-${b.passageChapter}`;
+                      const verseText = chapterVerses[versionKey]?.find(
+                        (v) => v.number === b.passageVerse,
+                      )?.text;
+                      return verseText ? (
+                        <p className="mt-1 font-serif text-[13px] leading-relaxed text-[#5d493a] line-clamp-2">
+                          {verseText}
+                        </p>
+                      ) : null;
+                    })()}
                   </button>
 
                   <div className="pr-2">
@@ -1872,6 +1887,8 @@ function TranslationVerses({
 }) {
   const mp = translationColumnMotion(visibleCount);
   const flashingVerse = useStudyStore((s) => s.flashingVerse);
+  const highlightedVerse = useStudyStore((s) => s.highlightedVerse);
+  const setHighlightedVerse = useStudyStore((s) => s.setHighlightedVerse);
   return (
     <motion.div
       animate={mp.animate}
@@ -1909,6 +1926,7 @@ function TranslationVerses({
                   className={cn(
                     "group relative flex gap-3 px-2 py-2 transition-colors duration-150 ease-out hover:bg-[#fbf7f2]",
                     number === selectedPassage.verse && "bg-[#fff3e8]",
+                    highlightedVerse === verseKey && "bg-[#fff3e8]",
                   )}
                   data-verse={number}
                   key={`${label}-${selectedPassage.book}-${selectedPassage.chapter}-${number}`}
@@ -1929,13 +1947,14 @@ function TranslationVerses({
                       aria-label={`Comment on ${label} ${selectedPassage.book} ${selectedPassage.chapter}:${number}`}
                       className={cn(
                         "absolute right-2 top-0 bottom-0 my-auto hidden h-7 w-7 items-center justify-center bg-white/80 text-[#9b8878] rounded-full backdrop-blur-sm transition-colors duration-150 ease-out hover:text-[#3a2218] group-hover:flex",
-                        number === selectedPassage.verse && "flex",
+                        (number === selectedPassage.verse || highlightedVerse === verseKey) && "flex",
                       )}
-                      onClick={() =>
+                      onClick={() => {
+                        setHighlightedVerse(verseKey);
                         onComment(
                           `${label} ${selectedPassage.book} ${selectedPassage.chapter}:${number}`,
-                        )
-                      }
+                        );
+                      }}
                       type="button"
                     >
                       <MessageCircle className="h-3.5 w-3.5" />
