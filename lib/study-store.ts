@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type RightTab = "Study" | "Notes" | "Audio Notes" | "Activity";
+export type RightTab = "Study" | "Notes" | "Audio Notes" | "Activity" | "Commentary" | "Cross-Refs";
 export type PassageSelection = { book: string; chapter: number; verse: number };
 export type StudySidebars = { leftOpen: boolean; rightOpen: boolean };
 

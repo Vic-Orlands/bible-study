@@ -2452,7 +2452,7 @@ function RightPanel({
       <RailCollapseHandle side="right" onClick={onCollapse} />
       <div className="flex items-center justify-between border-b border-[#f1e8df] bg-white px-4">
         <div className="flex gap-1">
-          {(["Study", "Notes", "Audio Notes", "Activity"] as RightTab[]).map(
+          {(["Study", "Notes", "Audio Notes", "Commentary", "Cross-Refs", "Activity"] as RightTab[]).map(
             (item) => (
               <button
                 className={cn(
@@ -2507,6 +2507,12 @@ function RightPanel({
             {tab === "Audio Notes" && (
               <AudioNotesPanel selectedPassage={selectedPassage} />
             )}
+            {tab === "Commentary" && (
+              <CommentaryPanel selectedPassage={selectedPassage} />
+            )}
+            {tab === "Cross-Refs" && (
+              <CrossRefsPanel selectedPassage={selectedPassage} />
+            )}
             {tab === "Activity" && (
               <ActivityPanel selectedPassage={selectedPassage} />
             )}
@@ -2529,6 +2535,8 @@ function PublicStudy({
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
   const [optimisticLikes, setOptimisticLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
+  const [sendingComment, setSendingComment] = useState(false);
+  const [sendingReplies, setSendingReplies] = useState<Record<string, boolean>>({});
   const toggle = (id: string, name?: string) => {
     setReplyingTo((c) => {
       const next = c === id ? null : id;
@@ -2546,6 +2554,7 @@ function PublicStudy({
 
   const toggleLike = useMutation(api.comments.toggleLike);
   const createComment = useMutation(api.comments.create);
+  const updateComment = useMutation(api.comments.update);
   const removeComment = useMutation(api.comments.remove);
 
   const threads = useMemo(() => {
@@ -2589,6 +2598,7 @@ function PublicStudy({
     if (!text) return;
     const parent = comments?.find((c) => c._id === commentId);
     if (!parent) return;
+    setSendingReplies((prev) => ({ ...prev, [commentId]: true }));
     try {
       await createComment({
         guestId,
@@ -2606,6 +2616,12 @@ function PublicStudy({
     } catch (e) {
       console.error(e);
       toast.error("Failed to send reply.");
+    } finally {
+      setSendingReplies((prev) => {
+        const next = { ...prev };
+        delete next[commentId];
+        return next;
+      });
     }
   };
 
@@ -2618,11 +2634,22 @@ function PublicStudy({
     }
   };
 
+  const handleEdit = async (commentId: string, newContent: string) => {
+    try {
+      await updateComment({ id: commentId as Id<"comments">, guestId, content: newContent });
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to edit comment.");
+    }
+  };
+
   const toggleReplies = (commentId: string) => {
     setExpandedReplies((prev) => ({ ...prev, [commentId]: !prev[commentId] }));
   };
 
   const totalComments = comments?.length ?? 0;
+  const topLevelCount = threads.topLevel.length;
+  const repliesCount = totalComments - topLevelCount;
 
   return (
     <div className="flex h-full min-h-0 flex-col px-4 py-4">
@@ -2632,7 +2659,7 @@ function PublicStudy({
             Public Study
           </span>
           <span className="ml-2 text-[11px] text-[#9b8878]">
-            {totalComments} comments
+            {totalComments} total · {topLevelCount} comments · {repliesCount} replies
           </span>
         </div>
         <button
@@ -2703,12 +2730,14 @@ function PublicStudy({
               <div key={comment._id}>
                 <ChatMessage
                   avatar={`https://ui-avatars.com/api/?name=${comment.guestName}&background=random`}
+                  initialContent={comment.content}
                   isOwner={comment.guestId === guestId}
                   isReplying={replyingTo === comment._id}
                   likeIcon={isLiked ? "heart" : "thumb"}
                   likes={likesCount}
                   name={comment.guestName}
                   onDelete={() => handleDelete(comment._id)}
+                  onEdit={(newContent) => handleEdit(comment._id, newContent)}
                   onReply={() => toggle(comment._id, comment.guestName)}
                   onLike={() => handleLike(comment._id, comment.likes)}
                   reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
@@ -2756,12 +2785,14 @@ function PublicStudy({
                                 <ChatMessage
                                   key={reply._id}
                                   avatar={`https://ui-avatars.com/api/?name=${reply.guestName}&background=random`}
+                                  initialContent={reply.content}
                                   isOwner={reply.guestId === guestId}
                                   isReply={true}
                                   likeIcon={rIsLiked ? "heart" : "thumb"}
                                   likes={rLikes}
                                   name={reply.guestName}
                                   onDelete={() => handleDelete(reply._id)}
+                                  onEdit={(newContent) => handleEdit(reply._id, newContent)}
                                   onLike={() => handleLike(reply._id, reply.likes)}
                                   reference={`${reply.passageBook} ${reply.passageChapter}:${reply.passageVerse}`}
                                   time={new Date(reply._creationTime).toLocaleTimeString([], {
@@ -2815,6 +2846,7 @@ function PersonalNotes({
     passageChapter: selectedPassage.chapter,
   });
   const removeNote = useMutation(api.notes.remove);
+  const updateNote = useMutation(api.notes.update);
 
   const handleDelete = async (id: string) => {
     try {
@@ -2823,6 +2855,26 @@ function PersonalNotes({
       console.error(e);
       toast.error("Failed to delete note.");
     }
+  };
+
+  const handleEdit = async (id: string, content: string, type?: string) => {
+    try {
+      await updateNote({
+        id: id as Id<"notes">,
+        guestId,
+        content,
+        ...(type && { type: type as "observation" | "interpretation" | "application" }),
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to edit note.");
+    }
+  };
+
+  const typeConfig: Record<string, { label: string; color: string }> = {
+    observation: { label: "Observation", color: "#3a2218" },
+    interpretation: { label: "Interpretation", color: "#7a5c2e" },
+    application: { label: "Application", color: "#2e6b3d" },
   };
 
   return (
@@ -2838,44 +2890,161 @@ function PersonalNotes({
         {notes === undefined ? (
           <p className="text-[12px] text-[#7a6758]">Loading notes...</p>
         ) : notes.length === 0 ? (
-          <p className="text-[12px] text-[#7a6758]">
-            No notes yet for {selectedPassage.book} {selectedPassage.chapter}.
-          </p>
+          <div className="flex flex-col items-center py-12 text-center">
+            <div className="mb-3 text-3xl">📝</div>
+            <p className="text-[13px] font-semibold text-[#3a2218]">
+              No notes yet
+            </p>
+            <p className="mt-1 text-[11px] text-[#9b8878]">
+              Start by adding your first note below.
+            </p>
+          </div>
         ) : (
           notes.map((note) => (
-            <article
+            <NoteCard
               key={note._id}
-              className="mb-3 border border-[#f1e8df] bg-[#fbf7f2] p-3"
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[12px] font-semibold text-[#25140b] capitalize">
-                  {note.type}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-[#9b8878]">
-                    v{note.passageVerse}
-                  </span>
-                  <button
-                    aria-label="Delete note"
-                    className="icon-button flex h-6 w-6 items-center justify-center text-[#9b8878] hover:text-[#a24723]"
-                    onClick={() => handleDelete(note._id)}
-                    type="button"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-              <RichScriptureText
-                text={note.content}
-                className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
-              />
-            </article>
+              note={note}
+              typeConfig={typeConfig}
+              onDelete={() => handleDelete(note._id)}
+              onEdit={(content, type) => handleEdit(note._id, content, type)}
+            />
           ))
         )}
       </div>
 
       <Composer target={commentTarget} selectedPassage={selectedPassage} />
     </div>
+  );
+}
+
+function NoteCard({
+  note,
+  typeConfig,
+  onDelete,
+  onEdit,
+}: {
+  note: { _id: string; content: string; type: string; passageVerse?: number };
+  typeConfig: Record<string, { label: string; color: string }>;
+  onDelete: () => void;
+  onEdit: (content: string, type?: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(note.content);
+  const [editType, setEditType] = useState(note.type);
+  const [showMenu, setShowMenu] = useState(false);
+
+  const tc = typeConfig[note.type] ?? typeConfig.observation;
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditContent(note.content);
+      setEditType(note.type);
+    }
+  }, [isEditing, note.content, note.type]);
+
+  const handleSave = () => {
+    const trimmed = editContent.trim();
+    if (trimmed) {
+      onEdit(trimmed, editType !== note.type ? editType : undefined);
+    }
+    setIsEditing(false);
+  };
+
+  return (
+    <article className="mb-3 border border-[#f1e8df] bg-[#fbf7f2] p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span
+            className="rounded px-1.5 py-px text-[10px] font-semibold capitalize"
+            style={{ backgroundColor: tc.color + "20", color: tc.color }}
+          >
+            {tc.label}
+          </span>
+          <span className="text-[10px] text-[#9b8878]">
+            {note.passageVerse ? `v${note.passageVerse}` : ""}
+          </span>
+        </div>
+        <div className="relative">
+          <button
+            className="flex h-6 w-6 items-center justify-center text-[#9b8878] hover:text-[#3a2218]"
+            onClick={() => setShowMenu((v) => !v)}
+            type="button"
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+          {showMenu && (
+            <div className="absolute right-0 top-7 z-10 w-36 rounded-lg border border-[#f1e8df] bg-white py-1 shadow-md">
+              <button
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#3a2218] hover:bg-[#fbf7f2]"
+                onClick={() => { setShowMenu(false); setIsEditing(true); }}
+                type="button"
+              >
+                <span className="text-[13px]">✏️</span>
+                Edit
+              </button>
+              <button
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#a24723] hover:bg-[#fbf7f2]"
+                onClick={() => { setShowMenu(false); onDelete(); }}
+                type="button"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isEditing ? (
+        <div>
+          <div className="mb-2 flex gap-1.5">
+            {Object.entries(typeConfig).map(([key, val]) => (
+              <button
+                key={key}
+                className={cn(
+                  "rounded px-2 py-0.5 text-[10px] font-semibold capitalize transition-colors",
+                  editType === key
+                    ? "text-white"
+                    : "border border-[#e5d6c9] text-[#7a6758]",
+                )}
+                onClick={() => setEditType(key)}
+                style={editType === key ? { backgroundColor: val.color } : {}}
+                type="button"
+              >
+                {val.label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            className="mb-2 w-full resize-none rounded border border-[#e5d6c9] bg-white px-2 py-1.5 text-[13px] text-[#3a2218] outline-none focus:border-[#f6823c]"
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={3}
+            value={editContent}
+          />
+          <div className="flex gap-2">
+            <button
+              className="rounded bg-[#3a2218] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#1f1209]"
+              onClick={handleSave}
+              type="button"
+            >
+              Save
+            </button>
+            <button
+              className="rounded border border-[#e5d6c9] px-2.5 py-1 text-[11px] font-semibold text-[#7a6758] hover:bg-white"
+              onClick={() => setIsEditing(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <RichScriptureText
+          text={note.content}
+          className="font-serif text-[13px] leading-relaxed text-[#3a2218]"
+        />
+      )}
+    </article>
   );
 }
 
@@ -3047,6 +3216,7 @@ function ActivityPanel({
 function ChatMessage({
   avatar,
   children,
+  initialContent,
   isOwner = false,
   isReply = false,
   isReplying,
@@ -3056,6 +3226,7 @@ function ChatMessage({
   onDelete,
   onReply,
   onLike,
+  onEdit,
   reference,
   replyValue,
   onReplyChange,
@@ -3064,6 +3235,7 @@ function ChatMessage({
 }: {
   avatar: string;
   children: React.ReactNode;
+  initialContent?: string;
   isOwner?: boolean;
   isReply?: boolean;
   isReplying?: boolean;
@@ -3073,6 +3245,7 @@ function ChatMessage({
   onDelete?: () => void;
   onReply?: () => void;
   onLike?: () => void;
+  onEdit?: (newContent: string) => void;
   reference: string;
   replyValue?: string;
   onReplyChange?: (v: string) => void;
@@ -3080,9 +3253,16 @@ function ChatMessage({
   time: string;
 }) {
   const [flashHeart, setFlashHeart] = useState(false);
-  const [showReactions, setShowReactions] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(initialContent ?? "");
   const LikeIcon = likeIcon === "heart" ? Heart : ThumbsUp;
+
+  useEffect(() => {
+    if (isEditing && initialContent !== undefined) {
+      setEditValue(initialContent);
+    }
+  }, [initialContent, isEditing]);
 
   const handleLike = () => {
     if (likeIcon !== "heart") {
@@ -3090,6 +3270,20 @@ function ChatMessage({
       setTimeout(() => setFlashHeart(false), 600);
     }
     onLike?.();
+  };
+
+  const handleEditSave = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== initialContent) {
+      onEdit?.(trimmed);
+    }
+    setIsEditing(false);
+    setShowMenu(false);
+  };
+
+  const handleEditCancel = () => {
+    setEditValue(initialContent ?? "");
+    setIsEditing(false);
   };
 
   return (
@@ -3126,7 +3320,34 @@ function ChatMessage({
             "mt-0.5 text-[13px] leading-[1.4] text-[#3a2218]",
             isReply ? "text-[12px]" : "",
           )}>
-            {children}
+            {isEditing ? (
+              <div>
+                <textarea
+                  className="w-full resize-none rounded border border-[#e5d6c9] bg-[#fbf7f2] px-2 py-1.5 text-[13px] text-[#3a2218] outline-none focus:border-[#f6823c]"
+                  onChange={(e) => setEditValue(e.target.value)}
+                  rows={2}
+                  value={editValue}
+                />
+                <div className="mt-1.5 flex gap-2">
+                  <button
+                    className="rounded bg-[#3a2218] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#1f1209]"
+                    onClick={handleEditSave}
+                    type="button"
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="rounded border border-[#e5d6c9] px-2.5 py-1 text-[11px] font-semibold text-[#7a6758] hover:bg-[#fbf7f2]"
+                    onClick={handleEditCancel}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              children
+            )}
           </div>
 
           <div className="mt-1 flex items-center gap-3">
@@ -3202,6 +3423,17 @@ function ChatMessage({
             </button>
             {showMenu && (
               <div className="absolute right-0 top-7 z-10 w-32 rounded-lg border border-[#f1e8df] bg-white py-1 shadow-md">
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#3a2218] hover:bg-[#fbf7f2]"
+                  onClick={() => {
+                    setShowMenu(false);
+                    setIsEditing(true);
+                  }}
+                  type="button"
+                >
+                  <span className="text-[13px]">✏️</span>
+                  Edit
+                </button>
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[#a24723] hover:bg-[#fbf7f2]"
                   onClick={() => {
@@ -3337,24 +3569,50 @@ function Composer({
         </div>
       )}
       <div className="flex items-center gap-2 border-b border-[#f1e8df] px-3 py-2">
-        {["B", "I", "U"].map((item) => (
-          <button
-            className="icon-button flex h-6 w-6 items-center justify-center text-[12px] font-semibold text-[#3a2218] hover:text-[#f6823c]"
-            key={item}
-            type="button"
-          >
-            {item}
-          </button>
-        ))}
+        <button
+          aria-label="Bold"
+          className="flex h-6 w-6 items-center justify-center text-[12px] font-bold text-[#3a2218] hover:text-[#f6823c] disabled:opacity-40"
+          disabled={isSending}
+          onClick={() => setContent((c) => `**${c}**`)}
+          title="Bold"
+          type="button"
+        >
+          B
+        </button>
+        <button
+          aria-label="Italic"
+          className="flex h-6 w-6 items-center justify-center text-[12px] italic text-[#3a2218] hover:text-[#f6823c] disabled:opacity-40"
+          disabled={isSending}
+          onClick={() => setContent((c) => `*${c}*`)}
+          title="Italic"
+          type="button"
+        >
+          <em>I</em>
+        </button>
+        <button
+          aria-label="Underline"
+          className="flex h-6 w-6 items-center justify-center text-[12px] underline text-[#3a2218] hover:text-[#f6823c] disabled:opacity-40"
+          disabled={isSending}
+          onClick={() => setContent((c) => `<u>${c}</u>`)}
+          title="Underline"
+          type="button"
+        >
+          U
+        </button>
         <span className="mx-1 h-4 w-px bg-[#e5d6c9]" />
         <button
-          className="icon-button flex h-6 w-6 items-center justify-center text-[#3a2218] hover:text-[#f6823c]"
+          aria-label="Link"
+          className="flex h-6 w-6 items-center justify-center text-[#3a2218] hover:text-[#f6823c] disabled:opacity-40"
+          disabled={isSending}
+          onClick={() => setContent((c) => `[${c}](url)`)}
+          title="Link"
           type="button"
         >
           <Link2 className="h-3 w-3" />
         </button>
       </div>
       <ChatInput
+        disabled={isSending}
         onChange={(v) => setContent(v)}
         onSend={handleSend}
         placeholder={`Write a note on ${target}…`}
@@ -3370,12 +3628,14 @@ function ChatInput({
   value,
   onChange,
   onSend,
+  disabled = false,
 }: {
   compact?: boolean;
   placeholder: string;
   value?: string;
   onChange?: (val: string) => void;
   onSend?: () => void;
+  disabled?: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -3388,6 +3648,26 @@ function ChatInput({
     }
   }, [value]);
 
+  const insertMarkdown = (prefix: string, suffix: string = prefix) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const current = value ?? "";
+    const selected = current.slice(start, end);
+    const before = current.slice(0, start);
+    const after = current.slice(end);
+    const newText = before + prefix + selected + suffix + after;
+    onChange?.(newText);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(
+        start + prefix.length,
+        end + prefix.length,
+      );
+    });
+  };
+
   return (
     <div
       className={cn(
@@ -3395,14 +3675,58 @@ function ChatInput({
         compact && "border border-[#e5d6c9]",
       )}
     >
+      <div className="flex items-start gap-1">
+        <button
+          aria-label="Bold"
+          className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded text-[11px] font-bold text-[#7a6758] hover:bg-[#f1e8df] hover:text-[#3a2218] disabled:opacity-40"
+          disabled={disabled}
+          onClick={() => insertMarkdown("**")}
+          title="Bold"
+          type="button"
+        >
+          B
+        </button>
+        <button
+          aria-label="Italic"
+          className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded text-[11px] italic text-[#7a6758] hover:bg-[#f1e8df] hover:text-[#3a2218] disabled:opacity-40"
+          disabled={disabled}
+          onClick={() => insertMarkdown("*")}
+          title="Italic"
+          type="button"
+        >
+          <em>I</em>
+        </button>
+        <button
+          aria-label="Underline"
+          className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded text-[11px] underline text-[#7a6758] hover:bg-[#f1e8df] hover:text-[#3a2218] disabled:opacity-40"
+          disabled={disabled}
+          onClick={() => insertMarkdown("<u>", "</u>")}
+          title="Underline"
+          type="button"
+        >
+          <span className="text-[10px]">U</span>
+        </button>
+        <button
+          aria-label="Link"
+          className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded text-[11px] text-[#7a6758] hover:bg-[#f1e8df] hover:text-[#3a2218] disabled:opacity-40"
+          disabled={disabled}
+          onClick={() => insertMarkdown("[", "](url)")}
+          title="Link"
+          type="button"
+        >
+          <span className="text-[10px]">🔗</span>
+        </button>
+      </div>
+
       <textarea
         ref={textareaRef}
-        className="w-full resize-none overflow-y-auto bg-transparent text-[13px] leading-relaxed text-[#3a2218] outline-none placeholder:text-[#9b8878] bible-app-scroll py-1"
+        className="w-full resize-none overflow-y-auto bg-transparent text-[13px] leading-relaxed text-[#3a2218] outline-none placeholder:text-[#9b8878] bible-app-scroll py-1 disabled:opacity-60"
+        disabled={disabled}
         onChange={(e) => onChange?.(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            onSend?.();
+            if (!disabled) onSend?.();
           }
         }}
         placeholder={placeholder}
@@ -3412,7 +3736,8 @@ function ChatInput({
       <div className="flex items-center justify-end gap-1">
         <button
           aria-label="Record voice note"
-          className="icon-button flex h-7 w-7 shrink-0 items-center justify-center text-[#7a6758] hover:bg-[#fff3e8] hover:text-[#3a2218]"
+          className="icon-button flex h-7 w-7 shrink-0 items-center justify-center text-[#7a6758] hover:bg-[#fff3e8] hover:text-[#3a2218] disabled:opacity-40"
+          disabled={disabled}
           onClick={() => toast("Voice note recording coming soon")}
           type="button"
         >
@@ -3420,11 +3745,16 @@ function ChatInput({
         </button>
         <button
           aria-label="Send message"
-          className="icon-button flex h-7 w-7 shrink-0 items-center justify-center bg-[#3a2218] text-white hover:bg-[#1f1209] active:scale-95"
+          className="icon-button flex h-7 w-7 shrink-0 items-center justify-center bg-[#3a2218] text-white hover:bg-[#1f1209] active:scale-95 disabled:opacity-60"
+          disabled={disabled}
           onClick={() => onSend?.()}
           type="button"
         >
-          <SendHorizontal className="h-3.5 w-3.5" />
+          {disabled ? (
+            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          ) : (
+            <SendHorizontal className="h-3.5 w-3.5" />
+          )}
         </button>
       </div>
     </div>
@@ -3457,6 +3787,184 @@ function FileRow({
       >
         <Download className="h-3.5 w-3.5" />
       </button>
+    </div>
+  );
+}
+
+function CommentaryPanel({
+  selectedPassage,
+}: {
+  selectedPassage: PassageSelection;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [content, setContent] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const bookId = selectedPassage.book.toUpperCase().replace(/\s+/g, "_");
+    setLoading(true);
+    setError(null);
+    setContent(null);
+    fetch(`/api/helloao?path=commentaries/SWIFT/${bookId}/${selectedPassage.chapter}.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error("No commentary available");
+        return r.json();
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setContent(data);
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        console.error(e);
+        if (!cancelled) {
+          setError("No commentary available for this passage.");
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [selectedPassage.book, selectedPassage.chapter]);
+
+  const renderContent = (parts: any[]) => {
+    if (!parts) return null;
+    return parts.map((part, i) => {
+      if (typeof part === "string") return <span key={i}>{part}</span>;
+      if (part.lineBreak) return <br key={i} />;
+      if (part.text) return <span key={i}>{part.text}</span>;
+      return null;
+    });
+  };
+
+  return (
+    <div className="flex h-full min-h-0 flex-col px-4 py-4">
+      <div className="mb-3 shrink-0">
+        <h2 className="text-[13px] font-semibold text-[#25140b]">Commentary</h2>
+        <p className="mt-0.5 text-[11px] text-[#9b8878]">
+          {selectedPassage.book} {selectedPassage.chapter}
+        </p>
+      </div>
+      <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto pr-1">
+        {loading ? (
+          <div className="flex items-center justify-center h-24">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#f6823c] border-t-transparent" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center py-12 text-center">
+            <div className="mb-3 text-3xl">📖</div>
+            <p className="text-[13px] font-semibold text-[#3a2218]">No commentary</p>
+            <p className="mt-1 text-[11px] text-[#9b8878]">{error}</p>
+          </div>
+        ) : content ? (
+          <div className="text-[13px] leading-relaxed text-[#3a2218]">
+            {content.chapter?.content?.map((item: any, i: number) => {
+              if (item.type === "heading") {
+                return (
+                  <p key={i} className="mt-4 mb-2 text-[14px] font-semibold text-[#25140b]">
+                    {renderContent(item.content)}
+                  </p>
+                );
+              }
+              if (item.type === "verse") {
+                return (
+                  <p key={i} className="mb-2 font-serif">
+                    <span className="mr-1 font-semibold text-[#f6823c]">{item.number}</span>
+                    {renderContent(item.content)}
+                  </p>
+                );
+              }
+              return null;
+            })}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function CrossRefsPanel({
+  selectedPassage,
+}: {
+  selectedPassage: PassageSelection;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [crossRefs, setCrossRefs] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const bookId = selectedPassage.book.toUpperCase().replace(/\s+/g, "_");
+    setLoading(true);
+    setError(null);
+    setCrossRefs([]);
+    fetch(`/api/helloao?path=d/open-cross-ref/${bookId}/${selectedPassage.chapter}.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error("No cross-references available");
+        return r.json();
+      })
+      .then((data) => {
+        if (!cancelled) {
+          const refs = data.chapter?.crossReferences ?? data.crossReferences ?? [];
+          setCrossRefs(refs);
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        console.error(e);
+        if (!cancelled) {
+          setError("No cross-references for this passage.");
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [selectedPassage.book, selectedPassage.chapter]);
+
+  return (
+    <div className="flex h-full min-h-0 flex-col px-4 py-4">
+      <div className="mb-3 shrink-0">
+        <h2 className="text-[13px] font-semibold text-[#25140b]">Cross-References</h2>
+        <p className="mt-0.5 text-[11px] text-[#9b8878]">
+          {crossRefs.length} refs for {selectedPassage.book} {selectedPassage.chapter}
+        </p>
+      </div>
+      <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto pr-1">
+        {loading ? (
+          <div className="flex items-center justify-center h-24">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#f6823c] border-t-transparent" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center py-12 text-center">
+            <div className="mb-3 text-3xl">🔗</div>
+            <p className="text-[13px] font-semibold text-[#3a2218]">No cross-refs</p>
+            <p className="mt-1 text-[11px] text-[#9b8878]">{error}</p>
+          </div>
+        ) : crossRefs.length === 0 ? (
+          <div className="flex flex-col items-center py-12 text-center">
+            <div className="mb-3 text-3xl">🔗</div>
+            <p className="text-[13px] font-semibold text-[#3a2218]">No cross-references</p>
+            <p className="mt-1 text-[11px] text-[#9b8878]">Check back in a future update.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {crossRefs.map((ref: any, i: number) => {
+              const fromVerse = ref.source ?? ref.from ?? ref.verse ?? "?";
+              const toVerse = ref.target ?? ref.to ?? ref.ref ?? "?";
+              const toText = ref.text ?? ref.content ?? ref.note ?? "";
+              return (
+                <div key={i} className="border border-[#f1e8df] bg-[#fbf7f2] p-2.5">
+                  <div className="mb-1 text-[11px] font-semibold text-[#f6823c]">
+                    v{fromVerse} → {toVerse}
+                  </div>
+                  <p className="text-[12px] font-serif leading-relaxed text-[#3a2218]">
+                    {toText}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

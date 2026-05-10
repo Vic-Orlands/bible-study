@@ -61,3 +61,26 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+export const update = mutation({
+  args: {
+    id: v.id("notes"),
+    guestId: v.string(),
+    content: v.string(),
+    type: v.optional(v.union(
+      v.literal("observation"),
+      v.literal("interpretation"),
+      v.literal("application")
+    )),
+  },
+  handler: async (ctx, args) => {
+    const note = await ctx.db.get(args.id);
+    if (!note || note.guestId !== args.guestId) {
+      return;
+    }
+    await ctx.db.patch(args.id, {
+      content: args.content,
+      ...(args.type !== undefined && { type: args.type }),
+    });
+  },
+});

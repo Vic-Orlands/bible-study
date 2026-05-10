@@ -77,3 +77,18 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+export const update = mutation({
+  args: {
+    id: v.id("comments"),
+    guestId: v.string(),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const comment = await ctx.db.get(args.id);
+    if (!comment || comment.guestId !== args.guestId) {
+      return;
+    }
+    await ctx.db.patch(args.id, { content: args.content });
+  },
+});
