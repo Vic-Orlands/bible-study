@@ -2533,7 +2533,7 @@ function ChatMessage({
           src={avatar}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[12px] font-semibold text-[#25140b]">
               {name}
             </span>
