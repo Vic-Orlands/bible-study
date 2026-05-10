@@ -1,10 +1,18 @@
 import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  ...authTables,
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+    image: v.optional(v.string()),
+  }).index("byEmail", ["email"]),
+
   notes: defineTable({
-    guestId: v.string(),
-    guestName: v.string(),
+    userId: v.optional(v.string()),
+    guestId: v.optional(v.string()),
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.optional(v.number()),
@@ -15,12 +23,14 @@ export default defineSchema({
       v.literal("application"),
     ),
   })
-    .index("by_guest_passage", ["guestId", "passageBook", "passageChapter"])
+    .index("by_user_passage", ["userId", "passageBook", "passageChapter"])
     .index("by_passage", ["passageBook", "passageChapter"]),
 
   comments: defineTable({
-    guestId: v.string(),
-    guestName: v.string(),
+    userId: v.optional(v.string()),
+    userName: v.optional(v.string()),
+    guestId: v.optional(v.string()),
+    guestName: v.optional(v.string()),
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.number(),
@@ -33,22 +43,24 @@ export default defineSchema({
     .index("by_parent", ["parentId"]),
 
   bookmarks: defineTable({
-    guestId: v.string(),
+    userId: v.optional(v.string()),
+    guestId: v.optional(v.string()),
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.number(),
   })
-    .index("by_guest", ["guestId"])
-    .index("by_guest_passage", [
-      "guestId",
+    .index("by_user", ["userId"])
+    .index("by_user_passage", [
+      "userId",
       "passageBook",
       "passageChapter",
       "passageVerse",
     ]),
 
   audioNotes: defineTable({
-    guestId: v.string(),
-    guestName: v.string(),
+    userId: v.optional(v.string()),
+    guestId: v.optional(v.string()),
+    guestName: v.optional(v.string()),
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.optional(v.number()),
@@ -62,5 +74,26 @@ export default defineSchema({
     waveform: v.optional(v.array(v.number())),
   })
     .index("by_passage", ["passageBook", "passageChapter"])
-    .index("by_guest", ["guestId"]),
+    .index("by_user", ["userId"]),
+
+  notifications: defineTable({
+    userId: v.string(),
+    type: v.union(
+      v.literal("comment"),
+      v.literal("reply"),
+      v.literal("like"),
+      v.literal("mention"),
+    ),
+    read: v.boolean(),
+    actorName: v.string(),
+    actorAvatar: v.optional(v.string()),
+    passageBook: v.string(),
+    passageChapter: v.number(),
+    passageVerse: v.optional(v.number()),
+    commentId: v.optional(v.id("comments")),
+    preview: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_read", ["userId", "read"]),
 });

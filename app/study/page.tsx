@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlignLeft,
   Bookmark,
   BookOpen,
   ChevronDown,
@@ -26,6 +27,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useConvexAuth, useAuthActions } from "@convex-dev/auth/react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -176,16 +178,18 @@ export default function BibleApp() {
   }, []);
 
   const { leftOpen, rightOpen } = sidebars;
-  const guestId = useStudyStore((s) => s.guestId);
+  const auth = useConvexAuth();
+  const identity = useQuery(api.auth.getUserIdentity);
+  const userId = identity?.userId ?? "anonymous";
+  const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
   const highlightedVerse = useStudyStore((s) => s.highlightedVerse);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sheetView, setSheetView] = useState<
     "bookmarks" | "settings" | "profile" | "login"
   >("bookmarks");
   const toggleBookmark = useMutation(api.bookmarks.toggle);
-  const bookmarks = useQuery(api.bookmarks.listForGuest, { guestId }) || [];
+  const bookmarks = useQuery(api.bookmarks.listForGuest) || [];
 
   const bookId = useMemo(
     () => getBookId(bibleBooks, selectedPassage.book),
@@ -267,13 +271,8 @@ export default function BibleApp() {
 
   return (
     <ProductShell
-      onOpenNotifications={() => {
-        setSheetView("profile");
-        setNotificationsOpen(true);
-      }}
       onOpenSettings={() => {
         setSheetView("settings");
-        setNotificationsOpen(true);
       }}
       onOpenBookmarks={() => {
         setSheetView("bookmarks");
@@ -332,7 +331,6 @@ export default function BibleApp() {
               )}
               onBookmark={async () => {
                 const added = await toggleBookmark({
-                  guestId,
                   passageBook: selectedPassage.book,
                   passageChapter: selectedPassage.chapter,
                   passageVerse: 1,
@@ -373,10 +371,9 @@ export default function BibleApp() {
       <Toaster />
 
       <BottomSheet
-        isOpen={bookmarksOpen || notificationsOpen}
+        isOpen={bookmarksOpen}
         onClose={() => {
           setBookmarksOpen(false);
-          setNotificationsOpen(false);
           setDeletingId(null);
         }}
         title={
@@ -410,7 +407,6 @@ export default function BibleApp() {
                         verse: b.passageVerse,
                       });
                       setBookmarksOpen(false);
-                      setNotificationsOpen(false);
                     }}
                   >
                     <span className="text-[14px] font-bold text-[#25140b]">
@@ -458,7 +454,6 @@ export default function BibleApp() {
                           <button
                             onClick={async () => {
                               await toggleBookmark({
-                                guestId,
                                 passageBook: b.passageBook,
                                 passageChapter: b.passageChapter,
                                 passageVerse: b.passageVerse,
@@ -570,9 +565,11 @@ function ProfileSheet({
 }: {
   bookmarks: { passageBook: string; passageChapter: number; passageVerse: number }[];
 }) {
-  const guestName = useStudyStore((s) => s.guestName);
-  const initials = guestName.slice(0, 2).toUpperCase();
-  const isAnonymous = guestName.startsWith("Anonymous-");
+  const auth = useConvexAuth();
+  const identity = useQuery(api.auth.getUserIdentity);
+  const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
+  const initials = userName.slice(0, 2).toUpperCase();
+  const isAnonymous = !identity?.userId;
 
   return (
     <div className="p-4 flex flex-col gap-6">
@@ -581,8 +578,8 @@ function ProfileSheet({
           {initials}
         </div>
         <div>
-          <h3 className="text-lg font-bold text-[#25140b]">{guestName}</h3>
-          <p className="text-sm text-[#7a6758]">guest@biblestudy.app</p>
+          <h3 className="text-lg font-bold text-[#25140b]">{userName}</h3>
+          <p className="text-sm text-[#7a6758]">{identity?.email ?? "guest@biblestudy.app"}</p>
         </div>
       </div>
 
@@ -985,16 +982,18 @@ function FilterResults({
   onPassageChange: (selection: PassageSelection) => void;
   selectedPassage: PassageSelection;
 }) {
-  const guestId = useStudyStore((s) => s.guestId);
+  const auth = useConvexAuth();
+  const identity = useQuery(api.auth.getUserIdentity);
+  const userId = identity?.userId ?? "anonymous";
 
   const notes = useQuery(
     api.notes.listForPassage,
     activeFilter === "Notes"
-      ? { guestId, passageBook: selectedPassage.book, passageChapter: selectedPassage.chapter }
+      ? { passageBook: selectedPassage.book, passageChapter: selectedPassage.chapter }
       : "skip",
   );
   const comments = useQuery(
-    api.comments.listForPassage,
+    api.comments.list,
     activeFilter === "Study"
       ? { passageBook: selectedPassage.book, passageChapter: selectedPassage.chapter }
       : "skip",
@@ -1141,7 +1140,7 @@ function FilterResults({
           >
             <div className="mb-1 flex items-center gap-2">
               <span className="text-[13px] font-semibold text-[#25140b]">
-                {comment.guestName}
+                {comment.userName || comment.userId || "Anonymous"}
               </span>
               <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
                 v{comment.passageVerse}
@@ -1188,7 +1187,7 @@ function FilterResults({
             <div className="mb-1 flex items-center gap-2">
               <Mic className="h-3 w-3 text-[#f6823c]" />
               <span className="text-[13px] font-semibold text-[#25140b]">
-                {note.guestName}
+                {note.userId || "Anonymous"}
               </span>
               <span className="bg-[#fbf7f2] px-1.5 py-px text-[10px] font-semibold tracking-[0.03em] text-[#3a2218]">
                 v{note.passageVerse}
@@ -2252,7 +2251,6 @@ function TranslationVerses({
   const flashingVerse = useStudyStore((s) => s.flashingVerse);
   const highlightedVerse = useStudyStore((s) => s.highlightedVerse);
   const setHighlightedVerse = useStudyStore((s) => s.setHighlightedVerse);
-  const guestId = useStudyStore((s) => s.guestId);
   const toggleBookmark = useMutation(api.bookmarks.toggle);
   return (
     <motion.div
@@ -2327,7 +2325,6 @@ function TranslationVerses({
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleBookmark({
-                            guestId,
                             passageBook: selectedPassage.book,
                             passageChapter: selectedPassage.chapter,
                             passageVerse: number,
@@ -2454,7 +2451,7 @@ function RightPanel({
       <RailCollapseHandle side="right" onClick={onCollapse} />
       <div className="flex items-center justify-between border-b border-[#f1e8df] bg-white px-4">
         <div className="flex gap-1">
-          {(["Study", "Notes", "Audio Notes", "Commentary", "Cross-Refs", "Activity"] as RightTab[]).map(
+          {(["Study", "Notes", "Audio Notes", "Activity"] as RightTab[]).map(
             (item) => (
               <button
                 className={cn(
@@ -2509,12 +2506,6 @@ function RightPanel({
             {tab === "Audio Notes" && (
               <AudioNotesPanel selectedPassage={selectedPassage} />
             )}
-            {tab === "Commentary" && (
-              <CommentaryPanel selectedPassage={selectedPassage} />
-            )}
-            {tab === "Cross-Refs" && (
-              <CrossRefsPanel selectedPassage={selectedPassage} />
-            )}
             {tab === "Activity" && (
               <ActivityPanel selectedPassage={selectedPassage} />
             )}
@@ -2547,9 +2538,11 @@ function PublicStudy({
     });
   };
 
-  const guestId = useStudyStore((s) => s.guestId);
-  const guestName = useStudyStore((s) => s.guestName);
-  const comments = useQuery(api.comments.listForPassage, {
+  const auth = useConvexAuth();
+  const identity = useQuery(api.auth.getUserIdentity);
+  const userId = identity?.userId ?? "anonymous";
+  const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
+  const comments = useQuery(api.comments.list, {
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
   });
@@ -2577,14 +2570,14 @@ function PublicStudy({
   }, [comments]);
 
   const handleLike = async (commentId: string, currentLikes: string[]) => {
-    const alreadyLiked = currentLikes.includes(guestId);
+    const alreadyLiked = currentLikes.includes(userId);
     const newCount = alreadyLiked ? currentLikes.length - 1 : currentLikes.length + 1;
     setOptimisticLikes((prev) => ({
       ...prev,
       [commentId]: { count: newCount, liked: !alreadyLiked },
     }));
     try {
-      await toggleLike({ id: commentId as Id<"comments">, guestId });
+      await toggleLike({ id: commentId as Id<"comments"> });
     } catch (e) {
       console.error(e);
       setOptimisticLikes((prev) => {
@@ -2603,8 +2596,6 @@ function PublicStudy({
     setSendingReplies((prev) => ({ ...prev, [commentId]: true }));
     try {
       await createComment({
-        guestId,
-        guestName,
         passageBook: parent.passageBook,
         passageChapter: parent.passageChapter,
         passageVerse: parent.passageVerse,
@@ -2629,7 +2620,7 @@ function PublicStudy({
 
   const handleDelete = async (commentId: string) => {
     try {
-      await removeComment({ id: commentId as Id<"comments">, guestId });
+      await removeComment({ id: commentId as Id<"comments"> });
     } catch (e) {
       console.error(e);
       toast.error("Failed to delete comment.");
@@ -2638,7 +2629,7 @@ function PublicStudy({
 
   const handleEdit = async (commentId: string, newContent: string) => {
     try {
-      await updateComment({ id: commentId as Id<"comments">, guestId, content: newContent });
+      await updateComment({ id: commentId as Id<"comments">, content: newContent });
     } catch (e) {
       console.error(e);
       toast.error("Failed to edit comment.");
@@ -2725,23 +2716,23 @@ function PublicStudy({
           threads.topLevel.map((comment) => {
             const optimistic = optimisticLikes[comment._id];
             const likesCount = optimistic?.count ?? comment.likes.length;
-            const isLiked = optimistic?.liked ?? comment.likes.includes(guestId);
+            const isLiked = optimistic?.liked ?? comment.likes.includes(userId);
             const replies = threads.repliesByParent[comment._id] ?? [];
             const isExpanded = expandedReplies[comment._id];
 
             return (
               <div key={comment._id}>
                 <ChatMessage
-                  avatar={`https://ui-avatars.com/api/?name=${comment.guestName}&background=random`}
+                  avatar={`https://ui-avatars.com/api/?name=${comment.userId || "Anonymous"}&background=random`}
                   initialContent={comment.content}
-                  isOwner={comment.guestId === guestId}
+                  isOwner={comment.userId === userId}
                   isReplying={replyingTo === comment._id}
                   likeIcon={isLiked ? "heart" : "thumb"}
                   likes={likesCount}
-                  name={comment.guestName}
+                  name={comment.userName || comment.userId || "Anonymous"}
                   onDelete={() => handleDelete(comment._id)}
                   onEdit={(newContent) => handleEdit(comment._id, newContent)}
-                  onReply={() => toggle(comment._id, comment.guestName)}
+                  onReply={() => toggle(comment._id, comment.userName || comment.userId)}
                   onLike={() => handleLike(comment._id, comment.likes)}
                   reference={`${comment.passageBook} ${comment.passageChapter}:${comment.passageVerse}`}
                   replyValue={replyText[comment._id] ?? ""}
@@ -2783,17 +2774,17 @@ function PublicStudy({
                             {replies.map((reply) => {
                               const ropt = optimisticLikes[reply._id];
                               const rLikes = ropt?.count ?? reply.likes.length;
-                              const rIsLiked = ropt?.liked ?? reply.likes.includes(guestId);
+                              const rIsLiked = ropt?.liked ?? reply.likes.includes(userId);
                               return (
                                 <ChatMessage
                                   key={reply._id}
-                                  avatar={`https://ui-avatars.com/api/?name=${reply.guestName}&background=random`}
+                                  avatar={`https://ui-avatars.com/api/?name=${reply.userId || "Anonymous"}&background=random`}
                                   initialContent={reply.content}
-                                  isOwner={reply.guestId === guestId}
+                                  isOwner={reply.userId === userId}
                                   isReply={true}
                                   likeIcon={rIsLiked ? "heart" : "thumb"}
                                   likes={rLikes}
-                                  name={reply.guestName}
+                                  name={reply.userName || reply.userId || "Anonymous"}
                                   onDelete={() => handleDelete(reply._id)}
                                   onEdit={(newContent) => handleEdit(reply._id, newContent)}
                                   onLike={() => handleLike(reply._id, reply.likes)}
@@ -2836,46 +2827,40 @@ function PublicStudy({
   );
 }
 
-type DrawerTab = "Parallel" | "Cross-Refs" | "Interlinear";
+type DrawerTab = "parallel" | "commentary" | "cross-refs" | "interlinear";
 
 function BottomDrawerPanel({ selectedPassage }: { selectedPassage: PassageSelection }) {
-  const [activeTab, setActiveTab] = useState<DrawerTab>("Cross-Refs");
+  const [activeTab, setActiveTab] = useState<DrawerTab>("parallel");
   const [isOpen, setIsOpen] = useState(false);
-
-  const tabContent = activeTab === "Cross-Refs" ? (
-    <CrossRefsPanel selectedPassage={selectedPassage} />
-  ) : activeTab === "Parallel" ? (
-    <CommentaryPanel selectedPassage={selectedPassage} />
-  ) : (
-    <div className="flex flex-col items-center justify-center h-full text-center px-4">
-      <div className="mb-3 text-3xl">📜</div>
-      <p className="text-[13px] font-semibold text-[#3a2218]">Interlinear</p>
-      <p className="mt-1 text-[11px] text-[#9b8878]">Word-by-word translation coming soon.</p>
-    </div>
-  );
 
   return (
     <>
       <div className="fixed inset-x-0 bottom-[60px] z-40 border-t border-[#f1e8df] bg-white/95 backdrop-blur-sm">
-        <div className="flex">
-          {(["Parallel", "Cross-Refs", "Interlinear"] as DrawerTab[]).map((tab) => (
+        <div className="flex gap-1 px-3">
+          {([
+            { key: "parallel", label: "Parallel", icon: List },
+            { key: "commentary", label: "Commentary", icon: BookOpen },
+            { key: "cross-refs", label: "Cross-Refs", icon: Link2 },
+            { key: "interlinear", label: "Interlinear", icon: AlignLeft },
+          ] as { key: DrawerTab; label: string; icon: React.ComponentType<{ className?: string }> }[]).map(({ key, label, icon: Icon }) => (
             <button
               className={cn(
-                "flex-1 py-2.5 text-[12px] font-semibold transition-colors",
-                activeTab === tab ? "text-[#f6823c]" : "text-[#9b8878]",
+                "flex items-center gap-1.5 py-2.5 text-[12px] font-semibold transition-colors",
+                activeTab === key ? "text-[#f6823c]" : "text-[#9b8878]",
               )}
-              key={tab}
+              key={key}
               onClick={() => {
-                if (activeTab === tab && isOpen) {
+                if (activeTab === key && isOpen) {
                   setIsOpen(false);
                 } else {
-                  setActiveTab(tab);
+                  setActiveTab(key);
                   setIsOpen(true);
                 }
               }}
               type="button"
             >
-              {tab}
+              <Icon className="h-3.5 w-3.5" />
+              {label}
             </button>
           ))}
         </div>
@@ -2885,7 +2870,7 @@ function BottomDrawerPanel({ selectedPassage }: { selectedPassage: PassageSelect
         {isOpen && (
           <motion.div
             animate={{ y: 0 }}
-            className="fixed inset-x-0 bottom-[97px] z-40 flex h-[40vh] flex-col border-t border-[#f1e8df] bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+            className="fixed inset-x-0 bottom-[97px] z-40 flex max-h-[40vh] flex-col overflow-hidden border-t border-[#f1e8df] bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
             exit={{ y: "100%" }}
             initial={{ y: "100%" }}
             transition={{ duration: 0.3, ease: [0.215, 0.61, 0.355, 1] }}
@@ -2893,13 +2878,32 @@ function BottomDrawerPanel({ selectedPassage }: { selectedPassage: PassageSelect
             <div className="flex items-center justify-center border-b border-[#f1e8df] py-2">
               <div className="h-1 w-8 rounded-full bg-[#e5d6c9]" />
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              {tabContent}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {activeTab === "parallel" && <ParallelPanel selectedPassage={selectedPassage} />}
+              {activeTab === "commentary" && <CommentaryPanel selectedPassage={selectedPassage} />}
+              {activeTab === "cross-refs" && <CrossRefsPanel selectedPassage={selectedPassage} />}
+              {activeTab === "interlinear" && (
+                <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                  <div className="mb-3 text-3xl">📜</div>
+                  <p className="text-[13px] font-semibold text-[#3a2218]">Interlinear</p>
+                  <p className="mt-1 text-[11px] text-[#9b8878]">Word-by-word translation coming soon.</p>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function ParallelPanel({ selectedPassage }: { selectedPassage: PassageSelection }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center px-4">
+      <div className="mb-3 text-3xl">📖</div>
+      <p className="text-[13px] font-semibold text-[#3a2218]">Parallel View</p>
+      <p className="mt-1 text-[11px] text-[#9b8878]">Side-by-side translation comparison coming soon.</p>
+    </div>
   );
 }
 
@@ -2910,9 +2914,7 @@ function PersonalNotes({
   commentTarget: string;
   selectedPassage: PassageSelection;
 }) {
-  const guestId = useStudyStore((s) => s.guestId);
   const notes = useQuery(api.notes.listForPassage, {
-    guestId,
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
   });
@@ -2921,7 +2923,7 @@ function PersonalNotes({
 
   const handleDelete = async (id: string) => {
     try {
-      await removeNote({ id: id as Id<"notes">, guestId });
+      await removeNote({ id: id as Id<"notes"> });
     } catch (e) {
       console.error(e);
       toast.error("Failed to delete note.");
@@ -2932,7 +2934,6 @@ function PersonalNotes({
     try {
       await updateNote({
         id: id as Id<"notes">,
-        guestId,
         content,
         ...(type && { type: type as "observation" | "interpretation" | "application" }),
       });
@@ -3142,7 +3143,7 @@ function ActivityPanel({
   const displayItems = useMemo(() => {
     if (!recent) return [];
     return recent.map((r, i) => ({
-      title: `${r.guestName} left a ${r.type}`,
+      title: `${r.userName || r.userId || "Anonymous"} left a ${r.type}`,
       meta: r.preview || "Attached a file or audio",
       level: i % 2 === 0 ? 0 : 1,
     }));
@@ -3561,8 +3562,6 @@ function Composer({
 }) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const guestId = useStudyStore((s) => s.guestId);
-  const guestName = useStudyStore((s) => s.guestName);
   const rightTab = useStudyStore((s) => s.rightTab);
   const versePrefill = useStudyStore((s) => s.versePrefill);
   const setVersePrefill = useStudyStore((s) => s.setVersePrefill);
@@ -3578,8 +3577,6 @@ function Composer({
     try {
       if (rightTab === "Study") {
         await createComment({
-          guestId,
-          guestName,
           passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
@@ -3588,8 +3585,6 @@ function Composer({
         });
       } else {
         await createNote({
-          guestId,
-          guestName,
           passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
@@ -4002,8 +3997,10 @@ function AudioNotesPanel({
 }: {
   selectedPassage: PassageSelection;
 }) {
-  const guestId = useStudyStore((s) => s.guestId);
-  const guestName = useStudyStore((s) => s.guestName);
+  const auth = useConvexAuth();
+  const identity = useQuery(api.auth.getUserIdentity);
+  const userId = identity?.userId ?? "anonymous";
+  const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
   const notes = useQuery(api.audioNotes.listForPassage, {
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
@@ -4032,7 +4029,8 @@ function AudioNotesPanel({
         const tempId = Date.now().toString();
         const optimisticNote = {
           _id: tempId,
-          guestName,
+          userId,
+          userName,
           _creationTime: Date.now(),
           isProcessing: true,
           transcript: "Uploading...",
@@ -4071,8 +4069,6 @@ function AudioNotesPanel({
 
           // 3. Create DB record with R2 URL
           const noteId = await createAudioNote({
-            guestId,
-            guestName,
             passageBook: selectedPassage.book,
             passageChapter: selectedPassage.chapter,
             passageVerse: selectedPassage.verse,
@@ -4163,7 +4159,7 @@ function AudioNotesPanel({
             <AudioNote
               key={n._id}
               note={n}
-              onDelete={() => deleteAudioNote({ id: n._id, guestId })}
+              onDelete={() => deleteAudioNote({ id: n._id })}
             />
           ))
         )}
@@ -4219,12 +4215,10 @@ function AudioNote({
       </div>
       <div className="mb-2 flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center bg-[#3a2218] text-[10px] font-semibold text-[#f6823c]">
-          {note.guestName.startsWith("Anonymous-")
-            ? "AN"
-            : note.guestName.slice(0, 2).toUpperCase()}
+          {(note.userName || note.userId || "Anonymous").slice(0, 2).toUpperCase()}
         </div>
         <span className="text-[11px] font-medium text-[#3a2218]">
-          {note.guestName}
+          {note.userId || "Anonymous"}
         </span>
         <span className="text-[10px] text-[#9b8878]">
           · {new Date(note._creationTime).toLocaleDateString()}

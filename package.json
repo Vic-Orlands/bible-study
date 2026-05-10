@@ -9,8 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@auth/core": "0.37.0",
     "@aws-sdk/client-s3": "^3.1045.0",
     "@aws-sdk/s3-request-presigner": "^3.1045.0",
+    "@convex-dev/auth": "^0.0.92",
     "@deepgram/sdk": "^5.1.0",
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-slot": "^1.2.3",

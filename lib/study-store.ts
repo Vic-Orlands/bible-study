@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type RightTab = "Study" | "Notes" | "Audio Notes" | "Activity" | "Commentary" | "Cross-Refs";
+export type RightTab = "Study" | "Notes" | "Audio Notes" | "Activity";
 export type PassageSelection = { book: string; chapter: number; verse: number };
 export type StudySidebars = { leftOpen: boolean; rightOpen: boolean };
 
@@ -17,8 +17,6 @@ type State = {
   sidebars: StudySidebars;
   rightTab: RightTab;
   commentTarget: string;
-  guestId: string;
-  guestName: string;
   flashingVerse: string | null;
   versePrefill: string | null;
   highlightedVerse: string | null;
@@ -30,7 +28,6 @@ type Actions = {
   patchSidebars(patch: Partial<StudySidebars>): void;
   setRightTab(t: RightTab): void;
   setCommentTarget(t: string): void;
-  setGuestName(name: string): void;
   setFlashingVerse(v: string | null): void;
   setVersePrefill(v: string | null): void;
   setHighlightedVerse(v: string | null): void;
@@ -44,8 +41,6 @@ export const useStudyStore = create<State & Actions>()(
       sidebars: DEFAULT_SIDEBARS,
       rightTab: "Study" as RightTab,
       commentTarget: `${DEFAULT_PASSAGE.book} ${DEFAULT_PASSAGE.chapter}:${DEFAULT_PASSAGE.verse}`,
-      guestId: "",
-      guestName: "Anonymous",
       flashingVerse: null,
       versePrefill: null,
       highlightedVerse: null,
@@ -75,9 +70,6 @@ export const useStudyStore = create<State & Actions>()(
       setCommentTarget(t: string) {
         set({ commentTarget: t });
       },
-      setGuestName(name: string) {
-        set({ guestName: name });
-      }
     }),
     {
       name: "bible-study:study",
@@ -85,8 +77,6 @@ export const useStudyStore = create<State & Actions>()(
         selectedPassage: state.selectedPassage,
         visibleVersions: state.visibleVersions,
         sidebars: state.sidebars,
-        guestId: state.guestId,
-        guestName: state.guestName,
       }),
     },
   ),

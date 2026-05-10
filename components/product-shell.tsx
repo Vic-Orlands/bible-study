@@ -9,7 +9,10 @@ import { Bell, BookOpen, CalendarDays, ChevronDown, Users } from "lucide-react";
 import BibleLogo from "@/components/logo";
 import { CheckCircleIcon } from "@/components/ui/check-circle";
 import { WifiIcon } from "@/components/ui/wifi";
-import { useStudyStore } from "@/lib/study-store";
+import { NotificationsSheet } from "@/components/notifications-sheet";
+import { useConvexAuth } from "@convex-dev/auth/react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 import { cn } from "@/lib/utils";
 
@@ -21,23 +24,26 @@ const navItems = [
 
 export function ProductShell({
   children,
-  onOpenNotifications,
   onOpenSettings,
   onOpenBookmarks,
 }: {
   children: ReactNode;
-  onOpenNotifications?: () => void;
   onOpenSettings?: () => void;
   onOpenBookmarks?: () => void;
 }) {
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   return (
     <main className="bible-app flex h-screen flex-col overflow-hidden bg-white">
       <ProductTopNav
-        onOpenNotifications={onOpenNotifications}
         onOpenSettings={onOpenSettings}
         onOpenBookmarks={onOpenBookmarks}
+        onOpenNotifications={() => setNotificationsOpen(true)}
       />
       {children}
+      <NotificationsSheet
+        open={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+      />
     </main>
   );
 }
@@ -47,7 +53,7 @@ function ProductTopNav({
   onOpenSettings,
   onOpenBookmarks,
 }: {
-  onOpenNotifications?: () => void;
+  onOpenNotifications: () => void;
   onOpenSettings?: () => void;
   onOpenBookmarks?: () => void;
 }) {
@@ -56,7 +62,10 @@ function ProductTopNav({
   const [profileOpen, setProfileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
-  const guestName = useStudyStore((s) => s.guestName);
+  const auth = useConvexAuth();
+  const identity = useQuery(api.auth.getUserIdentity);
+  const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
+  const userId = identity?.userId;
 
   useEffect(() => {
     setMounted(true);
@@ -160,17 +169,15 @@ function ProductTopNav({
             onClick={() => setProfileOpen((o) => !o)}
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3a2218] text-[11px] font-semibold text-[#f6823c]">
-              {guestName.startsWith("Anonymous-")
-                ? "AN"
-                : guestName.slice(0, 2).toUpperCase()}
+              {userId ? userName.slice(0, 2).toUpperCase() : "AN"}
             </div>
             {mounted && (
               <div className="hidden flex-col justify-center md:flex">
                 <span className="text-[12px] font-semibold leading-tight text-[#25140b]">
-                  {guestName}
+                  {userName}
                 </span>
                 <span className="text-[10px] leading-tight text-[#7a6758]">
-                  guest@biblestudy.app
+                  {identity?.email ?? "guest@biblestudy.app"}
                 </span>
               </div>
             )}
@@ -188,7 +195,7 @@ function ProductTopNav({
               >
                 <div className="px-4 py-2 border-b border-[#f1e8df]">
                   <p className="text-[13px] font-semibold text-[#25140b]">
-                    {guestName}
+                    {userName}
                   </p>
                 </div>
                 <div className="py-1 *:!transform-none hover:!transform-none">
@@ -223,7 +230,7 @@ function ProductTopNav({
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#f6823c] hover:bg-[#fbf7f2]"
                     onClick={() => setProfileOpen(false)}
                   >
-                    {guestName.startsWith("Anonymous-") ? "Sign In" : "Log Out"}
+                    {userId ? "Log Out" : "Sign In"}
                   </button>
                 </div>
               </motion.div>

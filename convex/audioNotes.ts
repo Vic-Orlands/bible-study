@@ -7,7 +7,10 @@ export const listForPassage = query({
     passageChapter: v.number(),
   },
   handler: async (ctx, args) => {
-    const notes = await ctx.db
+    const identity = await ctx.auth.getUserIdentity();
+    const userId = identity?.subject;
+
+    const byUser = await ctx.db
       .query("audioNotes")
       .withIndex("by_passage", (q) =>
         q
@@ -17,18 +20,32 @@ export const listForPassage = query({
       .order("desc")
       .collect();
 
-    // We already store the public R2 audioUrl, so we just map and return the data directly
-    return notes.map((note) => ({
-      ...note,
-      url: note.audioUrl,
-    }));
+    if (!userId) return byUser;
+
+    const byGuest = await ctx.db
+      .query("audioNotes")
+      .filter((q) => q.and(
+        q.eq(q.field("guestId"), userId),
+        q.eq(q.field("userId"), undefined),
+        q.eq(q.field("passageBook"), args.passageBook),
+        q.eq(q.field("passageChapter"), args.passageChapter)
+      ))
+      .collect();
+
+    const seen = new Set(byUser.map((a) => a._id.toString()));
+    const merged = [...byUser, ...byGuest.filter((a) => {
+      const key = a._id.toString();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })];
+
+    return merged.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
   },
 });
 
 export const create = mutation({
   args: {
-    guestId: v.string(),
-    guestName: v.string(),
     passageBook: v.string(),
     passageChapter: v.number(),
     passageVerse: v.optional(v.number()),
@@ -40,9 +57,11 @@ export const create = mutation({
     waveform: v.optional(v.array(v.number())),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
     return await ctx.db.insert("audioNotes", {
-      guestId: args.guestId,
-      guestName: args.guestName,
+      userId: identity.subject,
       passageBook: args.passageBook,
       passageChapter: args.passageChapter,
       passageVerse: args.passageVerse,
@@ -64,6 +83,14 @@ export const updateTranscript = mutation({
     transcript: v.string(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const note = await ctx.db.get(args.id);
+    if (!note || note.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
+
     await ctx.db.patch(args.id, {
       transcript: args.transcript,
       isProcessing: false,
@@ -74,17 +101,16 @@ export const updateTranscript = mutation({
 export const remove = mutation({
   args: {
     id: v.id("audioNotes"),
-    guestId: v.string(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
     const note = await ctx.db.get(args.id);
-    if (!note || note.guestId !== args.guestId) {
-      return;
+    if (!note || note.userId !== identity.subject) {
+      throw new Error("Not authorized");
     }
 
-    // Note: To be fully secure, the client should also make an API call to
-    // delete the object from R2 bucket, or we can use an Edge Function cron job.
-    // For now, we simply delete the record from Convex.
     await ctx.db.delete(args.id);
   },
 });

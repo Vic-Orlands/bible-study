@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
 
@@ -21,12 +22,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ConvexProvider client={convex}>
+    <ConvexAuthProvider client={convex}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={200}>
           {children}
         </TooltipProvider>
       </QueryClientProvider>
-    </ConvexProvider>
+    </ConvexAuthProvider>
   );
 }
