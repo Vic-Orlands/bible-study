@@ -413,15 +413,19 @@ export default function BibleApp() {
                       {b.passageBook} {b.passageChapter}:{b.passageVerse}
                     </span>
                     {(() => {
-                      const versionKey = `${b.passageBook}-${b.passageChapter}`;
-                      const verseText = chapterVerses[versionKey]?.find(
-                        (v) => v.number === b.passageVerse,
-                      )?.text;
-                      return verseText ? (
-                        <p className="mt-1 font-serif text-[13px] leading-relaxed text-[#5d493a] line-clamp-2">
-                          {verseText}
-                        </p>
-                      ) : null;
+                      for (const verses of Object.values(chapterVerses)) {
+                        const verse = verses.find(
+                          (v) => v.number === b.passageVerse,
+                        );
+                        if (verse) {
+                          return (
+                            <p className="mt-1 font-serif text-[13px] leading-relaxed text-[#5d493a] line-clamp-2">
+                              {verse.text}
+                            </p>
+                          );
+                        }
+                      }
+                      return null;
                     })()}
                   </button>
 
@@ -2745,6 +2749,20 @@ function Composer({
       className="mt-4 shrink-0 overflow-hidden border-[1.5px] border-[#e5d6c9] bg-white focus-within:border-[#f6823c]"
       transition={{ duration: 0.25 }}
     >
+      {versePrefill && (
+        <div className="flex items-center gap-2 border-b border-[#f1e8df] bg-[#fff3e8] px-3 py-1.5">
+          <span className="text-[11px] font-semibold text-[#25140b]">Reference(s):</span>
+          <span className="text-[11px] text-[#7a6758]">{versePrefill}</span>
+          <button
+            aria-label="Clear reference"
+            className="icon-button ml-auto flex h-5 w-5 items-center justify-center text-[#9b8878] hover:text-[#3a2218]"
+            onClick={() => setVersePrefill(null)}
+            type="button"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
       <div className="flex items-center gap-2 border-b border-[#f1e8df] px-3 py-2">
         {["B", "I", "U"].map((item) => (
           <button
@@ -2763,20 +2781,6 @@ function Composer({
           <Link2 className="h-3 w-3" />
         </button>
       </div>
-      {versePrefill && (
-        <div className="flex items-center gap-2 border-b border-[#f1e8df] bg-[#fff3e8] px-3 py-1.5">
-          <span className="text-[11px] font-semibold text-[#25140b]">Reference(s):</span>
-          <span className="text-[11px] text-[#7a6758]">{versePrefill}</span>
-          <button
-            aria-label="Clear reference"
-            className="icon-button ml-auto flex h-5 w-5 items-center justify-center text-[#9b8878] hover:text-[#3a2218]"
-            onClick={() => setVersePrefill(null)}
-            type="button"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </div>
-      )}
       <ChatInput
         onChange={(v) => setContent(v)}
         onSend={handleSend}
