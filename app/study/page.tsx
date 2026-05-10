@@ -2960,10 +2960,9 @@ function BottomDrawerPanel({
         {isOpen && (
           <motion.div
             animate={{ height: "auto", opacity: 1 }}
-            className="absolute inset-x-0 z-40 flex max-h-[60vh] flex-col overflow-hidden border-t border-[#f1e8df] bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+            className="absolute inset-x-0 z-40 bottom-12 flex max-h-[40vh] flex-col overflow-hidden border-t border-[#f1e8df] bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
             exit={{ height: 0, opacity: 0 }}
             initial={{ height: 0, opacity: 0 }}
-            style={{ bottom: "97px" }}
             transition={{ duration: 0.3, ease: [0.215, 0.61, 0.355, 1] }}
           >
             <div className="flex items-center justify-center border-b border-[#f1e8df] py-2">
