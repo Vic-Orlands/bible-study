@@ -366,7 +366,7 @@ export default function BibleApp() {
               )}
               onBookmark={async () => {
                 const added = await toggleBookmark({
-                  identityId: useStudyStore.getState().identityId as any,
+                  identityId: (useStudyStore.getState().identityId ?? undefined) as any,
 passageBook: selectedPassage.book,
                   passageChapter: selectedPassage.chapter,
                   passageVerse: 1,
@@ -491,7 +491,7 @@ passageBook: selectedPassage.book,
                           <button
                             onClick={async () => {
                               await toggleBookmark({
-identityId: useStudyStore.getState().identityId as any,
+identityId: (useStudyStore.getState().identityId ?? undefined) as any,
 passageBook: b.passageBook,
                                 passageChapter: b.passageChapter,
                                 passageVerse: b.passageVerse,
@@ -2411,7 +2411,7 @@ function TranslationVerses({
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleBookmark({
-                            identityId: useStudyStore.getState().identityId as any,
+                            identityId: (useStudyStore.getState().identityId ?? undefined) as any,
                             passageBook: selectedPassage.book,
                             passageChapter: selectedPassage.chapter,
                             passageVerse: number,
@@ -2668,7 +2668,7 @@ function PublicStudy({
     setSendingReplies((prev) => ({ ...prev, [commentId]: true }));
     try {
       await createComment({
-        identityId: useStudyStore.getState().identityId as any,
+        identityId: (useStudyStore.getState().identityId ?? undefined) as any,
 passageBook: parent.passageBook,
         passageChapter: parent.passageChapter,
         passageVerse: parent.passageVerse,
@@ -3724,7 +3724,7 @@ function Composer({
     try {
       if (rightTab === "Study") {
         await createComment({
-          identityId: useStudyStore.getState().identityId as any,
+          identityId: (useStudyStore.getState().identityId ?? undefined) as any,
 passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
@@ -3733,7 +3733,7 @@ passageBook: selectedPassage.book,
         });
       } else {
         await createNote({
-          identityId: useStudyStore.getState().identityId as any,
+          identityId: (useStudyStore.getState().identityId ?? undefined) as any,
 passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
@@ -3983,7 +3983,7 @@ function CommentaryPanel({
       `/api/helloao?path=commentaries/SWIFT/${bookId}/${selectedPassage.chapter}.json`,
     )
       .then((r) => {
-        if (!r.ok) throw new Error("No commentary available");
+        if (!r.ok) { setContent(null); return; }
         return r.json();
       })
       .then((data) => {
@@ -4073,7 +4073,7 @@ function CrossRefsPanel({
   selectedPassage: PassageSelection;
 }) {
   const [loading, setLoading] = useState(false);
-  const [crossRefs, setCrossRefs] = useState<any[]>([]);
+  const [crossRefs, setCrossRefs] = useState<any[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -4086,7 +4086,7 @@ function CrossRefsPanel({
       `/api/helloao?path=d/open-cross-ref/${bookId}/${selectedPassage.chapter}.json`,
     )
       .then((r) => {
-        if (!r.ok) throw new Error("No cross-references available");
+        if (!r.ok) { setCrossRefs(undefined); return; }
         return r.json();
       })
       .then((data) => {
@@ -4116,7 +4116,7 @@ function CrossRefsPanel({
           Cross-References
         </h2>
         <p className="mt-0.5 text-[11px] text-[#9b8878]">
-          {crossRefs.length} refs for {selectedPassage.book}{" "}
+          {crossRefs?.length ?? 0} refs for {selectedPassage.book}{" "}
           {selectedPassage.chapter}
         </p>
       </div>
@@ -4133,7 +4133,7 @@ function CrossRefsPanel({
             </p>
             <p className="mt-1 text-[11px] text-[#9b8878]">{error}</p>
           </div>
-        ) : crossRefs.length === 0 ? (
+        ) : crossRefs && crossRefs.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-center">
             <div className="mb-3 text-3xl">🔗</div>
             <p className="text-[13px] font-semibold text-[#3a2218]">
@@ -4145,7 +4145,7 @@ function CrossRefsPanel({
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {crossRefs.map((ref: any, i: number) => {
+            {(crossRefs ?? []).map((ref: any, i: number) => {
               const fromVerse = ref.source ?? ref.from ?? ref.verse ?? "?";
               const toVerse = ref.target ?? ref.to ?? ref.ref ?? "?";
               const toText = ref.text ?? ref.content ?? ref.note ?? "";
@@ -4247,7 +4247,7 @@ function AudioNotesPanel({
 
           // 3. Create DB record with R2 URL
           const noteId = await createAudioNote({
-            identityId: useStudyStore.getState().identityId as any,
+            identityId: (useStudyStore.getState().identityId ?? undefined) as any,
             passageBook: selectedPassage.book,
             passageChapter: selectedPassage.chapter,
             passageVerse: selectedPassage.verse,
