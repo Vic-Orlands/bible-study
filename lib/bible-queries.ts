@@ -88,6 +88,26 @@ export const chapterKeyFor = ({ book, chapter }: PassageSelection) =>
 export const getBookId = (books: BibleBookIndex[], bookName: string) =>
   books.find((b) => b.book === bookName)?.id;
 
+function normalizeBookReference(value: string) {
+  const normalizeOrdinal = (raw: string) => {
+    if (/^1st$/i.test(raw) || /^i$/i.test(raw)) return "1";
+    if (/^2nd$/i.test(raw) || /^ii$/i.test(raw)) return "2";
+    if (/^3rd$/i.test(raw) || /^iii$/i.test(raw)) return "3";
+    return raw;
+  };
+
+  const collapsed = value.trim().toLowerCase().replace(/\s+/g, " ");
+  const expanded = collapsed
+    .replace(/^(1st|2nd|3rd|iii|ii|i)([a-z])/i, "$1 $2")
+    .replace(/^([123])([a-z])/i, "$1 $2");
+  const tokens = expanded
+    .split(" ")
+    .filter(Boolean)
+    .map((token) => normalizeOrdinal(token));
+
+  return tokens.join(" ");
+}
+
 export const mapHelloAoBooks = (books: HelloAoBook[]): BibleBookIndex[] =>
   books.map(({ commonName, id, numberOfChapters, order }) => ({
     book: commonName,
@@ -105,19 +125,21 @@ export const parseVerseReference = (
 ): PassageSelection | null => {
   const match = query
     .trim()
-    .match(/^([1-3]?\s*[a-z]+(?:\s+[a-z]+)?)\s+(\d+)(?::(\d+))?$/i);
+    .match(
+      /^((?:(?:[1-3]|1st|2nd|3rd|i|ii|iii)\s*)?[a-z]+(?:\s+[a-z]+)*)\s+(\d+)(?::(\d+))?$/i,
+    );
   if (!match) return null;
 
-  const bookQuery = match[1].trim().toLowerCase().replace(/\s+/g, " ");
+  const bookQuery = normalizeBookReference(match[1]);
   const chapter = parseInt(match[2], 10);
   const verse = match[3] ? parseInt(match[3], 10) : 1;
 
   const bookModel = bibleBooks.find(({ book }) => {
-    const b = book.toLowerCase();
+    const normalizedBook = normalizeBookReference(book);
     return (
-      b === bookQuery ||
-      b.startsWith(bookQuery) ||
-      b.replace(/\s+/g, "").startsWith(bookQuery.replace(/\s+/g, ""))
+      normalizedBook === bookQuery ||
+      normalizedBook.startsWith(bookQuery) ||
+      normalizedBook.replace(/\s+/g, "").startsWith(bookQuery.replace(/\s+/g, ""))
     );
   });
 

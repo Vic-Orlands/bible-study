@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { AnimatePresence, motion } from "motion/react";
 import { X, MessageCircle, Heart, AtSign, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,25 +11,33 @@ import { useState } from "react";
 type NotificationFilter = "all" | "unread" | "mentions";
 
 export function NotificationsSheet({
+  identityId,
   open,
   onClose,
 }: {
+  identityId?: Id<"identities">;
   open: boolean;
   onClose: () => void;
 }) {
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const notifications = useQuery(api.notifications.list, {
-    filter: filter === "all" ? undefined : filter,
+    ...(identityId ? { identityId } : {}),
+    ...(filter === "all" ? {} : { filter }),
   });
   const markAllRead = useMutation(api.notifications.markAllRead);
   const clearAll = useMutation(api.notifications.clearAll);
   const markRead = useMutation(api.notifications.markRead);
 
-  const unreadCount = useQuery(api.notifications.list, { filter: "unread" })?.length ?? 0;
+  const unreadCount =
+    useQuery(api.notifications.list, {
+      ...(identityId ? { identityId } : {}),
+      filter: "unread",
+    })
+      ?.length ?? 0;
 
   const handleMarkAllRead = async () => {
     try {
-      await markAllRead({});
+      await markAllRead({ ...(identityId ? { identityId } : {}) });
     } catch (e) {
       console.error("Failed to mark all read:", e);
     }
@@ -124,7 +133,10 @@ export function NotificationsSheet({
                   onClick={async () => {
                     if (!notif.read) {
                       try {
-                        await markRead({ id: notif._id });
+                        await markRead({
+                          id: notif._id,
+                          ...(identityId ? { identityId } : {}),
+                        });
                       } catch (e) {
                         console.error("Failed to mark read:", e);
                       }

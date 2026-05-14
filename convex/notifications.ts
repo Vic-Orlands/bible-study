@@ -1,8 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getViewer, requireViewer } from "./ownership";
 
 export const list = query({
   args: {
+    identityId: v.optional(v.id("identities")),
     filter: v.optional(v.union(
       v.literal("all"),
       v.literal("unread"),
@@ -10,12 +12,12 @@ export const list = query({
     )),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+    const viewer = await getViewer(ctx, args.identityId);
+    if (!viewer) return [];
 
     const base = ctx.db
       .query("notifications")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_user", (q) => q.eq("userId", viewer.ownerKey))
       .order("desc");
 
     const all = await base.collect();
@@ -33,13 +35,13 @@ export const list = query({
 export const markRead = mutation({
   args: {
     id: v.id("notifications"),
+    identityId: v.optional(v.id("identities")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const viewer = await requireViewer(ctx, args.identityId);
 
     const notif = await ctx.db.get(args.id);
-    if (!notif || notif.userId !== identity.subject) {
+    if (!notif || notif.userId !== viewer.ownerKey) {
       throw new Error("Not authorized");
     }
 
@@ -48,15 +50,16 @@ export const markRead = mutation({
 });
 
 export const markAllRead = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+  args: {
+    identityId: v.optional(v.id("identities")),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await requireViewer(ctx, args.identityId);
 
     const unread = await ctx.db
       .query("notifications")
       .withIndex("by_user_read", (q) =>
-        q.eq("userId", identity.subject).eq("read", false)
+        q.eq("userId", viewer.ownerKey).eq("read", false)
       )
       .collect();
 
@@ -67,14 +70,15 @@ export const markAllRead = mutation({
 });
 
 export const clearAll = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+  args: {
+    identityId: v.optional(v.id("identities")),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await requireViewer(ctx, args.identityId);
 
     const all = await ctx.db
       .query("notifications")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_user", (q) => q.eq("userId", viewer.ownerKey))
       .collect();
 
     for (const notif of all) {

@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || "",
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
-});
-
 const HELLO_AO_API_BASE = "https://bible.helloao.org/api";
 
 export async function GET(req: NextRequest) {
@@ -19,8 +14,18 @@ export async function GET(req: NextRequest) {
   const cacheKey = `helloao:${path}`;
 
   try {
+    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    const redis =
+      redisUrl && redisToken
+        ? new Redis({
+            url: redisUrl,
+            token: redisToken,
+          })
+        : null;
+
     // Check Upstash Redis Cache
-    if (process.env.UPSTASH_REDIS_REST_URL) {
+    if (redis) {
       const cached = await redis.get(cacheKey);
       if (cached) {
         return NextResponse.json(cached);
@@ -39,7 +44,7 @@ export async function GET(req: NextRequest) {
     const data = await response.json();
 
     // Store in Upstash Redis Cache (cache for 30 days since Bible text rarely changes)
-    if (process.env.UPSTASH_REDIS_REST_URL) {
+    if (redis) {
       await redis.set(cacheKey, data, { ex: 60 * 60 * 24 * 30 });
     }
 

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireViewer } from "./ownership";
 
 export const list = query({
   args: {
@@ -30,13 +31,13 @@ export const create = mutation({
     parentId: v.optional(v.id("comments")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const identityDoc = args.identityId ? await ctx.db.get(args.identityId) : null;
-    const displayName = identity?.name ?? identity?.email ?? identityDoc?.displayName ?? "Anonymous";
+    const viewer = await requireViewer(ctx, args.identityId);
 
     const comment = await ctx.db.insert("comments", {
+      ownerKey: viewer.ownerKey,
       identityId: args.identityId ?? undefined,
-      userId: identity?.subject ?? identityDoc?.userId ?? undefined,
+      userId: viewer.ownerKey,
+      guestName: viewer.displayName,
       passageBook: args.passageBook,
       passageChapter: args.passageChapter,
       passageVerse: args.passageVerse,
@@ -53,8 +54,8 @@ export const create = mutation({
           userId: parent.userId,
           type: "reply",
           read: false,
-          actorName: displayName,
-          actorAvatar: identity?.pictureUrl ?? undefined,
+          actorName: viewer.displayName,
+          actorAvatar: viewer.avatarUrl,
           passageBook: args.passageBook,
           passageChapter: args.passageChapter,
           passageVerse: args.passageVerse,
@@ -75,30 +76,25 @@ export const toggleLike = mutation({
     identityId: v.optional(v.id("identities")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const identityDoc = args.identityId ? await ctx.db.get(args.identityId) : null;
-    const userId = identity?.subject ?? identityDoc?.userId;
-
-    if (!userId) return;
+    const viewer = await requireViewer(ctx, args.identityId);
 
     const comment = await ctx.db.get(args.id);
     if (!comment) return;
 
-    const already = comment.likes.includes(userId);
+    const already = comment.likes.includes(viewer.ownerKey);
     await ctx.db.patch(args.id, {
       likes: already
-        ? comment.likes.filter((id) => id !== userId)
-        : [...comment.likes, userId],
+        ? comment.likes.filter((id) => id !== viewer.ownerKey)
+        : [...comment.likes, viewer.ownerKey],
     });
 
-    const actorName = identity?.name ?? identity?.email ?? identityDoc?.displayName ?? "Anonymous";
-    if (!already && comment.userId && comment.userId !== userId) {
+    if (!already && comment.userId && comment.userId !== viewer.ownerKey) {
       await ctx.db.insert("notifications", {
         userId: comment.userId,
         type: "like",
         read: false,
-        actorName,
-        actorAvatar: identity?.pictureUrl ?? undefined,
+        actorName: viewer.displayName,
+        actorAvatar: viewer.avatarUrl,
         passageBook: comment.passageBook,
         passageChapter: comment.passageChapter,
         passageVerse: comment.passageVerse,
@@ -113,15 +109,19 @@ export const toggleLike = mutation({
 export const update = mutation({
   args: {
     id: v.id("comments"),
+    identityId: v.optional(v.id("identities")),
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const viewer = await requireViewer(ctx, args.identityId);
 
     const comment = await ctx.db.get(args.id);
     if (!comment) throw new Error("Comment not found");
-    if (comment.userId !== identity.subject) throw new Error("Not authorized");
+    if (
+      comment.ownerKey !== viewer.ownerKey &&
+      (!args.identityId || comment.identityId !== args.identityId)
+    )
+      throw new Error("Not authorized");
 
     await ctx.db.patch(args.id, { content: args.content });
   },
@@ -130,14 +130,18 @@ export const update = mutation({
 export const remove = mutation({
   args: {
     id: v.id("comments"),
+    identityId: v.optional(v.id("identities")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const viewer = await requireViewer(ctx, args.identityId);
 
     const comment = await ctx.db.get(args.id);
     if (!comment) throw new Error("Comment not found");
-    if (comment.userId !== identity.subject) throw new Error("Not authorized");
+    if (
+      comment.ownerKey !== viewer.ownerKey &&
+      (!args.identityId || comment.identityId !== args.identityId)
+    )
+      throw new Error("Not authorized");
 
     await ctx.db.delete(args.id);
   },

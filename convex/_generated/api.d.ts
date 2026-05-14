@@ -18,6 +18,7 @@ import type * as identity from "../identity.js";
 import type * as migrate_guest_id from "../migrate_guest_id.js";
 import type * as notes from "../notes.js";
 import type * as notifications from "../notifications.js";
+import type * as ownership from "../ownership.js";
 
 import type {
   ApiFromModules,
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   migrate_guest_id: typeof migrate_guest_id;
   notes: typeof notes;
   notifications: typeof notifications;
+  ownership: typeof ownership;
 }>;
 
 /**
@@ -64,4 +66,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
+};

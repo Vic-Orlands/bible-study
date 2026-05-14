@@ -1,11 +1,11 @@
 import { httpRouter } from "convex/server";
-import { auth } from "./auth";
+import { betterAuthComponent, createAuth } from "./auth";
 import { httpAction } from "./_generated/server";
 import { api } from "../convex/_generated/api";
 
 const http = httpRouter();
 
-auth.addHttpRoutes(http);
+betterAuthComponent.registerRoutes(http, createAuth);
 
 http.route({
   path: "/identity/anonymous",

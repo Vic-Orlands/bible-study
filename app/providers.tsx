@@ -1,12 +1,11 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { authClient } from "@/lib/auth-client";
+import { convex } from "@/lib/convex";
 import { useState } from "react";
-
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -22,12 +21,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ConvexAuthProvider client={convex}>
+    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={200}>
           {children}
         </TooltipProvider>
       </QueryClientProvider>
-    </ConvexAuthProvider>
+    </ConvexBetterAuthProvider>
   );
 }

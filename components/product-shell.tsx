@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Bell, BookOpen, CalendarDays, ChevronDown, Users } from "lucide-react";
 
@@ -10,9 +10,11 @@ import BibleLogo from "@/components/logo";
 import { CheckCircleIcon } from "@/components/ui/check-circle";
 import { WifiIcon } from "@/components/ui/wifi";
 import { NotificationsSheet } from "@/components/notifications-sheet";
-import { useConvexAuth, useAuthActions } from "@convex-dev/auth/react";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { useStudyStore } from "@/lib/study-store";
+import { authClient } from "@/lib/auth-client";
 
 import { cn } from "@/lib/utils";
 
@@ -38,7 +40,7 @@ export function ProductShell({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const auth = useConvexAuth();
-  const identity = useQuery(api.auth.getUserIdentity);
+  const identityId = useStudyStore((s) => s.identityId);
 
   return (
     <main className="bible-app flex h-screen flex-col overflow-hidden bg-white">
@@ -56,6 +58,7 @@ export function ProductShell({
       />
       {children}
       <NotificationsSheet
+        identityId={identityId ? (identityId as Id<"identities">) : undefined}
         open={notificationsOpen}
         onClose={() => setNotificationsOpen(false)}
       />
@@ -81,14 +84,18 @@ function ProductTopNav({
   onProfileOpen: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOnline, setIsOnline] = useState(true);
   const [mounted, setMounted] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const auth = useConvexAuth();
-  const authActions = useAuthActions();
+  const session = authClient.useSession();
   const identity = useQuery(api.auth.getUserIdentity);
   const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
   const userId = identity?.userId;
+  const isSignedIn = auth.isAuthenticated || !!session.data?.session || !!userId;
+  const callbackURL = pathname || "/study";
+  const loginHref = `/login?callbackURL=${encodeURIComponent(callbackURL)}`;
 
   useEffect(() => {
     setMounted(true);
@@ -211,7 +218,7 @@ function ProductTopNav({
             {profileOpen && (
               <motion.div
                 animate={{ opacity: 1, y: 0 }}
-                className="absolute right-0 top-[calc(100$+6px)] z-30 w-56 border border-[#e5d6c9] bg-white shadow-[0_14px_36px_rgba(31,18,9,0.10)]"
+                className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 border border-[#e5d6c9] bg-white shadow-[0_14px_36px_rgba(31,18,9,0.10)]"
                 exit={{ opacity: 0, y: -4 }}
                 initial={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.16, ease: [0.215, 0.61, 0.355, 1] }}
@@ -221,7 +228,7 @@ function ProductTopNav({
                     {userName}
                   </p>
                 </div>
-<div className="py-1 *:!transform-none hover:!transform-none">
+                <div className="py-1 *:!transform-none hover:!transform-none">
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
                     onClick={() => {
@@ -242,7 +249,7 @@ function ProductTopNav({
                   </button>
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
-onClick={() => {
+                    onClick={() => {
                       onProfileOpen();
                       onOpenProfile?.();
                     }}
@@ -253,18 +260,19 @@ onClick={() => {
                     className="w-full px-4 py-2 text-left text-[12px] font-semibold text-[#f6823c] hover:bg-[#fbf7f2]"
                     onClick={async () => {
                       onProfileOpen();
-                      if (userId) {
+                      if (isSignedIn) {
                         try {
-                          await authActions.signOut();
+                          await authClient.signOut();
                         } catch (e) {
                           console.error(e);
                         }
                       } else {
                         onOpenSignIn?.();
+                        router.push(loginHref);
                       }
                     }}
                   >
-                    {userId ? "Log Out" : "Sign In"}
+                    {isSignedIn ? "Log Out" : "Sign In"}
                   </button>
                 </div>
               </motion.div>

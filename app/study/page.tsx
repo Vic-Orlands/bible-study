@@ -27,7 +27,6 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useConvexAuth, useAuthActions } from "@convex-dev/auth/react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -54,12 +53,13 @@ import {
   type RightTab,
 } from "@/lib/study-store";
 import { cn } from "@/lib/utils";
-import { useQuery, useMutation } from "convex/react";
+import { useConvexAuth, useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { MagnifyingGlassIcon } from "@/components/ui/magnifying-glass";
 import { RichScriptureText } from "@/components/rich-scripture-text";
+import { authClient, signInWithGoogle } from "@/lib/auth-client";
 
 function getDisplayName(
   userId: string | undefined,
@@ -77,6 +77,16 @@ type SearchHit = {
   label: string;
   verse: number;
   text: string;
+};
+
+type BookmarkRange = {
+  key: string;
+  passageBook: string;
+  passageChapter: number;
+  startVerse: number;
+  endVerse: number;
+  verses: number[];
+  firstBookmarkId: string;
 };
 
 const waveform = [
@@ -109,6 +119,54 @@ const activityItems = [
     level: 1,
   },
 ];
+
+function groupBookmarkRanges(
+  bookmarks: {
+    _id: string;
+    passageBook: string;
+    passageChapter: number;
+    passageVerse: number;
+  }[],
+) {
+  const sorted = [...bookmarks].sort((a, b) => {
+    if (a.passageBook !== b.passageBook) {
+      return a.passageBook.localeCompare(b.passageBook);
+    }
+    if (a.passageChapter !== b.passageChapter) {
+      return a.passageChapter - b.passageChapter;
+    }
+    return a.passageVerse - b.passageVerse;
+  });
+
+  const groups: BookmarkRange[] = [];
+
+  for (const bookmark of sorted) {
+    const last = groups[groups.length - 1];
+    if (
+      last &&
+      last.passageBook === bookmark.passageBook &&
+      last.passageChapter === bookmark.passageChapter &&
+      bookmark.passageVerse === last.endVerse + 1
+    ) {
+      last.endVerse = bookmark.passageVerse;
+      last.verses.push(bookmark.passageVerse);
+      last.key = `${last.passageBook}-${last.passageChapter}-${last.startVerse}-${last.endVerse}`;
+      continue;
+    }
+
+    groups.push({
+      key: `${bookmark.passageBook}-${bookmark.passageChapter}-${bookmark.passageVerse}-${bookmark.passageVerse}`,
+      passageBook: bookmark.passageBook,
+      passageChapter: bookmark.passageChapter,
+      startVerse: bookmark.passageVerse,
+      endVerse: bookmark.passageVerse,
+      verses: [bookmark.passageVerse],
+      firstBookmarkId: bookmark._id,
+    });
+  }
+
+  return groups;
+}
 
 const panelVariants = {
   animate: (side: "left" | "right") => ({
@@ -188,39 +246,68 @@ export default function BibleApp() {
   const { leftOpen, rightOpen } = sidebars;
   const auth = useConvexAuth();
   const authIdentity = useQuery(api.auth.getUserIdentity);
+  const syncViewerIdentity = useMutation(api.identity.syncViewerIdentity);
   const [storeReady, setStoreReady] = useState(false);
 
   useEffect(() => {
-    setStoreReady(true);
+    let cancelled = false;
 
     const initIdentity = async () => {
+      setStoreReady(false);
       if (auth.isLoading) return;
       if (auth.isAuthenticated && authIdentity) {
-        setIdentity(
-          null,
-          authIdentity.fullName ?? authIdentity.email ?? "Anonymous",
-          false,
-        );
+        try {
+          const synced = await syncViewerIdentity({
+            identityId:
+              (identityId as Id<"identities"> | null) ??
+              authIdentity.identityId ??
+              undefined,
+          });
+          setIdentity(synced.identityId, synced.displayName, false);
+        } catch (e) {
+          console.error("Failed to sync signed-in identity:", e);
+          setIdentity(
+            authIdentity.identityId,
+            authIdentity.fullName ?? authIdentity.email ?? "Anonymous",
+            false,
+          );
+        } finally {
+          if (!cancelled) setStoreReady(true);
+        }
         return;
       }
+      if (auth.isAuthenticated && authIdentity === undefined) return;
+
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_CONVEX_URL}/identity/anonymous`,
-          {
-            method: "POST",
-          },
-        );
+        const res = await fetch("/api/identity/anonymous", {
+          method: "POST",
+          cache: "no-store",
+        });
         if (res.ok) {
           const data = await res.json();
           setIdentity(data.identityId, data.displayName, data.isAnonymous);
+        } else {
+          console.error("Anonymous identity request failed:", res.status);
         }
       } catch (e) {
         console.error("Failed to get anonymous identity:", e);
+      } finally {
+        if (!cancelled) setStoreReady(true);
       }
     };
 
     initIdentity();
-  }, [auth.isLoading, auth.isAuthenticated, authIdentity, setIdentity]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    auth.isLoading,
+    auth.isAuthenticated,
+    authIdentity,
+    identityId,
+    setIdentity,
+    syncViewerIdentity,
+  ]);
 
   const userId = authIdentity?.userId ?? identityId ?? "anonymous";
   const userName = authIdentity?.fullName ?? authIdentity?.email ?? displayName;
@@ -228,10 +315,31 @@ export default function BibleApp() {
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sheetView, setSheetView] = useState<
-    "bookmarks" | "settings" | "profile" | "login"
+    | "bookmarks"
+    | "settings"
+    | "profile"
+    | "login"
+    | "index"
+    | "study"
+    | "notes"
+    | "audio"
+    | "activity"
   >("bookmarks");
   const toggleBookmark = useMutation(api.bookmarks.toggle);
-  const bookmarks = useQuery(api.bookmarks.listForGuest) || [];
+  const addBookmarks = useMutation(api.bookmarks.addMany);
+  const removeBookmarks = useMutation(api.bookmarks.removeMany);
+  const currentIdentityId = identityId
+    ? (identityId as Id<"identities">)
+    : undefined;
+  const bookmarks =
+    useQuery(api.bookmarks.listForGuest, {
+      ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
+    }) ||
+    [];
+  const groupedBookmarks = useMemo(
+    () => groupBookmarkRanges(bookmarks),
+    [bookmarks],
+  );
 
   const bookId = useMemo(
     () => getBookId(bibleBooks, selectedPassage.book),
@@ -375,21 +483,53 @@ export default function BibleApp() {
                 (b) =>
                   b.passageBook === selectedPassage.book &&
                   b.passageChapter === selectedPassage.chapter &&
-                  b.passageVerse === 1,
+                  b.passageVerse === selectedPassage.verse,
               )}
               onBookmark={async () => {
-                const added = await toggleBookmark({
-                  identityId: (useStudyStore.getState().identityId ??
-                    undefined) as any,
-                  passageBook: selectedPassage.book,
-                  passageChapter: selectedPassage.chapter,
-                  passageVerse: 1,
-                });
-                showToast(
-                  added
-                    ? `Bookmarked ${selectedPassage.book} ${selectedPassage.chapter}`
-                    : `Removed bookmark for ${selectedPassage.book} ${selectedPassage.chapter}`,
-                );
+                try {
+                  const added = await toggleBookmark({
+                    ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
+                    passageBook: selectedPassage.book,
+                    passageChapter: selectedPassage.chapter,
+                    passageVerse: selectedPassage.verse,
+                  });
+                  if (added) {
+                    toast.success(
+                      `Bookmarked ${formatReference(selectedPassage)}`,
+                    );
+                  } else {
+                    toast.success(
+                      `Removed bookmark for ${formatReference(selectedPassage)}`,
+                    );
+                  }
+                } catch (e) {
+                  console.error(e);
+                  toast.error("Failed to update bookmark.");
+                }
+              }}
+              onBookmarkVerses={async (verses) => {
+                try {
+                  const result = await addBookmarks({
+                    ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
+                    passageBook: selectedPassage.book,
+                    passageChapter: selectedPassage.chapter,
+                    passageVerses: verses,
+                  });
+                  if (result.added > 0) {
+                    toast.success(
+                      `Bookmarked ${result.added} verse${result.added === 1 ? "" : "s"}`,
+                    );
+                  } else {
+                    toast("Selected verses already bookmarked", {
+                      icon: (
+                        <span className="mt-1 flex h-2 w-2 shrink-0 bg-[#f6823c]" />
+                      ),
+                    });
+                  }
+                } catch (e) {
+                  console.error(e);
+                  toast.error("Failed to bookmark selected verses.");
+                }
               }}
               onPassageChange={handlePassageChange}
               onToast={showToast}
@@ -434,39 +574,57 @@ export default function BibleApp() {
               ? "Settings"
               : sheetView === "profile"
                 ? "My Profile"
-                : "Sign In"
+                : sheetView === "login"
+                  ? "Sign In"
+                  : sheetView === "index"
+                    ? "Scripture Index"
+                    : sheetView === "study"
+                      ? "Public Study"
+                      : sheetView === "notes"
+                        ? "My Notes"
+                        : sheetView === "audio"
+                          ? "Audio Notes"
+                          : "Activity"
         }
       >
         {sheetView === "bookmarks" && (
           <div className="flex flex-col gap-2">
-            {bookmarks.length === 0 ? (
+            {groupedBookmarks.length === 0 ? (
               <p className="text-[13px] text-[#7a6758] p-4 text-center">
                 No bookmarks yet.
               </p>
             ) : (
-              bookmarks.map((b) => (
+              groupedBookmarks.map((bookmarkRange) => (
                 <div
-                  key={b._id}
+                  key={bookmarkRange.key}
                   className="group relative flex items-center border border-[#f1e8df] bg-white hover:border-[#f6823c] transition-colors"
                 >
                   <button
                     className="flex-1 text-left p-4 !transform-none hover:!transform-none"
                     onClick={() => {
                       handlePassageChange({
-                        book: b.passageBook,
-                        chapter: b.passageChapter,
-                        verse: b.passageVerse,
+                        book: bookmarkRange.passageBook,
+                        chapter: bookmarkRange.passageChapter,
+                        verse: bookmarkRange.startVerse,
                       });
                       setBookmarksOpen(false);
                     }}
                   >
                     <span className="text-[14px] font-bold text-[#25140b]">
-                      {b.passageBook} {b.passageChapter}:{b.passageVerse}
+                      {bookmarkRange.passageBook} {bookmarkRange.passageChapter}
+                      :{bookmarkRange.startVerse}
+                      {bookmarkRange.endVerse > bookmarkRange.startVerse
+                        ? `-${bookmarkRange.endVerse}`
+                        : ""}
                     </span>
+                    <p className="mt-1 text-[11px] font-medium text-[#9b8878]">
+                      {bookmarkRange.verses.length} verse
+                      {bookmarkRange.verses.length === 1 ? "" : "s"} bookmarked
+                    </p>
                     {(() => {
                       for (const verses of Object.values(chapterVerses)) {
                         const verse = verses.find(
-                          (v) => v.number === b.passageVerse,
+                          (item) => item.number === bookmarkRange.startVerse,
                         );
                         if (verse) {
                           return (
@@ -482,7 +640,7 @@ export default function BibleApp() {
 
                   <div className="pr-2">
                     <AnimatePresence mode="wait">
-                      {deletingId === b._id ? (
+                      {deletingId === bookmarkRange.key ? (
                         <motion.div
                           key="confirm"
                           initial={{ x: 20, opacity: 0 }}
@@ -504,15 +662,25 @@ export default function BibleApp() {
                           </button>
                           <button
                             onClick={async () => {
-                              await toggleBookmark({
-                                identityId: (useStudyStore.getState()
-                                  .identityId ?? undefined) as any,
-                                passageBook: b.passageBook,
-                                passageChapter: b.passageChapter,
-                                passageVerse: b.passageVerse,
-                              });
-                              setDeletingId(null);
-                              toast.success("Bookmark removed");
+                              try {
+                                const result = await removeBookmarks({
+                                  ...(currentIdentityId
+                                    ? { identityId: currentIdentityId }
+                                    : {}),
+                                  passageBook: bookmarkRange.passageBook,
+                                  passageChapter: bookmarkRange.passageChapter,
+                                  passageVerses: bookmarkRange.verses,
+                                });
+                                setDeletingId(null);
+                                toast.success(
+                                  result.removed === 1
+                                    ? "Bookmark removed"
+                                    : `Removed ${result.removed} bookmarks`,
+                                );
+                              } catch (e) {
+                                console.error(e);
+                                toast.error("Failed to remove bookmark.");
+                              }
                             }}
                             className="p-2 text-[#2e6b3d] hover:bg-[#f0f9f0] rounded transition-colors"
                             title="Confirm Delete"
@@ -527,7 +695,7 @@ export default function BibleApp() {
                           animate={{ scale: 1, opacity: 1 }}
                           exit={{ scale: 0.8, opacity: 0 }}
                           className="p-2 text-[#9b8878] hover:text-[#a24723] hover:bg-[#fff5f5] rounded transition-colors"
-                          onClick={() => setDeletingId(b._id)}
+                          onClick={() => setDeletingId(bookmarkRange.key)}
                           title="Delete bookmark"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -546,20 +714,71 @@ export default function BibleApp() {
         {sheetView === "settings" && <SettingsSheet />}
 
         {sheetView === "login" && <SignInSheet />}
+
+        {sheetView === "index" && (
+          <MobileIndexPanel
+            bibleBooks={bibleBooks}
+            bibleBooksError={bibleBooksError}
+            bibleBooksLoading={bibleBooksLoading}
+            selectedPassage={selectedPassage}
+            onClose={() => setBookmarksOpen(false)}
+            onPassageChange={handlePassageChange}
+          />
+        )}
+
+        {sheetView === "study" && (
+          <div className="h-[70vh]">
+            <PublicStudy
+              commentTarget={commentTarget}
+              selectedPassage={selectedPassage}
+            />
+          </div>
+        )}
+
+        {sheetView === "notes" && (
+          <div className="h-[70vh]">
+            <PersonalNotes
+              commentTarget={commentTarget}
+              identityId={identityId}
+              selectedPassage={selectedPassage}
+            />
+          </div>
+        )}
+
+        {sheetView === "audio" && (
+          <div className="h-[70vh]">
+            <AudioNotesPanel selectedPassage={selectedPassage} />
+          </div>
+        )}
+
+        {sheetView === "activity" && (
+          <div className="h-[70vh]">
+            <ActivityPanel selectedPassage={selectedPassage} />
+          </div>
+        )}
       </BottomSheet>
+
+      <MobileStudyControls
+        onOpen={(view) => {
+          if (view === "study") setRightTab("Study");
+          if (view === "notes") setRightTab("Notes");
+          if (view === "audio") setRightTab("Audio Notes");
+          if (view === "activity") setRightTab("Activity");
+          setSheetView(view);
+          setBookmarksOpen(true);
+        }}
+      />
     </ProductShell>
   );
 }
 
 function SignInSheet() {
-  const auth = useConvexAuth();
-  const authActions = useAuthActions();
   const [loading, setLoading] = useState(false);
 
   const handleSignIn = async () => {
     setLoading(true);
     try {
-      await authActions.signIn("google");
+      await signInWithGoogle("/study");
     } catch (e) {
       console.error(e);
       toast.error("Failed to sign in.");
@@ -622,6 +841,131 @@ function SignInSheet() {
   );
 }
 
+function MobileStudyControls({
+  onOpen,
+}: {
+  onOpen: (view: "index" | "study" | "notes" | "audio" | "activity") => void;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#f1e8df] bg-white px-2 py-2 shadow-[0_-10px_30px_rgba(31,18,9,0.08)] xl:hidden">
+      <div className="grid grid-cols-5 gap-1">
+        {[
+          { view: "index", label: "Index", icon: BookOpen },
+          { view: "study", label: "Study", icon: MessageCircle },
+          { view: "notes", label: "Notes", icon: AlignLeft },
+          { view: "audio", label: "Audio", icon: Mic },
+          { view: "activity", label: "Activity", icon: List },
+        ].map(({ view, label, icon: Icon }) => (
+          <button
+            className="flex flex-col items-center justify-center gap-1 px-1 py-1.5 text-[10px] font-semibold text-[#7a6758] hover:text-[#3a2218]"
+            key={view}
+            onClick={() => onOpen(view as "index" | "study" | "notes" | "audio" | "activity")}
+            type="button"
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileIndexPanel({
+  bibleBooks,
+  bibleBooksError,
+  bibleBooksLoading,
+  selectedPassage,
+  onClose,
+  onPassageChange,
+}: {
+  bibleBooks: BibleBookIndex[];
+  bibleBooksError: string | null;
+  bibleBooksLoading: boolean;
+  selectedPassage: PassageSelection;
+  onClose: () => void;
+  onPassageChange: (selection: PassageSelection) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const referenceMatch = useMemo(
+    () => parseVerseReference(query, bibleBooks),
+    [query, bibleBooks],
+  );
+
+  const filteredBooks = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return bibleBooks;
+    return bibleBooks.filter((book) => book.book.toLowerCase().includes(q));
+  }, [bibleBooks, query]);
+
+  return (
+    <div className="flex h-[70vh] flex-col gap-3 p-4">
+      <div className="flex items-center gap-2 border border-[#f1e8df] bg-[#fbf7f2] px-3 py-2">
+        <Search className="h-4 w-4 text-[#9b8878]" />
+        <input
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-[#25140b] outline-none placeholder:text-[#9b8878]"
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search book or enter John 1:1"
+          value={query}
+        />
+      </div>
+
+      {referenceMatch && (
+        <button
+          className="border border-[#f6823c] bg-[#fff3e8] px-3 py-2 text-left text-[13px] font-semibold text-[#25140b]"
+          onClick={() => {
+            onPassageChange(referenceMatch);
+            onClose();
+          }}
+          type="button"
+        >
+          Jump to {formatReference(referenceMatch)}
+        </button>
+      )}
+
+      <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto">
+        {bibleBooksLoading && (
+          <p className="py-4 text-[12px] text-[#7a6758]">Loading books...</p>
+        )}
+        {bibleBooksError && (
+          <p className="py-4 text-[12px] font-semibold text-[#25140b]">
+            {bibleBooksError}
+          </p>
+        )}
+        {!bibleBooksLoading &&
+          !bibleBooksError &&
+          filteredBooks.map(({ book, chapters }) => (
+            <div className="border-b border-[#f1e8df] py-2" key={book}>
+              <p className="mb-2 text-[13px] font-semibold text-[#25140b]">
+                {book}
+              </p>
+              <div className="grid grid-cols-6 gap-1">
+                {chapters.map(({ chapter }) => (
+                  <button
+                    className={cn(
+                      "h-8 text-[12px] font-medium text-[#7a6758]",
+                      selectedPassage.book === book &&
+                        selectedPassage.chapter === chapter &&
+                        "bg-[#fff3e8] text-[#f6823c]",
+                    )}
+                    key={chapter}
+                    onClick={() => {
+                      onPassageChange({ book, chapter, verse: 1 });
+                      onClose();
+                    }}
+                    type="button"
+                  >
+                    {chapter}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
 function SettingsSheet() {
   const [darkMode, setDarkMode] = useState(false);
   const [fontSize, setFontSize] = useState(14);
@@ -633,6 +977,13 @@ function SettingsSheet() {
       document.documentElement.classList.remove("dark");
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--study-reader-font-size",
+      `${fontSize}px`,
+    );
+  }, [fontSize]);
 
   return (
     <div className="p-4 flex flex-col gap-4">
@@ -691,7 +1042,6 @@ function ProfileSheet({
     passageVerse: number;
   }[];
 }) {
-  const auth = useConvexAuth();
   const identity = useQuery(api.auth.getUserIdentity);
   const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
   const initials = userName.slice(0, 2).toUpperCase();
@@ -722,7 +1072,20 @@ function ProfileSheet({
         </div>
       </div>
 
-      <button className="w-full bg-[#3a2218] text-white py-3 text-sm font-semibold hover:bg-[#1f1209] transition-colors">
+      <button
+        className="w-full bg-[#3a2218] text-white py-3 text-sm font-semibold hover:bg-[#1f1209] transition-colors"
+        onClick={async () => {
+          if (isAnonymous) return;
+          try {
+            await authClient.signOut();
+            toast.success("Logged out");
+          } catch (e) {
+            console.error(e);
+            toast.error("Failed to log out.");
+          }
+        }}
+        type="button"
+      >
         {isAnonymous ? "Sign In to Sync" : "Log Out"}
       </button>
     </div>
@@ -1127,14 +1490,16 @@ function FilterResults({
   onPassageChange: (selection: PassageSelection) => void;
   selectedPassage: PassageSelection;
 }) {
-  const auth = useConvexAuth();
-  const identity = useQuery(api.auth.getUserIdentity);
-  const userId = identity?.userId ?? "anonymous";
+  const identityId = useStudyStore((s) => s.identityId);
+  const currentIdentityId = identityId
+    ? (identityId as Id<"identities">)
+    : undefined;
 
   const notes = useQuery(
     api.notes.listForPassage,
     activeFilter === "Notes"
       ? {
+          ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
           passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
         }
@@ -1153,6 +1518,7 @@ function FilterResults({
     api.audioNotes.listForPassage,
     activeFilter === "Audio"
       ? {
+          ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
           passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
         }
@@ -1673,6 +2039,7 @@ function Reader({
   visibleVersions,
   isBookmarked,
   onBookmark,
+  onBookmarkVerses,
   onPassageChange,
   onToast,
   onVerseComment,
@@ -1693,6 +2060,7 @@ function Reader({
   visibleVersions: string[];
   isBookmarked?: boolean;
   onBookmark: () => void;
+  onBookmarkVerses: (verses: number[]) => Promise<void>;
   onPassageChange: (selection: PassageSelection) => void;
   onToast: (title: string, description?: string) => void;
   onVerseComment: (target: string) => void;
@@ -1701,6 +2069,8 @@ function Reader({
   const [versionMenuOpen, setVersionMenuOpen] = useState(false);
   const [versionSearch, setVersionSearch] = useState("");
   const [replaceTarget, setReplaceTarget] = useState<string | null>(null);
+  const [selectionAnchor, setSelectionAnchor] = useState<number | null>(null);
+  const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const readerScrollRef = useRef<HTMLDivElement>(null);
 
   const versionMenuRef = useOutsideClick<HTMLDivElement>(
@@ -1739,6 +2109,10 @@ function Reader({
   );
 
   const canCloseVersion = visibleVersions.length > 1;
+  const selectedVerseSet = useMemo(
+    () => new Set(selectedVerses),
+    [selectedVerses],
+  );
 
   const currentBookIndex = useMemo(
     () => bibleBooks.findIndex(({ book }) => book === selectedPassage.book),
@@ -1867,6 +2241,36 @@ function Reader({
     setReplaceTarget(target);
     setVersionMenuOpen(true);
   };
+
+  const handleVerseSelect = useCallback(
+    (verse: number, shiftKey: boolean) => {
+      if (shiftKey && selectionAnchor !== null) {
+        const start = Math.min(selectionAnchor, verse);
+        const end = Math.max(selectionAnchor, verse);
+        setSelectedVerses(
+          Array.from({ length: end - start + 1 }, (_, i) => start + i),
+        );
+        return;
+      }
+
+      setSelectionAnchor(verse);
+      setSelectedVerses([verse]);
+    },
+    [selectionAnchor],
+  );
+
+  const clearVerseSelection = useCallback(() => {
+    setSelectionAnchor(null);
+    setSelectedVerses([]);
+  }, []);
+
+  useEffect(() => {
+    clearVerseSelection();
+  }, [
+    selectedPassage.book,
+    selectedPassage.chapter,
+    clearVerseSelection,
+  ]);
 
   return (
     <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white">
@@ -2034,6 +2438,41 @@ function Reader({
           </AnimatePresence>
         </div>
 
+        {selectedVerses.length > 1 && (
+          <div className="flex shrink-0 items-center justify-center gap-3 border-b border-[#f1e8df] bg-[#fffaf5] px-5 py-2">
+            <span className="text-[12px] font-semibold text-[#3a2218]">
+              {selectedVerses.length} verses selected
+            </span>
+            <button
+              className="cta-button border border-[#e5d6c9] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#3a2218] hover:border-[#f6823c]"
+              onClick={() => onBookmarkVerses(selectedVerses)}
+              type="button"
+            >
+              Bookmark selected
+            </button>
+            <button
+              className="cta-button border border-[#e5d6c9] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#3a2218] hover:border-[#f6823c]"
+              onClick={() => {
+                const start = selectedVerses[0];
+                const end = selectedVerses[selectedVerses.length - 1];
+                onVerseComment(
+                  `${visibleVersions[0]} ${selectedPassage.book} ${selectedPassage.chapter}:${start}-${end}`,
+                );
+              }}
+              type="button"
+            >
+              Comment selected
+            </button>
+            <button
+              className="text-[11px] font-semibold text-[#9b8878] hover:text-[#3a2218]"
+              onClick={clearVerseSelection}
+              type="button"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         <div
           className="bible-app-scroll min-h-0 flex-1 overflow-y-auto"
           ref={readerScrollRef}
@@ -2045,7 +2484,9 @@ function Reader({
                   key={translation.label}
                   bookmarks={bookmarks}
                   onComment={onVerseComment}
+                  onVerseSelect={handleVerseSelect}
                   selectedPassage={selectedPassage}
+                  selectedVerseSet={selectedVerseSet}
                   visibleCount={visibleTranslations.length}
                   {...translation}
                 />
@@ -2404,7 +2845,9 @@ function TranslationVerses({
   isLoading,
   label,
   onComment,
+  onVerseSelect,
   selectedPassage,
+  selectedVerseSet,
   visibleCount,
   verses,
 }: {
@@ -2417,7 +2860,9 @@ function TranslationVerses({
   isLoading: boolean;
   label: string;
   onComment: (target: string) => void;
+  onVerseSelect: (verse: number, shiftKey: boolean) => void;
   selectedPassage: PassageSelection;
+  selectedVerseSet: Set<number>;
   visibleCount: number;
   verses: BibleVerse[];
 }) {
@@ -2451,6 +2896,7 @@ function TranslationVerses({
             verses.map(({ number, text }) => {
               const verseKey = `${selectedPassage.book}-${selectedPassage.chapter}-${number}`;
               const isFlashing = flashingVerse === verseKey;
+              const isSelected = selectedVerseSet.has(number);
               const isVerseBookmarked = bookmarks.some(
                 (b) =>
                   b.passageBook === selectedPassage.book &&
@@ -2469,10 +2915,14 @@ function TranslationVerses({
                   className={cn(
                     "group relative flex gap-3 px-2 py-2 transition-colors duration-150 ease-out hover:bg-[#fbf7f2] cursor-pointer",
                     highlightedVerse === verseKey && "bg-[#fff3e8]",
+                    isSelected && "bg-[#fff3e8] ring-1 ring-inset ring-[#f6823c]/30",
                   )}
                   data-verse={number}
                   key={`${label}-${selectedPassage.book}-${selectedPassage.chapter}-${number}`}
-                  onClick={() => setHighlightedVerse(verseKey)}
+                  onClick={(e) => {
+                    setHighlightedVerse(verseKey);
+                    onVerseSelect(number, e.shiftKey);
+                  }}
                   transition={
                     isFlashing
                       ? { duration: 1.5, repeat: 1, ease: "easeInOut" }
@@ -2483,7 +2933,7 @@ function TranslationVerses({
                     {number}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-serif text-[14px] leading-[1.65] text-[#25140b]">
+                    <p className="font-serif text-[length:var(--study-reader-font-size,14px)] leading-[1.65] text-[#25140b]">
                       {text}
                     </p>
                     <div
@@ -2500,10 +2950,13 @@ function TranslationVerses({
                           e.stopPropagation();
                           toggleBookmark({
                             identityId: (useStudyStore.getState().identityId ??
-                              undefined) as any,
+                              undefined) as Id<"identities"> | undefined,
                             passageBook: selectedPassage.book,
                             passageChapter: selectedPassage.chapter,
                             passageVerse: number,
+                          }).catch((error) => {
+                            console.error(error);
+                            toast.error("Failed to update bookmark.");
                           });
                         }}
                         type="button"
@@ -2692,11 +3145,13 @@ function PublicStudy({
     });
   };
 
-  const auth = useConvexAuth();
   const identityId = useStudyStore((s) => s.identityId);
+  const authIdentity = useQuery(api.auth.getUserIdentity);
   const displayName = useStudyStore((s) => s.displayName);
-  const userId = identityId ?? "anonymous";
-  const userName = displayName;
+  const currentIdentityId = identityId
+    ? (identityId as Id<"identities">)
+    : undefined;
+  const userId = authIdentity?.userId ?? identityId ?? "anonymous";
   const comments = useQuery(api.comments.list, {
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
@@ -2740,7 +3195,7 @@ function PublicStudy({
     try {
       await toggleLike({
         id: commentId as Id<"comments">,
-        identityId: identityId as Id<"identities"> | undefined,
+        ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
       });
     } catch (e) {
       console.error(e);
@@ -2760,7 +3215,7 @@ function PublicStudy({
     setSendingReplies((prev) => ({ ...prev, [commentId]: true }));
     try {
       await createComment({
-        identityId: (useStudyStore.getState().identityId ?? undefined) as any,
+        ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
         passageBook: parent.passageBook,
         passageChapter: parent.passageChapter,
         passageVerse: parent.passageVerse,
@@ -2785,7 +3240,10 @@ function PublicStudy({
 
   const handleDelete = async (commentId: string) => {
     try {
-      await removeComment({ id: commentId as Id<"comments"> });
+      await removeComment({
+        id: commentId as Id<"comments">,
+        ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
+      });
     } catch (e) {
       console.error(e);
       toast.error("Failed to delete comment.");
@@ -2796,6 +3254,7 @@ function PublicStudy({
     try {
       await updateComment({
         id: commentId as Id<"comments">,
+        ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
         content: newContent,
       });
     } catch (e) {
@@ -2895,7 +3354,10 @@ function PublicStudy({
                   <ChatMessage
                     avatar={`https://ui-avatars.com/api/?name=${getDisplayName(comment.userId, comment.guestName)}&background=random&size=128`}
                     initialContent={comment.content}
-                    isOwner={comment.userId === userId}
+                    isOwner={
+                      (comment.ownerKey ?? comment.userId ?? comment.identityId) ===
+                      userId
+                    }
                     isReplying={replyingTo === comment._id}
                     likeIcon={isLiked ? "heart" : "thumb"}
                     likes={likesCount}
@@ -2962,7 +3424,11 @@ function PublicStudy({
                                     key={reply._id}
                                     avatar={`https://ui-avatars.com/api/?name=${getDisplayName(reply.userId, reply.guestName)}&background=random&size=128`}
                                     initialContent={reply.content}
-                                    isOwner={reply.userId === userId}
+                                    isOwner={
+                                      (reply.ownerKey ??
+                                        reply.userId ??
+                                        reply.identityId) === userId
+                                    }
                                     isReply={true}
                                     likeIcon={rIsLiked ? "heart" : "thumb"}
                                     likes={rLikes}
@@ -3019,14 +3485,14 @@ function PublicStudy({
   );
 }
 
-type DrawerTab = "parallel" | "commentary" | "cross-refs" | "interlinear";
+type DrawerTab = "commentary" | "cross-refs";
 
 function BottomDrawerPanel({
   selectedPassage,
 }: {
   selectedPassage: PassageSelection;
 }) {
-  const [activeTab, setActiveTab] = useState<DrawerTab>("parallel");
+  const [activeTab, setActiveTab] = useState<DrawerTab>("commentary");
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -3035,10 +3501,8 @@ function BottomDrawerPanel({
         <div className="flex w-full gap-6 px-5 max-w-6xl pointer-events-auto">
           {(
             [
-              { key: "parallel", label: "Parallel", icon: List },
-              { key: "commentary", label: "Commentary", icon: BookOpen },
+              { key: "commentary", label: "Commentary", icon: List },
               { key: "cross-refs", label: "Cross-Refs", icon: Link2 },
-              { key: "interlinear", label: "Interlinear", icon: AlignLeft },
             ] as {
               key: DrawerTab;
               label: string;
@@ -3093,47 +3557,17 @@ function BottomDrawerPanel({
               <div className="h-1 w-8 rounded-full bg-[#e5d6c9]" />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {activeTab === "parallel" && (
-                <ParallelPanel selectedPassage={selectedPassage} />
-              )}
               {activeTab === "commentary" && (
                 <CommentaryPanel selectedPassage={selectedPassage} />
               )}
               {activeTab === "cross-refs" && (
                 <CrossRefsPanel selectedPassage={selectedPassage} />
               )}
-              {activeTab === "interlinear" && (
-                <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                  <div className="mb-3 text-3xl">📜</div>
-                  <p className="text-[13px] font-semibold text-[#3a2218]">
-                    Interlinear
-                  </p>
-                  <p className="mt-1 text-[11px] text-[#9b8878]">
-                    Word-by-word translation coming soon.
-                  </p>
-                </div>
-              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </section>
-  );
-}
-
-function ParallelPanel({
-  selectedPassage,
-}: {
-  selectedPassage: PassageSelection;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-4">
-      <div className="mb-3 text-3xl">📖</div>
-      <p className="text-[13px] font-semibold text-[#3a2218]">Parallel View</p>
-      <p className="mt-1 text-[11px] text-[#9b8878]">
-        Side-by-side translation comparison coming soon.
-      </p>
-    </div>
   );
 }
 
@@ -3146,7 +3580,11 @@ function PersonalNotes({
   selectedPassage: PassageSelection;
   identityId: string | null;
 }) {
+  const currentIdentityId = identityId
+    ? (identityId as Id<"identities">)
+    : undefined;
   const notes = useQuery(api.notes.listForPassage, {
+    ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
   });
@@ -3155,7 +3593,10 @@ function PersonalNotes({
 
   const handleDelete = async (id: string) => {
     try {
-      await removeNote({ id: id as Id<"notes"> });
+      await removeNote({
+        id: id as Id<"notes">,
+        ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
+      });
     } catch (e) {
       console.error(e);
       toast.error("Failed to delete note.");
@@ -3166,6 +3607,7 @@ function PersonalNotes({
     try {
       await updateNote({
         id: id as Id<"notes">,
+        ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
         content,
         ...(type && {
           type: type as "observation" | "interpretation" | "application",
@@ -3219,7 +3661,7 @@ function PersonalNotes({
       </div>
 
       <Composer
-        identityId={useStudyStore.getState().identityId}
+        identityId={identityId}
         target={commentTarget}
         selectedPassage={selectedPassage}
       />
@@ -3369,12 +3811,17 @@ function ActivityPanel({
 }: {
   selectedPassage: PassageSelection;
 }) {
+  const identityId = useStudyStore((s) => s.identityId);
+  const currentIdentityId = identityId
+    ? (identityId as Id<"identities">)
+    : undefined;
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [path, setPath] = useState("");
   const [clipHeight, setClipHeight] = useState(0);
 
   const stats = useQuery(api.activity.statsForPassage, {
+    ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
   });
@@ -3812,6 +4259,9 @@ function Composer({
   const setVersePrefill = useStudyStore((s) => s.setVersePrefill);
   const createComment = useMutation(api.comments.create);
   const createNote = useMutation(api.notes.create);
+  const currentIdentityId = identityId
+    ? (identityId as Id<"identities">)
+    : undefined;
 
   const handleSend = async () => {
     const text = content.trim();
@@ -3822,7 +4272,7 @@ function Composer({
     try {
       if (rightTab === "Study") {
         await createComment({
-          identityId: (useStudyStore.getState().identityId ?? undefined) as any,
+          ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
           passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
@@ -3831,7 +4281,7 @@ function Composer({
         });
       } else {
         await createNote({
-          identityId: (useStudyStore.getState().identityId ?? undefined) as any,
+          ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
           passageBook: selectedPassage.book,
           passageChapter: selectedPassage.chapter,
           passageVerse: selectedPassage.verse,
@@ -3912,6 +4362,7 @@ function ChatInput({
   disabled?: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const setRightTab = useStudyStore((s) => s.setRightTab);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -4009,7 +4460,10 @@ function ChatInput({
           aria-label="Record voice note"
           className="icon-button flex h-7 w-7 shrink-0 items-center justify-center text-[#7a6758] hover:bg-[#fff3e8] hover:text-[#3a2218] disabled:opacity-40"
           disabled={disabled}
-          onClick={() => toast("Voice note recording coming soon")}
+          onClick={() => {
+            setRightTab("Audio Notes");
+            toast("Audio Notes opened");
+          }}
           type="button"
         >
           <Mic className="h-3.5 w-3.5" />
@@ -4082,8 +4536,7 @@ function CommentaryPanel({
     )
       .then((r) => {
         if (!r.ok) {
-          setContent(null);
-          return;
+          throw new Error(`Commentary request failed: ${r.status}`);
         }
         return r.json();
       })
@@ -4188,8 +4641,7 @@ function CrossRefsPanel({
     )
       .then((r) => {
         if (!r.ok) {
-          setCrossRefs(undefined);
-          return;
+          throw new Error(`Cross-reference request failed: ${r.status}`);
         }
         return r.json();
       })
@@ -4279,11 +4731,15 @@ function AudioNotesPanel({
 }: {
   selectedPassage: PassageSelection;
 }) {
-  const auth = useConvexAuth();
   const identity = useQuery(api.auth.getUserIdentity);
+  const identityId = useStudyStore((s) => s.identityId);
+  const currentIdentityId = identityId
+    ? (identityId as Id<"identities">)
+    : undefined;
   const userId = identity?.userId ?? "anonymous";
   const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
   const notes = useQuery(api.audioNotes.listForPassage, {
+    ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
     passageBook: selectedPassage.book,
     passageChapter: selectedPassage.chapter,
   });
@@ -4295,6 +4751,7 @@ function AudioNotesPanel({
   const [pendingUploads, setPendingUploads] = useState<any[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordingStartedAtRef = useRef<number | null>(null);
 
   const startRecording = async () => {
     try {
@@ -4306,21 +4763,27 @@ function AudioNotesPanel({
       recorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         chunksRef.current = [];
+        const duration = recordingStartedAtRef.current
+          ? Math.max(
+              1,
+              Math.round((Date.now() - recordingStartedAtRef.current) / 1000),
+            )
+          : 0;
+        recordingStartedAtRef.current = null;
 
-        // Optimistic UI: Immediately show processing note
         const tempId = Date.now().toString();
         const optimisticNote = {
           _id: tempId,
           userId,
           userName,
           _creationTime: Date.now(),
+          pending: true,
           isProcessing: true,
           transcript: "Uploading...",
         };
         setPendingUploads((prev) => [optimisticNote, ...prev]);
 
         try {
-          // 1. Get signed URL from our Next.js API
           const presignRes = await fetch("/api/upload", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -4329,19 +4792,24 @@ function AudioNotesPanel({
               contentType: "audio/webm",
             }),
           });
+          if (!presignRes.ok) {
+            throw new Error(`Upload presign failed: ${presignRes.status}`);
+          }
           const { uploadUrl, publicUrl, key } = await presignRes.json();
 
-          // 2. Upload to Cloudflare R2 via PUT (wait for it before proceeding)
           setPendingUploads((prev) =>
             prev.map((p) =>
               p._id === tempId ? { ...p, transcript: "Saving to R2..." } : p,
             ),
           );
-          await fetch(uploadUrl, {
+          const uploadRes = await fetch(uploadUrl, {
             method: "PUT",
             headers: { "Content-Type": "audio/webm" },
             body: blob,
           });
+          if (!uploadRes.ok) {
+            throw new Error(`Audio upload failed: ${uploadRes.status}`);
+          }
 
           setPendingUploads((prev) =>
             prev.map((p) =>
@@ -4349,10 +4817,8 @@ function AudioNotesPanel({
             ),
           );
 
-          // 3. Create DB record with R2 URL
           const noteId = await createAudioNote({
-            identityId: (useStudyStore.getState().identityId ??
-              undefined) as any,
+            ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
             passageBook: selectedPassage.book,
             passageChapter: selectedPassage.chapter,
             passageVerse: selectedPassage.verse,
@@ -4360,37 +4826,46 @@ function AudioNotesPanel({
             audioKey: key,
             size: blob.size,
             mimeType: "audio/webm",
-            duration: 0,
+            duration,
           });
 
-          // Remove from pending since Convex will now show it as isProcessing=true
           setPendingUploads((prev) => prev.filter((p) => p._id !== tempId));
 
-          // 4. Trigger Deepgram transcript with R2 URL
           const trRes = await fetch("/api/transcribe", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: publicUrl }),
           });
+          if (!trRes.ok) {
+            throw new Error(`Transcription failed: ${trRes.status}`);
+          }
           const { transcript } = await trRes.json();
 
           if (transcript) {
-            await updateTranscript({ id: noteId, transcript });
+            await updateTranscript({
+              id: noteId,
+              ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
+              transcript,
+            });
           } else {
             await updateTranscript({
               id: noteId,
+              ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
               transcript: "Transcription failed.",
             });
           }
         } catch (e) {
+          console.error("Audio note processing failed:", e);
           toast.error("Failed to process audio");
           setPendingUploads((prev) => prev.filter((p) => p._id !== tempId));
         }
       };
       mediaRecorderRef.current = recorder;
+      recordingStartedAtRef.current = Date.now();
       recorder.start();
       setIsRecording(true);
     } catch (err) {
+      console.error("Audio recording failed:", err);
       toast.error("Microphone access denied");
     }
   };
@@ -4443,7 +4918,20 @@ function AudioNotesPanel({
             <AudioNote
               key={n._id}
               note={n}
-              onDelete={() => deleteAudioNote({ id: n._id })}
+              onDelete={
+                n.pending
+                  ? undefined
+                  : () =>
+                      deleteAudioNote({
+                        id: n._id,
+                        ...(currentIdentityId
+                          ? { identityId: currentIdentityId }
+                          : {}),
+                      }).catch((e) => {
+                        console.error(e);
+                        toast.error("Failed to delete audio note.");
+                      })
+              }
             />
           ))
         )}
@@ -4462,26 +4950,44 @@ function AudioNote({
   onDelete?: () => void;
 }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrl = note.audioUrl ?? note.url;
 
   useEffect(() => {
-    if (note.url) {
-      audioRef.current = new Audio(note.url);
+    if (audioUrl) {
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.playbackRate = playbackRate;
       audioRef.current.onended = () => setIsPlaying(false);
     }
     return () => {
       if (audioRef.current) audioRef.current.pause();
     };
-  }, [note.url]);
+  }, [audioUrl]);
+
+  const duration = typeof note.duration === "number" ? note.duration : 0;
+  const formattedDuration = `${Math.floor(duration / 60)
+    .toString()
+    .padStart(2, "0")}:${Math.floor(duration % 60)
+    .toString()
+    .padStart(2, "0")}`;
 
   const togglePlay = () => {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
     } else {
+      audioRef.current.playbackRate = playbackRate;
       audioRef.current.play();
     }
     setIsPlaying(!isPlaying);
+  };
+
+  const changePlaybackRate = () => {
+    const rates = [1, 1.25, 1.5, 2];
+    const nextRate = rates[(rates.indexOf(playbackRate) + 1) % rates.length];
+    setPlaybackRate(nextRate);
+    if (audioRef.current) audioRef.current.playbackRate = nextRate;
   };
 
   return (
@@ -4547,11 +5053,14 @@ function AudioNote({
         <span className="font-mono text-[11px] text-[#9b8878]">00:00</span>
         <button
           className="cta-button border border-[#e5d6c9] px-2 py-0.5 text-[11px] font-semibold text-[#3a2218]"
+          onClick={changePlaybackRate}
           type="button"
         >
-          1.25×
+          {playbackRate}x
         </button>
-        <span className="font-mono text-[11px] text-[#9b8878]">03:42</span>
+        <span className="font-mono text-[11px] text-[#9b8878]">
+          {formattedDuration}
+        </span>
       </div>
     </section>
   );

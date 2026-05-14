@@ -113,7 +113,7 @@ export default function HomePage() {
                 Updates
               </Link>
               <Link
-                href="/auth/login"
+                href="/login"
                 className="px-3 py-1.5 rounded-full border border-border hover:bg-white/5 transition-colors text-foreground"
               >
                 Sign In

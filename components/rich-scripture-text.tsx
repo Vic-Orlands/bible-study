@@ -5,13 +5,20 @@ import { motion } from "motion/react";
 import { useStudyStore } from "@/lib/study-store";
 import { parseVerseReference, useBibleBooks } from "@/lib/bible-queries";
 import { fetchHelloAoChapter, extractChapterVerses } from "@/lib/helloao";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-// Matches: "John 1:1", "1 John 1:1", "I John 1:1", "1st John 1:1",
-//          "john 1:1", "John 1", "John 1: 1", "John 1:1 - 10",
-//          "Song of Solomon 1:1", "1 Peter 1:1-5"
-const VERSE_REGEX = /((?:(?:[123]|I{1,3}|1st|2nd|3rd)\s)?[A-Za-z]+(?:\s[A-Za-z]+)*)\s+(\d+)(?:\s*[:\.]\s*(\d+)(?:\s*[-–—]\s*(\d+))?)?/gi;
+const BIBLE_BOOK_PATTERN =
+  "(?:Genesis|Gen|Exodus|Exod|Ex|Leviticus|Lev|Numbers|Num|Deuteronomy|Deut|Joshua|Josh|Judges|Judg|Ruth|(?:1st|1|I)\\s*Samuel|(?:2nd|2|II)\\s*Samuel|(?:1st|1|I)\\s*Kings|(?:2nd|2|II)\\s*Kings|(?:1st|1|I)\\s*Chronicles|(?:2nd|2|II)\\s*Chronicles|Ezra|Nehemiah|Neh|Esther|Esth|Job|Psalms?|Psalm|Ps|Proverbs|Prov|Ecclesiastes|Eccl|Song\\s+of\\s+Solomon|Song\\s+of\\s+Songs|Song|Isaiah|Isa|Jeremiah|Jer|Lamentations|Lam|Ezekiel|Ezek|Daniel|Dan|Hosea|Hos|Joel|Amos|Obadiah|Obad|Jonah|Micah|Mic|Nahum|Nah|Habakkuk|Hab|Zephaniah|Zeph|Haggai|Hag|Zechariah|Zech|Malachi|Mal|Matthew|Matt|Mark|Luke|John|Acts|Romans|Rom|(?:1st|1|I)\\s*Corinthians|(?:2nd|2|II)\\s*Corinthians|Galatians|Gal|Ephesians|Eph|Philippians|Phil|Colossians|Col|(?:1st|1|I)\\s*Thessalonians|(?:2nd|2|II)\\s*Thessalonians|(?:1st|1|I)\\s*Timothy|(?:2nd|2|II)\\s*Timothy|Titus|Philemon|Philem|Hebrews|Heb|James|Jas|(?:1st|1|I)\\s*Peter|(?:2nd|2|II)\\s*Peter|(?:1st|1|I)\\s*John|(?:2nd|2|II)\\s*John|(?:3rd|3|III)\\s*John|Jude|Revelation|Rev)";
+
+const VERSE_REGEX = new RegExp(
+  `\\b(${BIBLE_BOOK_PATTERN})\\s+(\\d+)(?:\\s*[:\\.]\\s*(\\d+)(?:\\s*[-–—]\\s*(\\d+))?)?\\b`,
+  "gi",
+);
 
 interface VerseMatch {
   book: string;
@@ -40,7 +47,13 @@ function parseMatches(text: string): VerseMatch[] {
   return matches;
 }
 
-export function RichScriptureText({ text, className }: { text: string; className?: string }) {
+export function RichScriptureText({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
   const matches = parseMatches(text);
   const result: React.ReactNode[] = [];
   let lastIndex = 0;
@@ -62,7 +75,7 @@ export function RichScriptureText({ text, className }: { text: string; className
         verse={match.verse ? parseInt(match.verse, 10) : 1}
         endVerse={match.endVerse ? parseInt(match.endVerse, 10) : undefined}
         reference={displayRef}
-      />
+      />,
     );
 
     lastIndex = match.index + match.length;
@@ -72,12 +85,55 @@ export function RichScriptureText({ text, className }: { text: string; className
     result.push(text.slice(lastIndex));
   }
 
-  return <div className={cn("rich-scripture-text whitespace-pre-wrap", className)}>{result}</div>;
+  return (
+    <div className={cn("rich-scripture-text whitespace-pre-wrap", className)}>
+      {result}
+    </div>
+  );
 }
 
-function normalizeBookForApi(rawBook: string): string {
-  return rawBook
-    .replace(/^(I{1,3})\s+/, (match) => match.trim().length.toString())
+function normalizeBookName(rawBook: string) {
+  return (
+    rawBook
+      // 1stTimothy -> 1 Timothy
+      // 1st Timothy -> 1 Timothy
+      .replace(/^(1st|first)\s*/i, "1 ")
+      .replace(/^(2nd|second)\s*/i, "2 ")
+      .replace(/^(3rd|third)\s*/i, "3 ")
+
+      // I Timothy -> 1 Timothy
+      // IITimothy -> 2 Timothy
+      // IIIJohn -> 3 John
+      .replace(/^III\s*/i, "3 ")
+      .replace(/^II\s*/i, "2 ")
+      .replace(/^I\s*/i, "1 ")
+
+      // 1Timothy -> 1 Timothy
+      .replace(/^([1-3])(?=[A-Za-z])/, "$1 ")
+
+      .trim()
+      .replace(/\s+/g, " ")
+  );
+}
+
+function normalizeBookForApi(
+  rawBook: string,
+  bibleBooks?: { book: string; id: string }[],
+) {
+  const normalizedBook = normalizeBookName(rawBook);
+
+  const selection = bibleBooks
+    ? parseVerseReference(`${normalizedBook} 1:1`, bibleBooks as any)
+    : null;
+
+  if (selection && bibleBooks) {
+    const matchedBook = bibleBooks.find((item) => item.book === selection.book);
+    if (matchedBook) {
+      return matchedBook.id;
+    }
+  }
+
+  return normalizedBook
     .replace(/\b\w/g, (c) => c.toUpperCase())
     .replace(/\s+/g, "");
 }
@@ -104,10 +160,18 @@ function VerseLink({
 
   const handleLinkClick = () => {
     if (!bibleBooks) return;
-    const selection = parseVerseReference(`${book} ${chapter}:${verse}`, bibleBooks);
+
+    const normalizedBook = normalizeBookName(book);
+    const selection = parseVerseReference(
+      `${normalizedBook} ${chapter}:${verse}`,
+      bibleBooks,
+    );
+
     if (selection) {
       setPassage(selection);
-      setFlashingVerse(selection.book + "-" + selection.chapter + "-" + selection.verse);
+      setFlashingVerse(
+        selection.book + "-" + selection.chapter + "-" + selection.verse,
+      );
     }
   };
 
@@ -115,14 +179,15 @@ function VerseLink({
     let active = true;
     if (isHovered && !previewText) {
       setLoading(true);
-      fetchHelloAoChapter("BSB", normalizeBookForApi(book), chapter)
+      fetchHelloAoChapter("BSB", normalizeBookForApi(book, bibleBooks), chapter)
         .then((data) => {
           if (!active) return;
           const verses = extractChapterVerses(data);
           const match = verses.find((v) => v.number === verse);
           setPreviewText(match ? match.text : "Verse not found.");
         })
-        .catch(() => {
+        .catch((error) => {
+          console.error("Failed to load verse preview:", error);
           if (active) setPreviewText("Failed to load preview.");
         })
         .finally(() => {
@@ -132,7 +197,7 @@ function VerseLink({
     return () => {
       active = false;
     };
-  }, [isHovered, book, chapter, verse, previewText]);
+  }, [isHovered, book, bibleBooks, chapter, verse, previewText]);
 
   return (
     <Tooltip>

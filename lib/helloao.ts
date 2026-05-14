@@ -135,7 +135,9 @@ export async function fetchHelloAoChapter(
     try {
       const cached = await db.chapters.get(cacheId);
       if (cached) return cached.data as HelloAoChapterResponse;
-    } catch (e) {}
+    } catch (e) {
+      console.error("Dexie fallback get error:", e);
+    }
     throw error;
   }
 }
@@ -145,7 +147,9 @@ export async function fetchHelloAoBooks(translationId = "BSB") {
   try {
     const cached = await db.books.get(cacheId);
     if (cached) return cached.data as HelloAoBooksResponse;
-  } catch (e) {}
+  } catch (e) {
+    console.error("Dexie books get error:", e);
+  }
 
   try {
     const response = await fetch(
@@ -166,14 +170,18 @@ export async function fetchHelloAoBooks(translationId = "BSB") {
         data,
         timestamp: Date.now(),
       });
-    } catch (e) {}
+    } catch (e) {
+      console.error("Dexie books put error:", e);
+    }
     return data as HelloAoBooksResponse;
   } catch (error) {
     console.error("Failed to fetch HelloAO books", error);
     try {
       const cached = await db.books.get(cacheId);
       if (cached) return cached.data as HelloAoBooksResponse;
-    } catch (e) {}
+    } catch (e) {
+      console.error("Dexie books fallback get error:", e);
+    }
     throw error;
   }
 }

@@ -1,26 +1,22 @@
 import { defineSchema, defineTable } from "convex/server";
-import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  ...authTables,
-  users: defineTable({
-    name: v.string(),
-    email: v.string(),
-    image: v.optional(v.string()),
-  }).index("byEmail", ["email"]),
-
   identities: defineTable({
-    ipHash: v.string(),
+    ipHash: v.optional(v.string()),
     userId: v.optional(v.string()),
     displayName: v.string(),
+    email: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
     isAnonymous: v.boolean(),
     createdAt: v.number(),
   })
     .index("by_ipHash", ["ipHash"])
+    .index("by_userId", ["userId"])
     .index("by_isAnonymous", ["isAnonymous"]),
 
   notes: defineTable({
+    ownerKey: v.optional(v.string()),
     identityId: v.optional(v.id("identities")),
     userId: v.optional(v.string()),
     guestId: v.optional(v.string()),
@@ -35,9 +31,16 @@ export default defineSchema({
     ),
   })
     .index("by_identity", ["identityId"])
-    .index("by_passage", ["passageBook", "passageChapter"]),
+    .index("by_passage", ["passageBook", "passageChapter"])
+    .index("by_owner", ["ownerKey"])
+    .index("by_owner_and_passage", [
+      "ownerKey",
+      "passageBook",
+      "passageChapter",
+    ]),
 
   comments: defineTable({
+    ownerKey: v.optional(v.string()),
     identityId: v.optional(v.id("identities")),
     userId: v.optional(v.string()),
     guestName: v.optional(v.string()),
@@ -50,10 +53,12 @@ export default defineSchema({
     likes: v.array(v.string()),
   })
     .index("by_identity", ["identityId"])
+    .index("by_owner", ["ownerKey"])
     .index("by_passage", ["passageBook", "passageChapter"])
     .index("by_parent", ["parentId"]),
 
   bookmarks: defineTable({
+    ownerKey: v.optional(v.string()),
     identityId: v.optional(v.id("identities")),
     userId: v.optional(v.string()),
     guestId: v.optional(v.string()),
@@ -62,9 +67,22 @@ export default defineSchema({
     passageVerse: v.number(),
   })
     .index("by_identity", ["identityId"])
-    .index("by_passage", ["passageBook", "passageChapter"]),
+    .index("by_passage", ["passageBook", "passageChapter"])
+    .index("by_owner", ["ownerKey"])
+    .index("by_owner_and_passage", [
+      "ownerKey",
+      "passageBook",
+      "passageChapter",
+    ])
+    .index("by_owner_and_verse", [
+      "ownerKey",
+      "passageBook",
+      "passageChapter",
+      "passageVerse",
+    ]),
 
   audioNotes: defineTable({
+    ownerKey: v.optional(v.string()),
     identityId: v.optional(v.id("identities")),
     userId: v.optional(v.string()),
     guestId: v.optional(v.string()),
@@ -81,7 +99,13 @@ export default defineSchema({
     waveform: v.optional(v.array(v.number())),
   })
     .index("by_identity", ["identityId"])
-    .index("by_passage", ["passageBook", "passageChapter"]),
+    .index("by_passage", ["passageBook", "passageChapter"])
+    .index("by_owner", ["ownerKey"])
+    .index("by_owner_and_passage", [
+      "ownerKey",
+      "passageBook",
+      "passageChapter",
+    ]),
 
   notifications: defineTable({
     userId: v.string(),
