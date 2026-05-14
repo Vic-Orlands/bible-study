@@ -30,12 +30,19 @@ export function ProductShell({
   onOpenBookmarks,
   onOpenProfile,
   onOpenSignIn,
+  onOpenNotification,
 }: {
   children: ReactNode;
   onOpenSettings?: () => void;
   onOpenBookmarks?: () => void;
   onOpenProfile?: () => void;
   onOpenSignIn?: () => void;
+  onOpenNotification?: (notification: {
+    passageBook: string;
+    passageChapter: number;
+    passageVerse?: number;
+    commentId?: Id<"comments">;
+  }) => void | Promise<void>;
 }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -61,6 +68,7 @@ export function ProductShell({
         identityId={identityId ? (identityId as Id<"identities">) : undefined}
         open={notificationsOpen}
         onClose={() => setNotificationsOpen(false)}
+        onOpenNotification={onOpenNotification}
       />
     </main>
   );

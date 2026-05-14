@@ -43,12 +43,8 @@ export default function LoginPage() {
       <Toaster />
       <section className="w-full max-w-[380px] border border-[#eadccf] bg-white p-6 shadow-[0_22px_70px_rgba(31,18,9,0.12)]">
         <div className="mb-8 flex items-center justify-between">
-          <Link className="flex items-center gap-2" href="/">
-            <BibleLogo className="h-8 w-8" />
-            <span className="font-serif text-[15px] font-semibold">
-              Bible Study
-            </span>
-          </Link>
+          <h3 className="text-base font-semibold">Bible Study</h3>
+
           <Link
             className="text-[12px] font-semibold text-[#7a6758] hover:text-[#3a2218]"
             href="/study"
@@ -57,14 +53,14 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-[#3a2218]">
-          <BookOpen className="h-7 w-7 text-[#f6823c]" />
-        </div>
+        <Link className="flex items-center gap-2" href="/">
+          <BibleLogo className="size-10" />
+        </Link>
 
-        <h1 className="text-2xl font-semibold tracking-normal">
+        <h1 className="text-2xl font-semibold tracking-normal mt-5">
           Sign in to continue
         </h1>
-        <p className="mt-2 text-sm leading-6 text-[#7a6758]">
+        <p className="mt-2 text-xs leading-5 text-[#7a6758]">
           Use Google to sync your bookmarks, notes, comments, and audio notes.
         </p>
 

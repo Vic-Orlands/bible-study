@@ -17,6 +17,7 @@ type State = {
   sidebars: StudySidebars;
   rightTab: RightTab;
   commentTarget: string;
+  focusedCommentId: string | null;
   flashingVerse: string | null;
   versePrefill: string | null;
   highlightedVerse: string | null;
@@ -31,6 +32,7 @@ type Actions = {
   patchSidebars(patch: Partial<StudySidebars>): void;
   setRightTab(t: RightTab): void;
   setCommentTarget(t: string): void;
+  setFocusedCommentId(id: string | null): void;
   setFlashingVerse(v: string | null): void;
   setVersePrefill(v: string | null): void;
   setHighlightedVerse(v: string | null): void;
@@ -45,6 +47,7 @@ export const useStudyStore = create<State & Actions>()(
       sidebars: DEFAULT_SIDEBARS,
       rightTab: "Study" as RightTab,
       commentTarget: `${DEFAULT_PASSAGE.book} ${DEFAULT_PASSAGE.chapter}:${DEFAULT_PASSAGE.verse}`,
+      focusedCommentId: null,
       flashingVerse: null,
       versePrefill: null,
       highlightedVerse: null,
@@ -76,6 +79,9 @@ export const useStudyStore = create<State & Actions>()(
       },
       setCommentTarget(t: string) {
         set({ commentTarget: t });
+      },
+      setFocusedCommentId(id: string | null) {
+        set({ focusedCommentId: id });
       },
       setIdentity(id: string | null, displayName: string, isAnonymous: boolean) {
         set({ identityId: id, displayName, isAnonymous });

@@ -236,6 +236,7 @@ export default function BibleApp() {
   const patchSidebars = useStudyStore((s) => s.patchSidebars);
   const setRightTab = useStudyStore((s) => s.setRightTab);
   const setCommentTarget = useStudyStore((s) => s.setCommentTarget);
+  const setFocusedCommentId = useStudyStore((s) => s.setFocusedCommentId);
   const setVersePrefill = useStudyStore((s) => s.setVersePrefill);
   const setHighlightedVerse = useStudyStore((s) => s.setHighlightedVerse);
   const setIdentity = useStudyStore((s) => s.setIdentity);
@@ -433,6 +434,20 @@ export default function BibleApp() {
       }}
       onOpenSignIn={() => {
         setSheetView("login");
+      }}
+      onOpenNotification={async (notification) => {
+        const verse = notification.passageVerse ?? 1;
+        handlePassageChange({
+          book: notification.passageBook,
+          chapter: notification.passageChapter,
+          verse,
+        });
+        setCommentTarget(
+          `${notification.passageBook} ${notification.passageChapter}:${verse}`,
+        );
+        setRightTab("Study");
+        patchSidebars({ rightOpen: true });
+        setFocusedCommentId(notification.commentId ?? null);
       }}
     >
       <div className="flex flex-1 overflow-hidden bg-white">
@@ -3148,6 +3163,8 @@ function PublicStudy({
   const identityId = useStudyStore((s) => s.identityId);
   const authIdentity = useQuery(api.auth.getUserIdentity);
   const displayName = useStudyStore((s) => s.displayName);
+  const focusedCommentId = useStudyStore((s) => s.focusedCommentId);
+  const setFocusedCommentId = useStudyStore((s) => s.setFocusedCommentId);
   const currentIdentityId = identityId
     ? (identityId as Id<"identities">)
     : undefined;
@@ -3271,6 +3288,33 @@ function PublicStudy({
   const topLevelCount = threads.topLevel.length;
   const repliesCount = totalComments - topLevelCount;
 
+  useEffect(() => {
+    if (!focusedCommentId || !comments) return;
+
+    const targetComment = comments.find((comment) => comment._id === focusedCommentId);
+    if (!targetComment) {
+      setFocusedCommentId(null);
+      return;
+    }
+
+    if (targetComment.parentId) {
+      setExpandedReplies((prev) => ({ ...prev, [targetComment.parentId!]: true }));
+    }
+
+    const delay = targetComment.parentId ? 220 : 80;
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(`study-comment-${focusedCommentId}`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      window.setTimeout(() => {
+        setFocusedCommentId(null);
+      }, 1200);
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [comments, focusedCommentId, setFocusedCommentId]);
+
   return (
     <div className="flex h-full min-h-0 flex-col px-4 py-4">
       <div className="mb-3 flex shrink-0 items-center justify-between">
@@ -3353,6 +3397,8 @@ function PublicStudy({
                 <div key={comment._id}>
                   <ChatMessage
                     avatar={`https://ui-avatars.com/api/?name=${getDisplayName(comment.userId, comment.guestName)}&background=random&size=128`}
+                    domId={`study-comment-${comment._id}`}
+                    highlighted={focusedCommentId === comment._id}
                     initialContent={comment.content}
                     isOwner={
                       (comment.ownerKey ?? comment.userId ?? comment.identityId) ===
@@ -3423,6 +3469,8 @@ function PublicStudy({
                                   <ChatMessage
                                     key={reply._id}
                                     avatar={`https://ui-avatars.com/api/?name=${getDisplayName(reply.userId, reply.guestName)}&background=random&size=128`}
+                                    domId={`study-comment-${reply._id}`}
+                                    highlighted={focusedCommentId === reply._id}
                                     initialContent={reply.content}
                                     isOwner={
                                       (reply.ownerKey ??
@@ -3979,6 +4027,8 @@ function ActivityPanel({
 function ChatMessage({
   avatar,
   children,
+  domId,
+  highlighted = false,
   initialContent,
   isOwner = false,
   isReply = false,
@@ -3998,6 +4048,8 @@ function ChatMessage({
 }: {
   avatar: string;
   children: React.ReactNode;
+  domId?: string;
+  highlighted?: boolean;
   initialContent?: string;
   isOwner?: boolean;
   isReply?: boolean;
@@ -4050,7 +4102,13 @@ function ChatMessage({
   };
 
   return (
-    <div className="transition-all duration-200">
+    <div
+      className={cn(
+        "scroll-mt-24 border border-transparent px-2 py-2 transition-all duration-200",
+        highlighted && "border-[#f6d4bd] bg-[#fff8f1]",
+      )}
+      id={domId}
+    >
       <div className="flex gap-2.5">
         <Image
           alt=""

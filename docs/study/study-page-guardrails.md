@@ -23,6 +23,9 @@ This document exists to protect implemented work from being overwritten by futur
 - Online/offline indicator exists.
 - Profile dropdown exists with Bookmarks, Settings, Profile, and Sign In/Log Out actions.
 - Notifications bottom sheet is wired through `components/notifications-sheet.tsx`.
+- Notifications bottom sheet now uses the same centered bottom-sheet shell and card treatment as the bookmark sheet instead of a full-width custom drawer.
+- Notification rows show passage plus timestamp metadata.
+- Tapping a notification on `/study` now reopens the matching passage, opens the Study rail, and scrolls the linked comment or reply into view when `commentId` is present.
 
 ### Bible Reader
 
@@ -188,6 +191,7 @@ External verification still needed:
 - Owner UI checks `ownerKey`, legacy `userId`, or legacy `identityId`.
 - Comment update/delete verifies owner server-side.
 - Guest comments and replies stay attached after sign-in because the guest identity is claimed instead of replaced.
+- `/study` state now includes a transient focused comment id used for notification-driven scroll/focus.
 - Mentions are represented in the notification schema but no mention parsing or notification creation exists.
 - Public participant avatar stack is hardcoded.
 
