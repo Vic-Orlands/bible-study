@@ -2441,7 +2441,7 @@ function Reader({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex min-w-0 shrink-0 justify-center overflow-hidden">
+          <div className="flex min-w-0 shrink-0 overflow-hidden">
           <AnimatePresence initial={false} mode="popLayout">
             {visibleTranslations.map(({ label }) => (
               <TranslationHeader
@@ -2495,7 +2495,7 @@ function Reader({
           className="bible-app-scroll min-h-0 flex-1 overflow-y-auto"
           ref={readerScrollRef}
         >
-          <div className="flex min-h-full min-w-0 flex-1 justify-center overflow-hidden">
+          <div className="flex min-h-full min-w-0 flex-1 overflow-hidden">
             <AnimatePresence initial={false} mode="popLayout">
               {visibleTranslations.map((translation) => (
                 <TranslationVerses
@@ -2792,17 +2792,26 @@ function NavButton({
   );
 }
 
-const translationColumnMotion = (visibleCount: number) => ({
-  animate: {
-    flex: visibleCount === 1 ? "0 0 52%" : "1 1 0%",
-    maxWidth: visibleCount === 1 ? "52%" : "none",
-    opacity: 1,
-    width: visibleCount === 1 ? "52%" : "100%",
-    x: 0,
-  },
-  exit: { flex: 0, opacity: 0, width: 0, x: 0 },
-  initial: { flex: 0, opacity: 0, width: 0, x: -96 },
-});
+const translationColumnMotion = (visibleCount: number) => {
+  const width =
+    visibleCount === 1
+      ? "52%"
+      : visibleCount === 2
+        ? "50%"
+        : "33.333333%";
+
+  return {
+    animate: {
+      flex: `0 0 ${width}`,
+      maxWidth: width,
+      opacity: 1,
+      width,
+      x: 0,
+    },
+    exit: { flex: "0 0 0%", maxWidth: 0, opacity: 0, width: 0, x: 0 },
+    initial: { flex: "0 0 0%", maxWidth: 0, opacity: 0, width: 0, x: 0 },
+  };
+};
 
 function TranslationHeader({
   canClose,
