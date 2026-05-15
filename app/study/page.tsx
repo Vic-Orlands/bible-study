@@ -2097,7 +2097,10 @@ function Reader({
   );
 
   const visibleTranslationModels = useMemo(
-    () => translations.filter(({ label }) => visibleVersions.includes(label)),
+    () =>
+      visibleVersions
+        .map((label) => translations.find((translation) => translation.label === label))
+        .filter((translation): translation is (typeof translations)[number] => !!translation),
     [visibleVersions],
   );
 
@@ -2818,20 +2821,20 @@ function TranslationHeader({
   return (
     <motion.div
       animate={mp.animate}
-      className="overflow-hidden bg-white"
+      className="min-w-0 overflow-hidden bg-white"
       exit={mp.exit}
       initial={mp.initial}
       transition={{ type: "spring", bounce: 0, duration: 0.48 }}
     >
-      <div className="flex min-w-[320px] items-center justify-between border-b border-r border-[#f1e8df] bg-white px-5 py-3 last:border-r-0">
+      <div className="flex min-w-0 items-center justify-between border-b border-r border-[#f1e8df] bg-white px-5 py-3 last:border-r-0">
         <button
-          className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#3a2218] hover:text-[#f6823c]"
+          className="flex min-w-0 items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#3a2218] hover:text-[#f6823c]"
           onClick={onSwap}
           type="button"
         >
-          <div className="flex flex-col text-left">
+          <div className="flex min-w-0 flex-col text-left">
             <span className="text-[12px] font-bold">{label}</span>
-            <span className="text-[11px] font-normal text-[#7a6758] truncate max-w-[180px]">
+            <span className="truncate text-[11px] font-normal text-[#7a6758]">
               {translations.find((t) => t.label === label)?.name}
             </span>
           </div>
@@ -2889,12 +2892,12 @@ function TranslationVerses({
   return (
     <motion.div
       animate={mp.animate}
-      className="overflow-hidden bg-white"
+      className="min-w-0 overflow-hidden bg-white"
       exit={mp.exit}
       initial={mp.initial}
       transition={{ type: "spring", bounce: 0, duration: 0.48 }}
     >
-      <article className="flex min-h-full min-w-[320px] flex-col border-r border-[#f1e8df] last:border-r-0">
+      <article className="flex min-h-full min-w-0 flex-col border-r border-[#f1e8df] last:border-r-0">
         <div className="flex-1 space-y-4 px-5 py-4 pb-24">
           {isLoading && (
             <p className="px-2 py-2 text-[12px] font-medium text-[#7a6758]">
