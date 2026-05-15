@@ -2441,7 +2441,12 @@ function Reader({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="flex min-w-0 shrink-0 overflow-hidden">
+        <div
+          className={cn(
+            "flex min-w-0 shrink-0 overflow-hidden",
+            visibleTranslations.length === 1 && "justify-center",
+          )}
+        >
           <AnimatePresence initial={false} mode="popLayout">
             {visibleTranslations.map(({ label }) => (
               <TranslationHeader
@@ -2495,7 +2500,12 @@ function Reader({
           className="bible-app-scroll min-h-0 flex-1 overflow-y-auto"
           ref={readerScrollRef}
         >
-          <div className="flex min-h-full min-w-0 flex-1 overflow-hidden">
+          <div
+            className={cn(
+              "flex min-h-full min-w-0 flex-1 overflow-hidden",
+              visibleTranslations.length === 1 && "justify-center",
+            )}
+          >
             <AnimatePresence initial={false} mode="popLayout">
               {visibleTranslations.map((translation) => (
                 <TranslationVerses
