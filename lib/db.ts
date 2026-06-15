@@ -1,6 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
 import { type BibleBookIndex } from "./bible-queries";
-import { type BibleVerse } from "./helloao";
 
 export type CachedChapter = {
   id: string; // e.g. "BSB-John-1"

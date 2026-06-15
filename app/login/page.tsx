@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import BibleLogo from "@/components/logo";
 import { Toaster } from "@/components/ui/sonner";
-import { authClient, signInWithGoogle } from "@/lib/auth-client";
+import { signInWithGoogle } from "@/lib/auth-client";
 
 function getCallbackURL() {
   if (typeof window === "undefined") return "/study";
@@ -21,7 +21,6 @@ function getCallbackURL() {
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [callbackURL, setCallbackURL] = useState("/study");
-  const session = authClient.useSession();
 
   useEffect(() => {
     setCallbackURL(getCallbackURL());
@@ -66,7 +65,7 @@ export default function LoginPage() {
 
         <button
           className="mt-7 flex w-full items-center justify-center gap-3 bg-[#3a2218] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1f1209] disabled:opacity-60"
-          disabled={loading || session.isPending}
+          disabled={loading}
           onClick={handleSignIn}
           type="button"
         >

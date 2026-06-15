@@ -8,7 +8,7 @@ export type PassageSelection = { book: string; chapter: number; verse: number };
 export type StudySidebars = { leftOpen: boolean; rightOpen: boolean };
 
 export const DEFAULT_PASSAGE: PassageSelection = { book: "Genesis", chapter: 1, verse: 1 };
-export const DEFAULT_VERSIONS = ["KJV"];
+export const DEFAULT_VERSIONS: string[] = [];
 export const DEFAULT_SIDEBARS: StudySidebars = { leftOpen: true, rightOpen: true };
 
 type State = {

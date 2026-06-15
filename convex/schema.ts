@@ -107,6 +107,44 @@ export default defineSchema({
       "passageChapter",
     ]),
 
+  userPlans: defineTable({
+    ownerKey: v.optional(v.string()),
+    identityId: v.optional(v.id("identities")),
+    userId: v.optional(v.string()),
+    templateId: v.string(),
+    title: v.string(),
+    description: v.string(),
+    status: v.union(v.literal("active"), v.literal("completed"), v.literal("archived")),
+    startDate: v.string(),
+    durationDays: v.number(),
+    totalEntries: v.number(),
+    completedEntries: v.number(),
+    currentDayNumber: v.number(),
+    lastCompletedAt: v.optional(v.number()),
+  })
+    .index("by_owner", ["ownerKey"])
+    .index("by_owner_and_status", ["ownerKey", "status"]),
+
+  userPlanEntries: defineTable({
+    ownerKey: v.optional(v.string()),
+    identityId: v.optional(v.id("identities")),
+    userId: v.optional(v.string()),
+    planId: v.id("userPlans"),
+    dayNumber: v.number(),
+    dueDate: v.string(),
+    passageBook: v.string(),
+    passageChapter: v.number(),
+    passageVerse: v.number(),
+    passageLabel: v.string(),
+    startChapter: v.number(),
+    endChapter: v.number(),
+    status: v.union(v.literal("pending"), v.literal("completed")),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_planId", ["planId"])
+    .index("by_owner_and_dueDate", ["ownerKey", "dueDate"])
+    .index("by_owner_and_status", ["ownerKey", "status"]),
+
   notifications: defineTable({
     userId: v.string(),
     type: v.union(
@@ -127,4 +165,20 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_read", ["userId", "read"]),
+
+  customTranslations: defineTable({
+    name: v.string(),
+    abbreviation: v.string(),
+    languageTag: v.string(),
+    sourceType: v.literal("json"),
+    indexUrl: v.string(),
+    chapterUrlTemplate: v.string(),
+    enabled: v.boolean(),
+    licenseNotes: v.optional(v.string()),
+    supportsFullBible: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_enabled", ["enabled"])
+    .index("by_abbreviation", ["abbreviation"]),
 });

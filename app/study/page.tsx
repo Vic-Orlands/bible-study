@@ -33,19 +33,23 @@ import { toast } from "sonner";
 
 import { ProductShell } from "@/components/product-shell";
 import { Toaster } from "@/components/ui/sonner";
-import { type BibleVerse } from "@/lib/helloao";
 import {
+  preferredVisibleVersions,
+  toPassageSelection,
+  useBibleVersions,
   useBibleBooks,
   useBibleChapters,
   useAllChapterVerses,
   useVerseCount,
-  translations,
   formatPassage,
   formatReference,
   chapterKeyFor,
   getBookId,
   parseVerseReference,
+  resolveBibleVersion,
   type BibleBookIndex,
+  type BibleVerse,
+  type BibleVersion,
 } from "@/lib/bible-queries";
 import {
   useStudyStore,
@@ -60,6 +64,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { MagnifyingGlassIcon } from "@/components/ui/magnifying-glass";
 import { RichScriptureText } from "@/components/rich-scripture-text";
 import { authClient, signInWithGoogle } from "@/lib/auth-client";
+import { fetchCommentaryChapter, fetchCrossRefChapter } from "@/lib/study-data";
 
 function getDisplayName(
   userId: string | undefined,
@@ -222,8 +227,16 @@ export default function BibleApp() {
     error: booksQueryError,
     isLoading: bibleBooksLoading,
   } = useBibleBooks();
+  const {
+    data: bibleVersions = [],
+    error: versionsQueryError,
+    isLoading: bibleVersionsLoading,
+  } = useBibleVersions();
   const bibleBooksError = booksQueryError
     ? "Unable to load the Bible index."
+    : null;
+  const bibleVersionsError = versionsQueryError
+    ? "Unable to load Bible versions."
     : null;
 
   const selectedPassage = useStudyStore((s) => s.selectedPassage);
@@ -332,6 +345,13 @@ export default function BibleApp() {
   const currentIdentityId = identityId
     ? (identityId as Id<"identities">)
     : undefined;
+  const normalizedVisibleVersions = useMemo(
+    () =>
+      bibleVersions.length > 0
+        ? preferredVisibleVersions(visibleVersions, bibleVersions)
+        : visibleVersions,
+    [bibleVersions, visibleVersions],
+  );
   const bookmarks =
     useQuery(api.bookmarks.listForGuest, {
       ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
@@ -348,7 +368,7 @@ export default function BibleApp() {
   );
 
   const chapterQueries = useBibleChapters(
-    visibleVersions,
+    normalizedVisibleVersions,
     bookId,
     selectedPassage.chapter,
   );
@@ -381,12 +401,22 @@ export default function BibleApp() {
     const map: Record<string, string> = {};
     chapterQueries.forEach((q, i) => {
       if (q.error)
-        map[visibleVersions[i]] = "Unable to load this translation right now.";
+        map[normalizedVisibleVersions[i]] = "Unable to load this translation right now.";
     });
     return map;
-  }, [chapterQueries, visibleVersions]);
+  }, [chapterQueries, normalizedVisibleVersions]);
 
   const chapterLoading = chapterQueries.some((q) => q.isLoading);
+  const scriptureProviderError =
+    !bibleBooksLoading &&
+    !bibleVersionsLoading &&
+    (bibleBooksError || bibleVersionsError);
+  const scriptureProviderEmpty =
+    !scriptureProviderError &&
+    !bibleBooksLoading &&
+    !bibleVersionsLoading &&
+    bibleBooks.length === 0 &&
+    bibleVersions.length === 0;
 
   const showToast = useCallback((title: string, description?: string) => {
     toast(title, {
@@ -419,6 +449,41 @@ export default function BibleApp() {
     },
     [setCommentTarget, setRightTab, patchSidebars, rightTab, setVersePrefill],
   );
+
+  useEffect(() => {
+    if (bibleVersions.length === 0) return;
+    const next = preferredVisibleVersions(visibleVersions, bibleVersions);
+    const changed =
+      next.length !== visibleVersions.length ||
+      next.some((label, index) => visibleVersions[index] !== label);
+    if (changed) {
+      setVisibleVersions(next);
+    }
+  }, [bibleVersions, setVisibleVersions, visibleVersions]);
+
+  useEffect(() => {
+    if (bibleBooks.length === 0) return;
+    const next = toPassageSelection(
+      new URLSearchParams(window.location.search),
+      bibleBooks,
+    );
+    if (!next) return;
+    const changed =
+      next.book !== selectedPassage.book ||
+      next.chapter !== selectedPassage.chapter ||
+      next.verse !== selectedPassage.verse;
+    if (changed) {
+      setPassage(next);
+      setHighlightedVerse(`${next.book}-${next.chapter}-${next.verse}`);
+    }
+  }, [
+    bibleBooks,
+    selectedPassage.book,
+    selectedPassage.chapter,
+    selectedPassage.verse,
+    setHighlightedVerse,
+    setPassage,
+  ]);
 
   return (
     <ProductShell
@@ -453,6 +518,33 @@ export default function BibleApp() {
       <div className="flex flex-1 overflow-hidden bg-white">
         {!storeReady ? (
           <div className="min-w-0 flex-1 bg-white" />
+        ) : scriptureProviderError ? (
+          <div className="flex min-w-0 flex-1 items-center justify-center px-6">
+            <div className="max-w-[520px] border border-[#eadccf] bg-[#fffaf5] p-6 text-center">
+              <h2 className="text-lg font-semibold text-[#25140b]">
+                Unable to load Bible provider data
+              </h2>
+              <p className="mt-2 text-[13px] leading-6 text-[#7a6758]">
+                {bibleVersionsError ?? bibleBooksError}
+              </p>
+              <p className="mt-3 text-[12px] leading-5 text-[#9b8878]">
+                Check the server logs for the failing provider request and
+                confirm the required API.Bible environment variables are set.
+              </p>
+            </div>
+          </div>
+        ) : scriptureProviderEmpty ? (
+          <div className="flex min-w-0 flex-1 items-center justify-center px-6">
+            <div className="max-w-[520px] border border-[#eadccf] bg-[#fffaf5] p-6 text-center">
+              <h2 className="text-lg font-semibold text-[#25140b]">
+                No Bible versions available
+              </h2>
+              <p className="mt-2 text-[13px] leading-6 text-[#7a6758]">
+                The provider catalog did not return any usable translations for
+                this environment.
+              </p>
+            </div>
+          </div>
         ) : (
           <>
             <AnimatePresence initial={false}>
@@ -462,10 +554,11 @@ export default function BibleApp() {
                   bibleBooks={bibleBooks}
                   bibleBooksError={bibleBooksError}
                   bibleBooksLoading={bibleBooksLoading}
+                  bibleVersions={bibleVersions}
                   bookmarks={bookmarks}
                   chapterVerses={chapterVerses}
                   selectedPassage={selectedPassage}
-                  visibleVersions={visibleVersions}
+                  visibleVersions={normalizedVisibleVersions}
                   onCollapse={() => patchSidebars({ leftOpen: false })}
                   onOpenBookmarks={() => {
                     setSheetView("bookmarks");
@@ -488,12 +581,15 @@ export default function BibleApp() {
               bibleBooks={bibleBooks}
               bibleBooksError={bibleBooksError}
               bibleBooksLoading={bibleBooksLoading}
+              bibleVersions={bibleVersions}
+              bibleVersionsError={bibleVersionsError}
+              bibleVersionsLoading={bibleVersionsLoading}
               bookmarks={bookmarks}
               chapterErrors={chapterErrors}
               chapterLoading={chapterLoading}
               chapterVerses={chapterVerses}
               selectedPassage={selectedPassage}
-              visibleVersions={visibleVersions}
+              visibleVersions={normalizedVisibleVersions}
               isBookmarked={bookmarks.some(
                 (b) =>
                   b.passageBook === selectedPassage.book &&
@@ -1112,6 +1208,7 @@ function LeftPanel({
   bibleBooks,
   bibleBooksError,
   bibleBooksLoading,
+  bibleVersions,
   bookmarks,
   chapterVerses,
   selectedPassage,
@@ -1125,6 +1222,7 @@ function LeftPanel({
   bibleBooks: BibleBookIndex[];
   bibleBooksError: string | null;
   bibleBooksLoading: boolean;
+  bibleVersions: BibleVersion[];
   bookmarks: {
     passageBook: string;
     passageChapter: number;
@@ -1183,7 +1281,10 @@ function LeftPanel({
       Object.keys(allChapterVerses).length > 0
         ? allChapterVerses
         : chapterVerses;
-    for (const [label, verses] of Object.entries(source)) {
+    for (const [versionKey, verses] of Object.entries(source)) {
+      const label =
+        resolveBibleVersion(versionKey, bibleVersions)?.abbreviation ??
+        versionKey;
       for (const { number, text } of verses) {
         if (text.toLowerCase().includes(q)) {
           hits.push({
@@ -1197,7 +1298,13 @@ function LeftPanel({
       }
     }
     return hits.slice(0, 30);
-  }, [debouncedTerm, chapterVerses, allChapterVerses, selectedPassage]);
+  }, [
+    allChapterVerses,
+    bibleVersions,
+    chapterVerses,
+    debouncedTerm,
+    selectedPassage,
+  ]);
 
   useEffect(() => {
     onSearchActive(debouncedTerm.trim().length >= 2);
@@ -2046,6 +2153,9 @@ function Reader({
   bibleBooks,
   bibleBooksError,
   bibleBooksLoading,
+  bibleVersions,
+  bibleVersionsError,
+  bibleVersionsLoading,
   bookmarks,
   chapterErrors,
   chapterLoading,
@@ -2063,6 +2173,9 @@ function Reader({
   bibleBooks: BibleBookIndex[];
   bibleBooksError: string | null;
   bibleBooksLoading: boolean;
+  bibleVersions: BibleVersion[];
+  bibleVersionsError: string | null;
+  bibleVersionsLoading: boolean;
   bookmarks: {
     passageBook: string;
     passageChapter: number;
@@ -2099,31 +2212,36 @@ function Reader({
   const visibleTranslationModels = useMemo(
     () =>
       visibleVersions
-        .map((label) => translations.find((translation) => translation.label === label))
-        .filter((translation): translation is (typeof translations)[number] => !!translation),
-    [visibleVersions],
+        .map((versionId) => resolveBibleVersion(versionId, bibleVersions))
+        .filter((translation): translation is BibleVersion => !!translation),
+    [bibleVersions, visibleVersions],
   );
 
   const visibleTranslations = useMemo(
     () =>
       visibleTranslationModels.map((t) => ({
-        ...t,
-        error: chapterErrors[t.label],
+        abbreviation: t.abbreviation,
+        error: chapterErrors[t.id],
         isLoading: chapterLoading,
-        verses: chapterVerses[t.label] ?? [],
+        key: t.id,
+        label: t.abbreviation,
+        title: t.title,
+        verses: chapterVerses[t.id] ?? [],
       })),
     [visibleTranslationModels, chapterErrors, chapterLoading, chapterVerses],
   );
 
   const availableTranslations = useMemo(
     () =>
-      translations.filter(({ label, name }) => {
+      [...bibleVersions]
+        .sort((left, right) => left.title.localeCompare(right.title))
+        .filter(({ abbreviation, title }) => {
         const q = versionSearch.trim().toLowerCase();
         return (
-          label.toLowerCase().includes(q) || name.toLowerCase().includes(q)
+          abbreviation.toLowerCase().includes(q) || title.toLowerCase().includes(q)
         );
       }),
-    [versionSearch],
+    [bibleVersions, versionSearch],
   );
 
   const canCloseVersion = visibleVersions.length > 1;
@@ -2218,18 +2336,16 @@ function Reader({
     onVersionsChange(visibleVersions.filter((v) => v !== label));
   };
 
-  const addVersion = (label: string) => {
+  const addVersion = (versionId: string) => {
+    const selectedVersion = resolveBibleVersion(versionId, bibleVersions);
     const mode = replaceTarget ? "changed" : "added";
     let next: string[];
-    if (visibleVersions.includes(label)) {
+    if (visibleVersions.includes(versionId)) {
       next = visibleVersions;
     } else if (replaceTarget) {
-      next = visibleVersions.map((v) => (v === replaceTarget ? label : v));
+      next = visibleVersions.map((v) => (v === replaceTarget ? versionId : v));
     } else if (visibleVersions.length < 3) {
-      next = translations
-        .map((t) => t.label)
-        .filter((l) => [...visibleVersions, label].includes(l))
-        .slice(0, 3);
+      next = [...visibleVersions, versionId].slice(0, 3);
     } else {
       next = visibleVersions;
     }
@@ -2237,14 +2353,16 @@ function Reader({
     setVersionMenuOpen(false);
     setVersionSearch("");
     setReplaceTarget(null);
-    onToast(`${label} ${mode} in comparison`);
+    onToast(
+      `${selectedVersion?.abbreviation ?? versionId} ${mode} in comparison`,
+    );
   };
 
-  const handleVersionChoice = (label: string) => {
+  const handleVersionChoice = (versionId: string) => {
     if (
       visibleVersions.length >= 3 &&
       replaceTarget === null &&
-      !visibleVersions.includes(label)
+      !visibleVersions.includes(versionId)
     ) {
       onToast(
         "Maximum number of versions selected",
@@ -2252,7 +2370,7 @@ function Reader({
       );
       return;
     }
-    addVersion(label);
+    addVersion(versionId);
   };
 
   const openVersionMenu = (target: string | null = null) => {
@@ -2340,7 +2458,7 @@ function Reader({
                 transition={{ duration: 0.15, ease: [0.215, 0.61, 0.355, 1] }}
                 type="button"
               >
-                {version}
+                {resolveBibleVersion(version, bibleVersions)?.abbreviation ?? version}
               </motion.button>
             ))}
           </AnimatePresence>
@@ -2356,7 +2474,10 @@ function Reader({
               type="button"
             >
               {replaceTarget
-                ? `Change ${replaceTarget}`
+                ? `Change ${
+                    resolveBibleVersion(replaceTarget, bibleVersions)?.abbreviation ??
+                    replaceTarget
+                  }`
                 : visibleVersions.length >= 3
                   ? "3 versions max"
                   : "Add version"}
@@ -2383,8 +2504,8 @@ function Reader({
                     />
                   </div>
                   <div className="max-h-64 overflow-y-auto bible-app-scroll">
-                    {availableTranslations.map(({ label, name }) => {
-                      const selected = visibleVersions.includes(label);
+                    {availableTranslations.map(({ id, abbreviation, title, provider }) => {
+                      const selected = visibleVersions.includes(id);
                       return (
                         <button
                           className={cn(
@@ -2393,26 +2514,41 @@ function Reader({
                               "cursor-default opacity-50 hover:bg-white",
                           )}
                           disabled={selected}
-                          key={label}
-                          onClick={() => handleVersionChoice(label)}
+                          key={id}
+                          onClick={() => handleVersionChoice(id)}
                           type="button"
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-[12px] font-bold text-[#3a2218]">
-                              {label}
+                              {abbreviation}
                             </span>
-                            {selected && (
-                              <span className="text-[10px] font-medium text-[#f6823c]">
-                                Active
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-medium uppercase text-[#9b8878]">
+                                {provider === "custom" ? "Custom" : "API.Bible"}
                               </span>
-                            )}
+                              {selected && (
+                                <span className="text-[10px] font-medium text-[#f6823c]">
+                                  Active
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <span className="text-[11px] text-[#7a6758] truncate">
-                            {name}
+                            {title}
                           </span>
                         </button>
                       );
                     })}
+                    {bibleVersionsLoading && (
+                      <p className="px-3 py-2 text-[12px] font-medium text-[#9b8878]">
+                        Loading translations...
+                      </p>
+                    )}
+                    {bibleVersionsError && (
+                      <p className="px-3 py-2 text-[12px] font-medium text-[#a24723]">
+                        {bibleVersionsError}
+                      </p>
+                    )}
                     {availableTranslations.length === 0 && (
                       <p className="px-3 py-2 text-[12px] font-medium text-[#9b8878]">
                         No translations found
@@ -2448,13 +2584,14 @@ function Reader({
           )}
         >
           <AnimatePresence initial={false} mode="popLayout">
-            {visibleTranslations.map(({ label }) => (
+            {visibleTranslations.map(({ key, label, title }) => (
               <TranslationHeader
                 canClose={canCloseVersion}
-                key={label}
+                key={key}
                 label={label}
-                onClose={() => closeVersion(label)}
-                onSwap={() => openVersionMenu(label)}
+                title={title}
+                onClose={() => closeVersion(key)}
+                onSwap={() => openVersionMenu(key)}
                 visibleCount={visibleTranslations.length}
               />
             ))}
@@ -2478,8 +2615,12 @@ function Reader({
               onClick={() => {
                 const start = selectedVerses[0];
                 const end = selectedVerses[selectedVerses.length - 1];
+                const activeVersionLabel =
+                  visibleTranslationModels[0]?.abbreviation ??
+                  visibleVersions[0] ??
+                  "Bible";
                 onVerseComment(
-                  `${visibleVersions[0]} ${selectedPassage.book} ${selectedPassage.chapter}:${start}-${end}`,
+                  `${activeVersionLabel} ${selectedPassage.book} ${selectedPassage.chapter}:${start}-${end}`,
                 );
               }}
               type="button"
@@ -2507,9 +2648,9 @@ function Reader({
             )}
           >
             <AnimatePresence initial={false} mode="popLayout">
-              {visibleTranslations.map((translation) => (
+              {visibleTranslations.map(({ key, ...translation }) => (
                 <TranslationVerses
-                  key={translation.label}
+                  key={key}
                   bookmarks={bookmarks}
                   onComment={onVerseComment}
                   onVerseSelect={handleVerseSelect}
@@ -2826,12 +2967,14 @@ const translationColumnMotion = (visibleCount: number) => {
 function TranslationHeader({
   canClose,
   label,
+  title,
   onClose,
   onSwap,
   visibleCount,
 }: {
   canClose: boolean;
   label: string;
+  title: string;
   onClose: () => void;
   onSwap: () => void;
   visibleCount: number;
@@ -2854,7 +2997,7 @@ function TranslationHeader({
           <div className="flex min-w-0 flex-col text-left">
             <span className="text-[12px] font-bold">{label}</span>
             <span className="truncate text-[11px] font-normal text-[#7a6758]">
-              {translations.find((t) => t.label === label)?.name}
+              {title}
             </span>
           </div>
           <ChevronDown className="h-3 w-3 text-[#9b8878]" />
@@ -4602,24 +4745,15 @@ function CommentaryPanel({
   selectedPassage: PassageSelection;
 }) {
   const [loading, setLoading] = useState(false);
-  const [content, setContent] = useState<any>(null);
+  const [content, setContent] = useState<Awaited<ReturnType<typeof fetchCommentaryChapter>> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const bookId = selectedPassage.book.toUpperCase().replace(/\s+/g, "_");
     setLoading(true);
     setError(null);
     setContent(null);
-    fetch(
-      `/api/helloao?path=commentaries/SWIFT/${bookId}/${selectedPassage.chapter}.json`,
-    )
-      .then((r) => {
-        if (!r.ok) {
-          throw new Error(`Commentary request failed: ${r.status}`);
-        }
-        return r.json();
-      })
+    fetchCommentaryChapter(selectedPassage.book, selectedPassage.chapter)
       .then((data) => {
         if (!cancelled) {
           setContent(data);
@@ -4637,16 +4771,6 @@ function CommentaryPanel({
       cancelled = true;
     };
   }, [selectedPassage.book, selectedPassage.chapter]);
-
-  const renderContent = (parts: any[]) => {
-    if (!parts) return null;
-    return parts.map((part, i) => {
-      if (typeof part === "string") return <span key={i}>{part}</span>;
-      if (part.lineBreak) return <br key={i} />;
-      if (part.text) return <span key={i}>{part.text}</span>;
-      return null;
-    });
-  };
 
   return (
     <div className="flex h-full min-h-0 flex-col px-4 py-4">
@@ -4669,33 +4793,40 @@ function CommentaryPanel({
             </p>
             <p className="mt-1 text-[11px] text-[#9b8878]">{error}</p>
           </div>
-        ) : content ? (
+        ) : content && content.blocks.length > 0 ? (
           <div className="text-[13px] leading-relaxed text-[#3a2218]">
-            {content.chapter?.content?.map((item: any, i: number) => {
+            {content.blocks.map((item, i: number) => {
               if (item.type === "heading") {
                 return (
                   <p
                     key={i}
                     className="mt-4 mb-2 text-[14px] font-semibold text-[#25140b]"
                   >
-                    {renderContent(item.content)}
+                    {item.text}
                   </p>
                 );
               }
-              if (item.type === "verse") {
-                return (
-                  <p key={i} className="mb-2 font-serif">
-                    <span className="mr-1 font-semibold text-[#f6823c]">
-                      {item.number}
-                    </span>
-                    {renderContent(item.content)}
-                  </p>
-                );
-              }
-              return null;
+              return (
+                <p key={i} className="mb-2 font-serif">
+                  <span className="mr-1 font-semibold text-[#f6823c]">
+                    {item.number}
+                  </span>
+                  {item.text}
+                </p>
+              );
             })}
           </div>
-        ) : null}
+        ) : (
+          <div className="flex flex-col items-center py-12 text-center">
+            <div className="mb-3 text-3xl">📖</div>
+            <p className="text-[13px] font-semibold text-[#3a2218]">
+              No commentary
+            </p>
+            <p className="mt-1 text-[11px] text-[#9b8878]">
+              No commentary available for this passage.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4707,29 +4838,18 @@ function CrossRefsPanel({
   selectedPassage: PassageSelection;
 }) {
   const [loading, setLoading] = useState(false);
-  const [crossRefs, setCrossRefs] = useState<any[] | undefined>(undefined);
+  const [crossRefs, setCrossRefs] = useState<Awaited<ReturnType<typeof fetchCrossRefChapter>> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const bookId = selectedPassage.book.toUpperCase().replace(/\s+/g, "_");
     setLoading(true);
     setError(null);
-    setCrossRefs([]);
-    fetch(
-      `/api/helloao?path=d/open-cross-ref/${bookId}/${selectedPassage.chapter}.json`,
-    )
-      .then((r) => {
-        if (!r.ok) {
-          throw new Error(`Cross-reference request failed: ${r.status}`);
-        }
-        return r.json();
-      })
+    setCrossRefs(null);
+    fetchCrossRefChapter(selectedPassage.book, selectedPassage.chapter)
       .then((data) => {
         if (!cancelled) {
-          const refs =
-            data.chapter?.crossReferences ?? data.crossReferences ?? [];
-          setCrossRefs(refs);
+          setCrossRefs(data);
           setLoading(false);
         }
       })
@@ -4752,7 +4872,7 @@ function CrossRefsPanel({
           Cross-References
         </h2>
         <p className="mt-0.5 text-[11px] text-[#9b8878]">
-          {crossRefs?.length ?? 0} refs for {selectedPassage.book}{" "}
+          {crossRefs?.references.length ?? 0} refs for {selectedPassage.book}{" "}
           {selectedPassage.chapter}
         </p>
       </div>
@@ -4769,7 +4889,7 @@ function CrossRefsPanel({
             </p>
             <p className="mt-1 text-[11px] text-[#9b8878]">{error}</p>
           </div>
-        ) : crossRefs && crossRefs.length === 0 ? (
+        ) : crossRefs && crossRefs.references.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-center">
             <div className="mb-3 text-3xl">🔗</div>
             <p className="text-[13px] font-semibold text-[#3a2218]">
@@ -4781,10 +4901,10 @@ function CrossRefsPanel({
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {(crossRefs ?? []).map((ref: any, i: number) => {
-              const fromVerse = ref.source ?? ref.from ?? ref.verse ?? "?";
-              const toVerse = ref.target ?? ref.to ?? ref.ref ?? "?";
-              const toText = ref.text ?? ref.content ?? ref.note ?? "";
+            {(crossRefs?.references ?? []).map((ref, i: number) => {
+              const fromVerse = ref.sourceVerse ?? "?";
+              const toVerse = ref.target || "Reference";
+              const toText = ref.text;
               return (
                 <div
                   key={i}

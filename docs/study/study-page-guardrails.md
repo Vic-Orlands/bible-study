@@ -1,6 +1,6 @@
 # Study Page Implementation Guardrails
 
-Last audited: 2026-05-14
+Last audited: 2026-06-15
 
 Scope: `/study` only.
 
@@ -30,10 +30,12 @@ This document exists to protect implemented work from being overwritten by futur
 ### Bible Reader
 
 - `/study` renders a three-region reader: left index/search rail, central scripture reader, and right study rail.
-- Bible books and chapters load through HelloAO via `lib/bible-queries.ts` and `lib/helloao.ts`.
+- Bible text and version catalog now load through API.Bible plus enabled custom translations via `app/api/api-bible/route.ts`, `app/api/custom-translations/route.ts`, `lib/scripture.ts`, and the `lib/bible-queries.ts` compatibility export.
 - HelloAO requests are proxied through `app/api/helloao/route.ts`.
+- API.Bible requests are proxied through `app/api/api-bible/route.ts`.
+- Custom translation source reads are proxied through `app/api/custom-translations/route.ts`.
 - IndexedDB caching is implemented with Dexie in `lib/db.ts`.
-- Upstash Redis caching is implemented in the HelloAO proxy when `UPSTASH_REDIS_REST_URL` is set.
+- Upstash Redis caching is implemented in the HelloAO and API.Bible proxies when Redis envs are configured.
 - Chapter navigation is implemented with first, previous, next, and last chapter controls.
 - Passage picker is implemented with book, chapter, and verse columns.
 - Selected passage persists through Zustand in `lib/study-store.ts`.
@@ -42,16 +44,19 @@ This document exists to protect implemented work from being overwritten by futur
 
 ### Translation Comparison
 
-- Translation list is defined in `lib/bible-queries.ts`.
+- Translation list now comes from the merged API.Bible catalog plus enabled Convex custom translations and is normalized in `lib/scripture.ts`.
 - Visible translations are persisted in Zustand.
 - Reader supports up to three visible translations.
 - Users can add, remove, or swap visible translations.
 - Per-translation loading and error states exist.
+- Preferred ordering favors mainstream English versions first when available from API.Bible.
+- Visible version persistence resolves against stable normalized version ids, not only display abbreviations.
 
 ### Left Rail
 
 - Search scripture panel is implemented.
 - Direct reference parsing works for references like `John 1:1`.
+- Direct reference parsing also supports ordinal book forms without spaces such as `1Timothy 2:1`, `1stTimothy 2:1`, and spaced forms like `1 Timothy 2:1`.
 - Search matches are limited to the current chapter, with an optional all-translation current-chapter search when the search box is active.
 - Full Bible index is implemented with Old Testament/New Testament grouping.
 - Chapter expansion and verse picking are implemented.
@@ -117,9 +122,18 @@ This document exists to protect implemented work from being overwritten by futur
 ### Bottom Drawer
 
 - Bottom drawer tabs exist for Commentary and Cross-Refs.
-- Commentary fetches HelloAO SWIFT commentary data.
-- Cross-Refs fetches HelloAO open cross-reference data.
+- Commentary fetches HelloAO Tyndale commentary data through the normalized adapter in `lib/study-data.ts`.
+- Cross-Refs fetch HelloAO open cross-reference data through the normalized adapter in `lib/study-data.ts`.
 - Parallel and Interlinear were removed because they were placeholders.
+
+### Reading Plans
+
+- `/reading-plan` is no longer mock-only.
+- Reading plans are app-owned Convex data, not outsourced to a scripture provider.
+- Plan templates are defined in `lib/reading-plan-templates.ts`.
+- Convex plan state and progress logic live in `convex/readingPlans.ts`.
+- Users can start a curated plan, see their current progress, continue reading into `/study`, and mark plan entries complete.
+- Current templates include Whole Bible, New Testament, Gospels, and Psalms/Proverbs variants.
 
 ### Mobile Study Tools
 
@@ -127,6 +141,14 @@ This document exists to protect implemented work from being overwritten by futur
 - Mobile Study, Notes, Audio, and Activity reuse the same Convex-backed panels.
 - Mobile Index provides book/chapter navigation and direct reference jumps.
 - Anonymous guest identity is loaded through the app route `/api/identity/anonymous`, which proxies to the Convex HTTP action and avoids browser cross-origin failures.
+
+### Translation Admin
+
+- Custom translation registry is stored in Convex through `convex/customTranslations.ts`.
+- Admin authorization is Better Auth-backed and checked server-side through `convex/admin.ts` and `api.auth.getAdminState`.
+- Admin UI lives in `app/admin/page.tsx` and `components/custom-translations-manager.tsx`.
+- Profile dropdown shows a `Translations` admin entry only for allowed admin users.
+- Source validation runs through `customTranslations.validateSource` before save or enable decisions.
 
 ## Not Fully Implemented
 
@@ -146,10 +168,20 @@ This document exists to protect implemented work from being overwritten by futur
 
 Required env/config notes:
 
-- Next/local env needs `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CONVEX_URL`, and `NEXT_PUBLIC_CONVEX_SITE_URL`.
-- Convex deployment env needs `SITE_URL`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET`.
+- Next/local env needs `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL`.
+- Convex deployment env needs `SITE_URL`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `ADMIN_EMAILS`.
 - Google OAuth redirect URI should point at the app route: `{SITE_URL}/api/auth/callback/google`.
 - The existing deployment `JWKS` env was from the old auth path and is not used by Better Auth. Do not pass it into `getAuthConfigProvider()` unless it is replaced with Better Auth's expected JWKS array.
+- Bible provider env needs `API_BIBLE_URL` and `API_BIBLE_KEY`.
+
+### Scripture Providers
+
+- The provider split is now intentional and should be preserved:
+  - Bible text + version catalog: API.Bible plus enabled custom translations
+  - Commentary: HelloAO Tyndale
+  - Cross-References: HelloAO open-cross-ref
+- Do not collapse these back into one guessed provider layer.
+- UI components should consume normalized app-facing types from `lib/scripture.ts` and `lib/study-data.ts`, not raw upstream response shapes.
 
 External verification still needed:
 
@@ -216,7 +248,8 @@ External verification still needed:
 ### Bottom Drawer
 
 - Parallel and Interlinear were removed.
-- Commentary and Cross-Refs are read-only and depend on guessed HelloAO paths.
+- Commentary and Cross-Refs are read-only in v1.
+- Commentary/Cross-Refs resolve HelloAO book ids from `BSB/books.json` instead of guessing path names.
 - Commentary/Cross-Refs throw on non-OK responses and surface the error state.
 
 ### Settings/Profile
@@ -245,7 +278,7 @@ External verification still needed:
 
 3. Fix Google login before building more signed-in features. Better Auth code-side switch is done; external OAuth verification remains.
    - Confirm Convex deployment env vars: `SITE_URL`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET`.
-   - Confirm Next env vars: `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CONVEX_URL`, and `NEXT_PUBLIC_CONVEX_SITE_URL`.
+   - Confirm Next env vars: `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL`.
    - Confirm Google OAuth callback URL is `{SITE_URL}/api/auth/callback/google`.
    - Confirm `/api/auth/[...all]` proxies to the Convex site route and `authClient.convex.token()` returns a token after login.
 
@@ -258,6 +291,14 @@ External verification still needed:
 
 5. Fix privacy leaks. Done for owner-scoped data.
    - `notes.listForPassage`, `bookmarks.listForGuest`, and `audioNotes.listForPassage` are owner-scoped.
+
+## New Guardrails For This Migration
+
+- Do not move Bible text/version fetching back to HelloAO.
+- Do not expose `API_BIBLE_KEY` to the client.
+- Do not hardcode a fake translation catalog when API.Bible data is available.
+- If API.Bible or a custom source does not supply a translation, hide it from the picker instead of pretending it exists.
+- Keep reading plans app-owned in Convex even if an external provider later offers plan content.
    - The UI labels notes as private, and backend scope now matches that promise.
 
 6. Fix malformed UI and placeholders. Done for identified items.

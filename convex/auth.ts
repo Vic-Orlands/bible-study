@@ -5,6 +5,7 @@ import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
+import { getAdminIdentity } from "./admin";
 
 const appUrl = process.env.SITE_URL!;
 
@@ -55,5 +56,19 @@ export const getUserIdentity = query({
       };
     }
     return null;
+  },
+});
+
+export const getAdminState = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const admin = await getAdminIdentity(ctx);
+    return {
+      email: identity?.email ?? null,
+      isAdmin: Boolean(admin),
+      isAuthenticated: Boolean(identity),
+      name: admin?.name ?? identity?.name ?? identity?.email ?? null,
+    };
   },
 });

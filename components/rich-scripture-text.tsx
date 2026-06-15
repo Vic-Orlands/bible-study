@@ -3,8 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { useStudyStore } from "@/lib/study-store";
-import { parseVerseReference, useBibleBooks } from "@/lib/bible-queries";
-import { fetchHelloAoChapter, extractChapterVerses } from "@/lib/helloao";
+import {
+  fetchBibleChapterForVersion,
+  parseVerseReference,
+  useBibleBooks,
+  useBibleVersions,
+} from "@/lib/bible-queries";
 import {
   Tooltip,
   TooltipContent,
@@ -116,28 +120,6 @@ function normalizeBookName(rawBook: string) {
   );
 }
 
-function normalizeBookForApi(
-  rawBook: string,
-  bibleBooks?: { book: string; id: string }[],
-) {
-  const normalizedBook = normalizeBookName(rawBook);
-
-  const selection = bibleBooks
-    ? parseVerseReference(`${normalizedBook} 1:1`, bibleBooks as any)
-    : null;
-
-  if (selection && bibleBooks) {
-    const matchedBook = bibleBooks.find((item) => item.book === selection.book);
-    if (matchedBook) {
-      return matchedBook.id;
-    }
-  }
-
-  return normalizedBook
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .replace(/\s+/g, "");
-}
-
 function VerseLink({
   book,
   chapter,
@@ -157,6 +139,11 @@ function VerseLink({
   const setPassage = useStudyStore((s) => s.setPassage);
   const setFlashingVerse = useStudyStore((s) => s.setFlashingVerse);
   const { data: bibleBooks } = useBibleBooks();
+  const { data: bibleVersions } = useBibleVersions();
+  const previewVersion =
+    bibleVersions?.find((version) => version.abbreviation === "KJV") ??
+    bibleVersions?.find((version) => version.abbreviation === "NIV") ??
+    bibleVersions?.[0];
 
   const handleLinkClick = () => {
     if (!bibleBooks) return;
@@ -179,11 +166,21 @@ function VerseLink({
     let active = true;
     if (isHovered && !previewText) {
       setLoading(true);
-      fetchHelloAoChapter("BSB", normalizeBookForApi(book, bibleBooks), chapter)
+      const normalizedBook = normalizeBookName(book);
+      const selection = bibleBooks
+        ? parseVerseReference(`${normalizedBook} ${chapter}:${verse}`, bibleBooks)
+        : null;
+      if (!selection || !previewVersion) {
+        setLoading(false);
+        setPreviewText("Preview unavailable.");
+        return () => {
+          active = false;
+        };
+      }
+      fetchBibleChapterForVersion(previewVersion.id, selection.book, chapter)
         .then((data) => {
           if (!active) return;
-          const verses = extractChapterVerses(data);
-          const match = verses.find((v) => v.number === verse);
+          const match = data.verses.find((item) => item.number === verse);
           setPreviewText(match ? match.text : "Verse not found.");
         })
         .catch((error) => {
@@ -197,7 +194,7 @@ function VerseLink({
     return () => {
       active = false;
     };
-  }, [isHovered, book, bibleBooks, chapter, verse, previewText]);
+  }, [isHovered, book, bibleBooks, bibleVersions, chapter, previewText, previewVersion, verse]);
 
   return (
     <Tooltip>
@@ -219,7 +216,7 @@ function VerseLink({
       >
         <div className="flex flex-col gap-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#9b8878]">
-            {reference} (BSB)
+            {reference} ({previewVersion?.abbreviation ?? "Bible"})
           </span>
           {loading ? (
             <div className="h-4 w-full animate-pulse rounded bg-[#fbf7f2]" />
