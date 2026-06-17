@@ -1,6 +1,6 @@
 # Study Page Implementation Guardrails
 
-Last audited: 2026-06-15
+Last audited: 2026-06-17
 
 Scope: `/study` only.
 
@@ -133,16 +133,26 @@ This document exists to protect implemented work from being overwritten by futur
 - Plan templates are defined in `lib/reading-plan-templates.ts`.
 - Convex plan state and progress logic live in `convex/readingPlans.ts`.
 - The reading-plan browse UI reads template catalog metadata from the local app-owned template registry, while Convex is used for user-specific plan state.
+- `/reading-plan` now behaves as a full-width reading workspace, not a route that immediately punts users back into `/study`.
+- The layout is intentionally three-region on desktop:
+  - left plan rail for current-plan context and plan switching
+  - main workspace for `Hub`, `My Journal`, and `Breathe & Focus`
+  - right reading panel that renders the selected plan passage in-page
+- The page-level tab switcher is inside `/reading-plan`; `Hub`, `My Journal`, and `Breathe & Focus` are not top-level app nav items.
 - `/reading-plan` now has two intentional states:
   - browse state for discovering curated templates
-  - active-plan state centered on the current reading and next few entries
+  - active-plan workspace centered on the current reading, journey path, journal, and in-page reader
 - The primary CTA rule is:
   - `Start Reading` when the user has not completed any entries
   - `Continue Reading` after the user has started the plan
   - no reading CTA when the plan is complete
-- Convex `readingPlans.current` returns UI-ready reading-plan data including `primaryEntry`, `hasStartedReading`, `upcomingEntries`, and `templateMeta`.
-- If Convex returns an active plan with no entries or no pending entry, the UI must treat it as invalid and fall back to browse state rather than rendering a false `Plan Complete` state.
-- Users can start a curated plan, open the current reading directly into `/study`, and mark plan entries complete.
+- Convex `readingPlans.current` returns UI-ready reading-plan data including `currentEntry`, `primaryEntry`, `hasStartedReading`, `upcomingEntries`, `allEntries`, `journalEntries`, and `templateMeta`.
+- The reading panel should open and keep users on `/reading-plan`; do not restore the old behavior of routing the main reading CTA into `/study`.
+- `openEntry` marks the selected plan entry as started/opened and updates the owning plan’s `currentDayNumber`, `startedAt`, and `lastOpenedAt`.
+- `saveReflection` persists per-entry journal text on `userPlanEntries.reflection`.
+- The Journal tab is plan-entry scoped. Reflections belong to the reading day they were written from; do not move them into unrelated note tables without an intentional product redesign.
+- The Focus tab is a companion mode inside `/reading-plan`, not a separate page or navigation section.
+- Users can start a curated plan, open the current reading inside the right reader panel, save journal reflections, and mark plan entries complete.
 - Template summaries shown in the UI should stay factual and derived from the template structure, such as scope, duration, cadence, and estimated reading time. Do not reintroduce invented editorial blurbs as hardcoded copy.
 - Current templates include:
   - Start with John
@@ -153,7 +163,8 @@ This document exists to protect implemented work from being overwritten by futur
   - Gospels in 90 Days
   - New Testament in 180 Days
   - Whole Bible in a Year
-- Plan templates remain app-owned and chapter-based. Do not widen the entry model to multi-passage-per-day unless the schema and `/study` navigation model are intentionally redesigned together.
+- Plan templates remain app-owned and chapter-based.
+- Generated template entries must remain book-safe for the current schema. Do not generate a single day entry that crosses from one book into another unless the schema is widened to store both the starting and ending book.
 
 ### Mobile Study Tools
 

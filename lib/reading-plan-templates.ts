@@ -156,6 +156,55 @@ function partitionChapters(chapters: ChapterRef[], durationDays: number) {
   return groups.filter((group) => group.length > 0);
 }
 
+function groupChaptersByBook(chapters: ChapterRef[]) {
+  const groups: ChapterRef[][] = [];
+  let current: ChapterRef[] = [];
+
+  for (const chapter of chapters) {
+    if (current.length === 0 || current[0].book === chapter.book) {
+      current.push(chapter);
+      continue;
+    }
+
+    groups.push(current);
+    current = [chapter];
+  }
+
+  if (current.length > 0) {
+    groups.push(current);
+  }
+
+  return groups;
+}
+
+function partitionChaptersByBook(chapters: ChapterRef[], durationDays: number) {
+  const bookGroups = groupChaptersByBook(chapters);
+  const normalizedDays = Math.max(
+    bookGroups.length,
+    Math.min(durationDays, chapters.length),
+  );
+  let remainingDays = normalizedDays;
+  let remainingChapters = chapters.length;
+
+  return bookGroups.flatMap((bookGroup, index) => {
+    const booksLeft = bookGroups.length - index;
+    const maxDaysForBook = remainingDays - (booksLeft - 1);
+    const proportionalDays =
+      index === bookGroups.length - 1
+        ? maxDaysForBook
+        : Math.round((bookGroup.length / remainingChapters) * remainingDays);
+    const daysForBook = Math.max(
+      1,
+      Math.min(bookGroup.length, maxDaysForBook, proportionalDays || 1),
+    );
+
+    remainingDays -= daysForBook;
+    remainingChapters -= bookGroup.length;
+
+    return partitionChapters(bookGroup, daysForBook);
+  });
+}
+
 function toReadings(groups: ChapterRef[][]) {
   return groups.map((group, index) => {
     const first = group[0];
@@ -260,7 +309,7 @@ function buildGeneratedTemplate({
   chapters: ChapterRef[];
   durationDays: number;
 }) {
-  const groups = partitionChapters(chapters, durationDays);
+  const groups = partitionChaptersByBook(chapters, durationDays);
   const readings = toReadings(groups);
   const scopeLabel = deriveScopeLabel(chapters);
   return {

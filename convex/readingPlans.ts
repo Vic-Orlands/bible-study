@@ -54,12 +54,30 @@ export const current = query({
     const viewer = await getViewer(ctx, args.identityId);
     if (!viewer) return null;
 
-    const plan = await ctx.db
+    const activePlan = await ctx.db
       .query("userPlans")
       .withIndex("by_owner_and_status", (q) =>
         q.eq("ownerKey", viewer.ownerKey).eq("status", "active"),
       )
       .first();
+
+    const completedPlans = activePlan
+      ? []
+      : await ctx.db
+          .query("userPlans")
+          .withIndex("by_owner_and_status", (q) =>
+            q.eq("ownerKey", viewer.ownerKey).eq("status", "completed"),
+          )
+          .collect();
+
+    const plan =
+      activePlan ??
+      [...completedPlans].sort(
+        (left, right) =>
+          (right.lastCompletedAt ?? right._creationTime) -
+          (left.lastCompletedAt ?? left._creationTime),
+      )[0] ??
+      null;
 
     if (!plan) return null;
 
@@ -73,9 +91,6 @@ export const current = query({
       return null;
     }
     const primaryEntry = sortedEntries.find((entry) => entry.status === "pending") ?? null;
-    if (!primaryEntry) {
-      return null;
-    }
     const hasStartedReading = Boolean(plan.startedAt) || plan.completedEntries > 0;
     const templateMeta = getReadingPlanTemplate(plan.templateId);
     const today = todayString();
@@ -94,9 +109,16 @@ export const current = query({
         )
       : []
     ).slice(0, 7);
+    const currentEntry =
+      sortedEntries.find((entry) => entry.dayNumber === plan.currentDayNumber) ??
+      primaryEntry ??
+      sortedEntries[sortedEntries.length - 1] ??
+      null;
+    const journalEntries = sortedEntries.filter((entry) => Boolean(entry.reflection?.trim()));
 
     return {
       plan,
+      currentEntry,
       primaryEntry,
       hasStartedReading,
       progressPercent:
@@ -122,6 +144,7 @@ export const current = query({
       upcomingEntries,
       weekEntries,
       allEntries: sortedEntries,
+      journalEntries,
     };
   },
 });
@@ -181,11 +204,12 @@ export const create = mutation({
         passageVerse: reading.selection.verse,
         passageLabel: reading.passageLabel,
         startChapter: reading.startChapter,
-        endChapter: reading.endChapter,
-        status: "pending",
-        startedAt: undefined,
-        lastOpenedAt: undefined,
-        completedAt: undefined,
+      endChapter: reading.endChapter,
+      status: "pending",
+      reflection: undefined,
+      startedAt: undefined,
+      lastOpenedAt: undefined,
+      completedAt: undefined,
       });
     }
 
@@ -267,6 +291,25 @@ export const openEntry = mutation({
       currentDayNumber: entry.dayNumber,
       startedAt: plan.startedAt ?? openedAt,
       lastOpenedAt: openedAt,
+    });
+  },
+});
+
+export const saveReflection = mutation({
+  args: {
+    entryId: v.id("userPlanEntries"),
+    identityId: v.optional(v.id("identities")),
+    reflection: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await requireViewer(ctx, args.identityId);
+    const entry = await ctx.db.get(args.entryId);
+    if (!entry || entry.ownerKey !== viewer.ownerKey) {
+      throw new Error("Reading plan entry not found");
+    }
+
+    await ctx.db.patch(entry._id, {
+      reflection: args.reflection.trim(),
     });
   },
 });

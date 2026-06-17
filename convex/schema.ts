@@ -141,6 +141,7 @@ export default defineSchema({
     startChapter: v.number(),
     endChapter: v.number(),
     status: v.union(v.literal("pending"), v.literal("completed")),
+    reflection: v.optional(v.string()),
     startedAt: v.optional(v.number()),
     lastOpenedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
