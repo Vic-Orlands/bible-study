@@ -455,16 +455,16 @@ function PageHeader({
   onChangeTab: (tab: ReadingTab) => void;
 }) {
   return (
-    <div className="mb-8 flex flex-col gap-5 border-b border-[#EDECE4] pb-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+    <div className="mb-8 flex flex-col gap-6 border-b border-[#EDECE4]/50 pb-8">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div className="space-y-2">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-[#EA7C5A]">
             Reading Workspace
           </p>
-          <h1 className="mt-2 font-serif text-3xl font-bold tracking-tight text-neutral-900 md:text-5xl">
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-neutral-900 md:text-4xl lg:text-5xl text-wrap-balance leading-none">
             {currentPlan ? currentPlan.plan.title : "Reading Plans"}
           </h1>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-500 md:text-base">
+          <p className="max-w-[700px] text-xs leading-relaxed text-neutral-500 md:text-sm">
             {currentPlan
               ? currentPlan.templateMeta?.summary ?? currentPlan.plan.description
               : "Choose a curated path, read inside this page, and keep your progress, reflections, and current passage together."}
@@ -472,20 +472,21 @@ function PageHeader({
         </div>
 
         {currentPlan?.templateMeta ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="rounded-xl border border-[#EDECE4] bg-white px-4 py-2 text-xs text-neutral-500 shadow-sm">
-              <span className="block text-[9px] font-bold uppercase leading-none text-neutral-400">
+          <div className="flex items-center gap-6 rounded-2xl border border-[#EDECE4]/60 bg-[#FAF9F5]/50 px-5 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)] shrink-0">
+            <div className="text-xs">
+              <span className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400">
                 Category
               </span>
-              <span className="mt-1 block font-serif font-bold text-neutral-800">
+              <span className="mt-0.5 block font-serif font-bold text-neutral-800">
                 {currentPlan.templateMeta.category}
               </span>
             </div>
-            <div className="rounded-xl border border-[#EDECE4] bg-white px-4 py-2 text-xs text-neutral-500 shadow-sm">
-              <span className="block text-[9px] font-bold uppercase leading-none text-neutral-400">
+            <div className="h-6 w-px bg-[#EDECE4]" />
+            <div className="text-xs">
+              <span className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400">
                 Pace
               </span>
-              <span className="mt-1 block font-serif font-bold text-neutral-800">
+              <span className="mt-0.5 block font-serif font-bold text-neutral-800">
                 {currentPlan.templateMeta.cadenceLabel}
               </span>
             </div>
@@ -493,7 +494,7 @@ function PageHeader({
         ) : null}
       </div>
 
-      <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#EDECE4] bg-[#FAF9F5] p-1">
+      <div className="inline-flex w-fit items-center gap-1 rounded-full border border-[#EDECE4]/60 bg-[#FAF9F5] p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]">
         {[
           { id: "hub", label: "Reading Hub" },
           { id: "journal", label: "My Journal", count: journalCount },
@@ -501,10 +502,10 @@ function PageHeader({
         ].map((tab) => (
           <button
             className={cn(
-              "relative rounded-full px-5 py-2 text-xs font-bold uppercase tracking-wide text-neutral-500 transition-all duration-300",
+              "relative rounded-full px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
               activeTab === tab.id
-                ? "bg-[#2E4A3F] text-white shadow-sm"
-                : "hover:bg-neutral-200/50 hover:text-neutral-900",
+                ? "bg-[#3a2218] text-[#FDFCF9] shadow-[0_2px_8px_rgba(58,34,24,0.15)]"
+                : "text-neutral-500 hover:text-neutral-900",
             )}
             key={tab.id}
             onClick={() => onChangeTab(tab.id as ReadingTab)}
@@ -512,7 +513,7 @@ function PageHeader({
           >
             {tab.label}
             {"count" in tab && typeof tab.count === "number" && tab.count > 0 ? (
-              <span className="absolute -right-0.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-amber-500 px-1 text-[9px] font-bold text-white">
+              <span className="absolute -right-0.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-white bg-[#EA7C5A] px-1 font-mono text-[8px] font-bold text-white tabular-nums">
                 {tab.count}
               </span>
             ) : null}
@@ -539,151 +540,143 @@ function ReadingPlanRail({
   selectedTemplateId: string | null;
 }) {
   return (
-    <aside className="hidden min-h-0 w-[300px] shrink-0 overflow-y-auto border-r border-[#EDECE4] bg-white px-0 py-0 lg:block">
-      <div className="bible-app-scroll h-full space-y-8 px-6 py-6">
-      {currentPlan ? (
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-              Active Itinerary
-            </span>
-            <BookOpen className="h-4 w-4 text-neutral-400" />
-          </div>
-          <div className="relative overflow-hidden rounded-2xl border border-[#1E332B] bg-gradient-to-br from-[#2E4A3F] to-[#1E332B] p-5 text-[#F3EFE0] shadow-md">
-            <div className="relative z-10">
-              <span className="rounded border border-emerald-800 bg-emerald-900/50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-emerald-200">
-                Active Itinerary
-              </span>
-              <h2 className="mt-2 font-serif text-lg font-bold leading-tight text-white">
-                {currentPlan.plan.title}
-              </h2>
-              <p className="mt-1 text-[11px] text-emerald-200/70">
-                {currentPlan.templateMeta?.category ?? "Plan"}
-              </p>
-              <div className="mt-4 flex items-end justify-between">
+    <aside className="hidden min-h-0 w-[300px] shrink-0 overflow-y-auto border-r border-[#EDECE4]/80 bg-[#FDFCF9] lg:block">
+      <div className="bible-app-scroll h-full flex flex-col justify-between p-6">
+        <div className="space-y-8">
+          {currentPlan ? (
+            <section>
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Active Itinerary
+                </span>
+                <BookOpen className="h-4 w-4 text-neutral-400" />
+              </div>
+              <div className="relative overflow-hidden rounded-2xl border border-[#EDECE4] bg-[#FAF9F5] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                 <div>
-                  <span className="font-serif text-[22px] font-bold text-white">
-                    {currentPlan.progressPercent}%
+                  <span className="inline-block rounded-full bg-[#EFECE6] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-neutral-500">
+                    Active Plan
                   </span>
-                  <span className="block text-[10px] text-emerald-300">
-                    completed
-                  </span>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-800 bg-emerald-950/40 text-emerald-200 shadow-inner">
-                  <Clock3 className="h-4 w-4" />
+                  <h2 className="mt-3 font-serif text-lg font-bold leading-tight text-neutral-900">
+                    {currentPlan.plan.title}
+                  </h2>
+                  <p className="mt-1 text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
+                    {currentPlan.templateMeta?.category ?? "Plan"}
+                  </p>
+                  
+                  <div className="mt-5 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-neutral-400">Completion</span>
+                      <span className="font-semibold text-neutral-800">{currentPlan.progressPercent}%</span>
+                    </div>
+                    <div className="h-1 w-full overflow-hidden rounded-full bg-[#EFECE6]">
+                      <div
+                        className="h-full rounded-full bg-[#EA7C5A] transition-all duration-500"
+                        style={{ width: `${currentPlan.progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="absolute -bottom-10 -right-10 h-28 w-28 rounded-full bg-[#3D5E4F] opacity-20 blur-xl" />
-          </div>
-          <button
-            className="mt-4 w-full rounded-xl border border-[#EDECE4] bg-white px-3 py-2 text-[12px] font-semibold text-[#a24723] transition-colors hover:bg-[#FAF9F5]"
-            onClick={onArchiveCurrent}
-            type="button"
-          >
-            Archive Current Plan
-          </button>
-        </section>
-      ) : (
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-              Featured Plans
-            </span>
-            <BookOpen className="h-4 w-4 text-neutral-400" />
-          </div>
-          <div className="mt-3 space-y-2">
-            {featuredTemplates.map((template) => (
               <button
-                className="w-full rounded-xl border border-[#EDECE4] bg-white p-3.5 text-left transition-all duration-300 hover:bg-[#FAF9F5] hover:border-neutral-300"
-                key={template.id}
-                onClick={() => onStartPlan(template.id, template.title)}
+                className="mt-3 w-full rounded-xl border border-transparent bg-transparent py-2 text-[11px] font-bold uppercase tracking-wider text-neutral-400 transition-colors hover:text-neutral-600"
+                onClick={onArchiveCurrent}
                 type="button"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <span>
-                    <span className="block font-serif text-sm font-bold text-[#2E4A3F]">
-                    {template.title}
-                    </span>
-                    <span className="mt-1 block text-[10px] text-neutral-400">
-                      {template.category}
-                    </span>
-                  </span>
-                  <span className="rounded bg-[#EFECE6]/40 px-1.5 py-0.5 font-mono text-[9px] uppercase text-neutral-400">
-                    {formatDuration(template.durationDays)}
-                  </span>
-                </div>
+                Archive Current Plan
               </button>
+            </section>
+          ) : (
+            <section>
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Featured Plans
+                </span>
+                <BookOpen className="h-4 w-4 text-neutral-400" />
+              </div>
+              <div className="mt-3 space-y-2">
+                {featuredTemplates.map((template) => (
+                  <button
+                    className="group w-full rounded-xl border border-transparent bg-[#FAF9F5]/40 p-3.5 text-left transition-all hover:bg-[#FAF9F5] hover:shadow-sm"
+                    key={template.id}
+                    onClick={() => onStartPlan(template.id, template.title)}
+                    type="button"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="block font-serif text-[13px] font-bold text-neutral-800 group-hover:text-neutral-900 transition-colors">
+                        {template.title}
+                      </span>
+                      <span className="shrink-0 rounded bg-[#EFECE6]/60 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-500">
+                        {formatDuration(template.durationDays)}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[10px] text-neutral-400">
+                      <span>{template.category}</span>
+                      <span>~{template.estimatedMinutes}m daily</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="space-y-6">
+            <span className="block border-b border-[#EDECE4]/60 pb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+              Itinerary Options
+            </span>
+            {groupedTemplates.map(([category, items]) => (
+              <div key={category}>
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  {category}
+                </h3>
+                <div className="space-y-2">
+                  {items.map((template) => (
+                    <button
+                      className={cn(
+                        "group w-full rounded-xl border p-3.5 text-left transition-all",
+                        selectedTemplateId === template.id
+                          ? "border-[#E5D6C9] bg-white shadow-sm text-neutral-900"
+                          : "border-transparent bg-[#FAF9F5]/30 text-neutral-600 hover:bg-[#FAF9F5] hover:shadow-sm",
+                      )}
+                      key={template.id}
+                      onClick={() => onStartPlan(template.id, template.title)}
+                      type="button"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={cn(
+                          "truncate font-serif text-sm tracking-tight text-neutral-800 group-hover:text-neutral-900 transition-colors",
+                          selectedTemplateId === template.id && "font-bold"
+                        )}>
+                          {template.title}
+                        </span>
+                        {selectedTemplateId === template.id ? (
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#EA7C5A]" />
+                        ) : null}
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-[10px] text-neutral-400">
+                        <span>{template.category}</span>
+                        <span className="font-mono text-[9px] uppercase">
+                          {formatDuration(template.durationDays)}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
-          </div>
-        </section>
-      )}
+          </section>
+        </div>
 
-      <section className="space-y-5">
-        <span className="block border-b border-[#EDECE4] pb-2 text-[10px] font-bold uppercase tracking-widest text-[#2E4A3F]">
-          Itinerary Options
-        </span>
-        {groupedTemplates.map(([category, items]) => (
-          <div key={category}>
-            <h3 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-            {category}
-            </h3>
-            <div className="space-y-2">
-              {items.map((template) => (
-                <button
-                  className={cn(
-                    "w-full rounded-xl border p-3.5 text-left transition-all duration-300",
-                    selectedTemplateId === template.id
-                      ? "border-[#E2DDD2] bg-white shadow-sm text-[#1F332B]"
-                      : "border-transparent bg-transparent text-neutral-600 hover:border-neutral-200 hover:bg-white/60",
-                  )}
-                  key={template.id}
-                  onClick={() => onStartPlan(template.id, template.title)}
-                  type="button"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={cn("truncate font-serif text-sm tracking-tight", selectedTemplateId === template.id && "font-bold text-[#2E4A3F]")}>
-                      {template.title}
-                    </span>
-                    {selectedTemplateId === template.id ? (
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#2E4A3F]" />
-                    ) : null}
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-[10px] text-neutral-400">
-                    <span>{template.category}</span>
-                    <span className="rounded bg-[#EFECE6]/40 px-1 text-[9px] font-mono uppercase">
-                      {formatDuration(template.durationDays)}
-                    </span>
-                  </div>
-                  <div className="mt-3 h-1 overflow-hidden rounded-full bg-neutral-200/50">
-                    <div
-                      className="h-full bg-[#2E4A3F]"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.round((template.estimatedMinutes / 20) * 100),
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <div className="rounded-xl border border-[#EBE6D7] bg-[#F3EFE0]/60 p-4 text-neutral-700">
-        <span className="text-[9px] font-bold uppercase tracking-wider text-[#2E4A3F]">
-          Today&apos;s Insight
-        </span>
-        <p className="mt-1.5 font-serif text-xs italic leading-relaxed text-neutral-600">
-          "Like cold water to a weary soul is good news from a distant land."
-        </p>
-        <span className="mt-2 block text-right font-mono text-[10px] text-neutral-400">
-          — Proverbs 25:25
-        </span>
-      </div>
+        <div className="mt-8 border-l-2 border-[#E5D6C9] pl-4 py-1 text-neutral-700">
+          <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+            Today&apos;s Insight
+          </span>
+          <p className="mt-1.5 font-serif text-[12px] italic leading-relaxed text-neutral-600">
+            "Like cold water to a weary soul is good news from a distant land."
+          </p>
+          <span className="mt-1.5 block font-mono text-[9px] text-neutral-400">
+            — Proverbs 25:25
+          </span>
+        </div>
       </div>
     </aside>
   );
@@ -699,37 +692,40 @@ function BrowseState({
   onStartPlan: (templateId: string, title: string) => Promise<void>;
 }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="rounded-3xl border border-[#EDECE4] bg-gradient-to-br from-[#1E332B] via-[#2E4A3F] to-[#253C33] p-8 text-[#F3EFE0] shadow-lg">
-          <span className="inline-block rounded-full border border-emerald-800/80 bg-emerald-900/60 px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-emerald-200">
-            Start a Curated Plan
-          </span>
-          <h2 className="mt-4 max-w-[720px] font-serif text-4xl font-bold leading-tight text-white md:text-5xl">
-            Keep scripture, structure, and reflection in one calm reading flow.
-          </h2>
-          <p className="mt-4 max-w-[780px] text-sm leading-relaxed text-emerald-100/80 md:text-base">
-            Pick a plan, stay inside this page to read, and carry your journal and focus tools along with the day&apos;s passage.
-          </p>
+        <div className="relative overflow-hidden rounded-3xl border border-[#EDECE4]/60 bg-gradient-to-br from-[#FDFCF9] via-[#FAF9F5] to-[#F3EFE0]/40 p-8 text-neutral-900 shadow-sm md:p-10">
+          <div className="relative z-10 max-w-[700px]">
+            <span className="inline-block rounded-full bg-[#EFECE6] px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-neutral-500">
+              Start a Curated Plan
+            </span>
+            <h2 className="mt-5 font-serif text-3xl font-bold leading-tight text-neutral-900 md:text-4xl lg:text-5xl text-wrap-balance">
+              Keep scripture, structure, and reflection in one calm reading flow.
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-neutral-500 md:text-base">
+              Pick a plan, read at your own pace inside this workspace, and keep your journal notes and focus tools aligned with the day&apos;s passage.
+            </p>
+          </div>
+          <div className="absolute -bottom-16 -right-16 h-48 w-48 rounded-full bg-[#EFECE6]/40 blur-3xl" />
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
           {featuredTemplates.slice(0, 2).map((template) => (
             <button
-              className="rounded-2xl border border-[#EDECE4] bg-white p-5 text-left transition-colors hover:bg-[#FAF9F5]"
+              className="group rounded-2xl border border-[#EDECE4]/50 bg-white p-6 text-left shadow-[0_4px_20px_rgba(0,0,0,0.015)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
               key={template.id}
               onClick={() => onStartPlan(template.id, template.title)}
               type="button"
             >
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#a24723]">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-[#EA7C5A]">
                 Featured
               </p>
-              <h3 className="mt-3 font-serif text-2xl font-bold text-[#25140b]">
+              <h3 className="mt-3 font-serif text-xl font-bold leading-snug text-neutral-900 group-hover:text-[#EA7C5A] transition-colors">
                 {template.title}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+              <p className="mt-2 text-xs leading-relaxed text-neutral-500 line-clamp-2">
                 {template.summary}
               </p>
-              <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+              <p className="mt-4 text-[9px] font-bold uppercase tracking-widest text-neutral-400">
                 {formatDuration(template.durationDays)} · {template.cadenceLabel}
               </p>
             </button>
@@ -737,48 +733,48 @@ function BrowseState({
         </div>
       </section>
 
-      <div className="space-y-6">
+      <div className="space-y-10">
         {groupedTemplates.map(([category, items]) => (
-          <section key={category}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-serif text-2xl font-bold text-[#25140b]">
+          <section key={category} className="space-y-4">
+            <div className="flex items-baseline justify-between border-b border-[#EDECE4]/50 pb-2">
+              <h3 className="font-serif text-xl font-bold text-neutral-900">
                 {category}
               </h3>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                 {items.length} plans
               </span>
             </div>
             <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
               {items.map((template) => (
                 <button
-                  className="rounded-2xl border border-[#EDECE4] bg-white p-5 text-left transition-colors hover:bg-[#FAF9F5]"
+                  className="group flex flex-col justify-between rounded-2xl border border-[#EDECE4]/50 bg-[#FAF9F5]/20 p-5 text-left transition-all duration-300 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
                   key={template.id}
                   onClick={() => onStartPlan(template.id, template.title)}
                   type="button"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="font-serif text-[22px] font-bold leading-tight text-[#25140b]">
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className="font-serif text-lg font-bold leading-tight text-neutral-900 group-hover:text-[#EA7C5A] transition-colors">
                         {template.title}
                       </h4>
-                      <p className="mt-2 text-[13px] leading-6 text-[#7a6758]">
-                        {template.summary}
-                      </p>
+                      {template.featured && (
+                        <span className="shrink-0 rounded-full bg-[#FAF9F5] border border-[#EBE6D7] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#EA7C5A]">
+                          Featured
+                        </span>
+                      )}
                     </div>
-                    {template.featured && (
-                      <span className="rounded-full border border-[#f2dcc5] bg-[#fff2e6] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#a24723]">
-                        Featured
-                      </span>
-                    )}
+                    <p className="mt-2 text-xs leading-relaxed text-neutral-500 line-clamp-3">
+                      {template.summary}
+                    </p>
                   </div>
-                  <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-                    <span className="rounded-full border border-[#f1e8df] bg-[#fbf7f2] px-2 py-1">
+                  <div className="mt-5 flex flex-wrap gap-1.5">
+                    <span className="rounded bg-[#EFECE6]/50 px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-600">
                       {formatDuration(template.durationDays)}
                     </span>
-                    <span className="rounded-full border border-[#f1e8df] bg-[#fbf7f2] px-2 py-1">
+                    <span className="rounded bg-[#EFECE6]/50 px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-600">
                       {template.cadenceLabel}
                     </span>
-                    <span className="rounded-full border border-[#f1e8df] bg-[#fbf7f2] px-2 py-1">
+                    <span className="rounded bg-[#EFECE6]/50 px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-600">
                       ~{template.estimatedMinutes} min
                     </span>
                   </div>
@@ -807,38 +803,40 @@ function HubTab({
   const ctaLabel = relativeStartLabel(currentPlan);
 
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-3xl border border-[#15241E] bg-gradient-to-br from-[#1E332B] via-[#2E4A3F] to-[#253C33] p-6 text-[#F3EFE0] shadow-lg md:p-8">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <div>
-            <span className="inline-block rounded-full border border-emerald-800/80 bg-emerald-900/60 px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-emerald-200">
-              Today&apos;s Recommended Entry
-            </span>
-            <h2 className="mt-4 font-serif text-3xl font-bold leading-tight text-white md:text-5xl">
-              {heroEntry?.passageLabel ?? "Plan Complete"}
-            </h2>
-            <p className="mt-2 text-xs italic text-emerald-300">
-              {heroEntry ? chapterRangeLabel(heroEntry) : "You finished every reading"}
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-emerald-100/80">
-              {heroEntry
-                ? `Day ${heroEntry.dayNumber} of ${currentPlan.plan.totalEntries} · ${currentPlan.templateMeta?.cadenceLabel ?? "Daily reading"}`
-                : "You have finished every scheduled reading in this plan."}
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
+    <div className="space-y-8">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2E2822] via-[#1F1A15] to-[#14100C] p-6 text-[#FAF6EE] shadow-lg md:p-8">
+        <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="flex flex-col justify-between">
+            <div>
+              <span className="inline-block rounded-full bg-[#EA7C5A] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
+                Today&apos;s recommended entry
+              </span>
+              <h2 className="mt-5 font-serif text-3xl font-bold leading-tight text-white md:text-5xl">
+                {heroEntry?.passageLabel ?? "Plan Complete"}
+              </h2>
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-amber-200/80">
+                {heroEntry ? chapterRangeLabel(heroEntry) : "You finished every reading"}
+              </p>
+              <p className="mt-4 max-w-xl text-xs leading-relaxed text-neutral-300">
+                {heroEntry
+                  ? `Day ${heroEntry.dayNumber} of ${currentPlan.plan.totalEntries} · ${currentPlan.templateMeta?.cadenceLabel ?? "Daily reading"}`
+                  : "You have finished every scheduled reading in this plan. Well done!"}
+              </p>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-2.5">
               {heroEntry ? (
                 <button
-                  className="flex items-center gap-2 rounded-xl bg-[#EA7C5A] px-6 py-3.5 text-xs font-bold text-white shadow-md shadow-[#EA7C5A]/15 transition-all"
+                  className="flex items-center gap-2 rounded-xl bg-[#EA7C5A] px-6 py-3 text-xs font-bold text-white shadow-lg shadow-[#EA7C5A]/10 hover:bg-[#D76949]"
                   onClick={() => onOpenReading(heroEntry)}
                   type="button"
                 >
                   {ctaLabel}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4.5 w-4.5" />
                 </button>
               ) : null}
               {currentPlan.currentEntry && currentPlan.hasStartedReading ? (
                 <button
-                  className="rounded-xl border border-emerald-800/50 bg-emerald-900/30 px-4 py-3.5 text-xs font-bold text-[#F3EFE0] transition-colors hover:bg-emerald-900/50"
+                  className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-xs font-bold text-white hover:bg-white/10"
                   onClick={() => onOpenReading(currentPlan.currentEntry!)}
                   type="button"
                 >
@@ -850,35 +848,36 @@ function HubTab({
 
           <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
             <MetricTile
-              icon={<CheckCircle2 className="h-4 w-4 text-[#2e6b3d]" />}
+              icon={<CheckCircle2 className="h-4 w-4 text-[#EA7C5A]" />}
               label="Progress"
               value={`${currentPlan.progressPercent}%`}
             />
             <MetricTile
-              icon={<Flame className="h-4 w-4 text-[#f6823c]" />}
+              icon={<Flame className="h-4 w-4 text-amber-400" />}
               label="Streak"
               value={`${currentPlan.streak} day${currentPlan.streak === 1 ? "" : "s"}`}
             />
             <MetricTile
-              icon={<Clock3 className="h-4 w-4 text-[#7a6758]" />}
+              icon={<Clock3 className="h-4 w-4 text-neutral-300" />}
               label="Pace"
               value={currentPlan.templateMeta ? `~${currentPlan.templateMeta.estimatedMinutes} min` : "Daily"}
             />
           </div>
         </div>
+        <div className="absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-[#EA7C5A]/5 blur-3xl" />
       </section>
 
-      <section className="rounded-3xl border border-[#EDECE4] bg-white p-5">
-        <div className="mb-4 flex items-center justify-between">
+      <section className="rounded-3xl border border-[#EDECE4]/60 bg-[#FAF9F5]/30 p-6">
+        <div className="mb-6 flex items-center justify-between border-b border-[#EDECE4]/50 pb-4">
           <div>
-            <h3 className="font-serif text-xl font-bold text-neutral-900 md:text-2xl">
+            <h3 className="font-serif text-lg font-bold text-neutral-900">
               Journey Path
             </h3>
-            <p className="text-xs text-neutral-400">
-              Click a day card to open reading or log complete state
+            <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
+              Select a card to read or toggle complete state
             </p>
           </div>
-          <span className="rounded bg-[#EFECE6] px-2.5 py-1 font-mono text-xs text-neutral-500">
+          <span className="rounded-full bg-[#EFECE6] px-3 py-1 font-mono text-[10px] font-bold text-neutral-600">
             {currentPlan.plan.completedEntries}/{currentPlan.plan.totalEntries} Done
           </span>
         </div>
@@ -890,33 +889,33 @@ function HubTab({
             return (
               <div
                 className={cn(
-                  "grid gap-4 rounded-2xl border px-4 py-4 transition-all duration-300 md:grid-cols-[88px_minmax(0,1fr)_auto]",
+                  "grid gap-4 items-center rounded-2xl p-4 transition-all duration-300 md:grid-cols-[72px_minmax(0,1fr)_auto]",
                   entry.status === "completed"
-                    ? "border-neutral-200/60 bg-white/60 opacity-75 hover:opacity-100 hover:bg-white"
+                    ? "border border-[#EDECE4]/45 bg-white/40 opacity-70 hover:opacity-100 hover:bg-white"
                     : isPrimary
-                      ? "scale-[1.01] border-[#EA7C5A] bg-white shadow-md shadow-[#EA7C5A]/5"
+                      ? "scale-[1.01] border-2 border-[#EA7C5A] bg-white shadow-md shadow-[#EA7C5A]/5"
                       : isSelected
-                        ? "border-neutral-300 bg-[#FAF9F5]"
-                        : "border-[#EDECE4] bg-white hover:border-neutral-300",
+                        ? "border border-neutral-300 bg-[#FAF9F5]"
+                        : "border border-[#EDECE4]/60 bg-white hover:border-neutral-300",
                 )}
                 key={entry._id}
               >
                 <button
                   className={cn(
-                    "flex h-[68px] flex-col items-center justify-center rounded-2xl border text-center transition-colors",
+                    "flex h-[56px] w-[56px] flex-col items-center justify-center rounded-xl border text-center transition-colors",
                     entry.status === "completed"
-                      ? "border-[#EFECE6] bg-[#EFECE6] text-neutral-500"
+                      ? "border-transparent bg-[#EFECE6] text-neutral-500"
                       : isPrimary
-                        ? "border-[#EA7C5A] bg-[#EA7C5A] text-white shadow-sm"
-                        : "border-transparent bg-[#F3EFE0] text-[#2E4A3F]",
+                        ? "border-transparent bg-[#EA7C5A] text-white shadow-sm"
+                        : "border-transparent bg-[#FAF9F5] text-neutral-800",
                   )}
                   onClick={() => onOpenReading(entry)}
                   type="button"
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] opacity-80">
+                  <span className="text-[8px] font-bold uppercase tracking-wider opacity-70">
                     Day
                   </span>
-                  <span className="mt-1 font-serif text-[24px] font-semibold leading-none">
+                  <span className="font-serif text-lg font-bold leading-none">
                     {entry.dayNumber}
                   </span>
                 </button>
@@ -927,28 +926,30 @@ function HubTab({
                   type="button"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className={cn("font-serif text-base font-bold tracking-tight md:text-lg", entry.status === "completed" ? "text-neutral-500 line-through decoration-neutral-300" : "text-neutral-900")}>
+                    <p className={cn("font-serif text-base font-bold tracking-tight text-neutral-900", entry.status === "completed" && "text-neutral-400 line-through decoration-neutral-300")}>
                       {entry.passageLabel}
                     </p>
                     {isPrimary ? (
-                      <span className="rounded-full border border-[#f2dcc5] bg-[#fff2e6] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#a24723]">
+                      <span className="rounded-full bg-[#FAF9F5] border border-[#EBE6D7] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#EA7C5A]">
                         Up Next
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-xs font-medium text-neutral-500">
+                  <p className="mt-0.5 text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
                     {chapterRangeLabel(entry)} · {formatLongDate(entry.dueDate)}
                   </p>
                   {entry.reflection?.trim() ? (
-                    <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-[#5d493a]">
-                      {entry.reflection}
-                    </p>
+                    <div className="mt-2 border-l border-[#E5D6C9] pl-3">
+                      <p className="line-clamp-2 text-xs italic leading-relaxed text-neutral-500">
+                        &quot;{entry.reflection}&quot;
+                      </p>
+                    </div>
                   ) : null}
                 </button>
 
-                <div className="flex items-center gap-2 self-start">
+                <div className="flex items-center gap-2">
                   <button
-                    className="rounded-xl border border-[#EDECE4] bg-white px-3 py-2 text-[12px] font-semibold text-[#25140b] transition-colors hover:bg-[#FAF9F5]"
+                    className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-800 hover:bg-[#FAF9F5]"
                     onClick={() => onOpenReading(entry)}
                     type="button"
                   >
@@ -956,17 +957,17 @@ function HubTab({
                   </button>
                   <button
                     className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
+                      "flex h-8 w-8 items-center justify-center rounded-full border transition-all",
                       entry.status === "completed"
-                        ? "border-[#2E4A3F] bg-[#2E4A3F] text-[#F3EFE0]"
-                        : "border-[#EDECE4] bg-transparent text-neutral-300 hover:border-[#2E4A3F] hover:text-[#2E4A3F]",
+                        ? "border-[#EA7C5A] bg-[#EA7C5A] text-white"
+                        : "border-neutral-200 bg-transparent text-neutral-300 hover:border-[#EA7C5A] hover:text-[#EA7C5A]",
                     )}
                     onClick={async () => {
                       await onToggleEntry(entry._id);
                     }}
                     type="button"
                   >
-                    <Check className="h-4 w-4" />
+                    <Check className="h-4.5 w-4.5" />
                   </button>
                 </div>
               </div>
@@ -986,19 +987,19 @@ function JournalTab({
   onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
 }) {
   return (
-    <div className="space-y-6">
-      <div className="border-b border-[#EDECE4] pb-6">
-        <h1 className="mb-2 font-serif text-3xl font-bold leading-none tracking-tight text-neutral-900">
-          My Library of Reflections
-        </h1>
-        <p className="text-sm text-neutral-500">
-          Every recorded memory, spiritual note, and highlight saved during your readings.
+    <div className="space-y-8">
+      <div className="space-y-1">
+        <h2 className="font-serif text-2xl font-bold tracking-tight text-neutral-900">
+          Reflections Library
+        </h2>
+        <p className="text-xs text-neutral-500">
+          Your recorded memories, prayers, and lessons saved during each reading day.
         </p>
       </div>
 
       {currentPlan.journalEntries.length === 0 ? (
-        <div className="mx-auto rounded-3xl border border-[#EDECE4] bg-white py-20 text-center">
-          <FileText className="mx-auto mb-4 h-12 w-12 text-neutral-300" />
+        <div className="mx-auto max-w-xl rounded-3xl border border-[#EDECE4]/60 bg-[#FAF9F5]/30 py-16 px-6 text-center">
+          <FileText className="mx-auto mb-4 h-10 w-10 text-neutral-300" />
           <h3 className="font-serif text-lg font-bold text-neutral-800">
             Your journal is waiting
           </h3>
@@ -1007,7 +1008,7 @@ function JournalTab({
           </p>
           {currentPlan.primaryEntry ? (
             <button
-              className="mt-6 rounded-xl bg-[#2E4A3F] px-4 py-2.5 text-xs font-bold text-[#F3EFE0]"
+              className="mt-6 rounded-xl bg-[#3a2218] px-5 py-3 text-xs font-bold text-[#FDFCF9] shadow-sm hover:bg-[#2A1810]"
               onClick={() => onOpenReading(currentPlan.primaryEntry!)}
               type="button"
             >
@@ -1019,34 +1020,34 @@ function JournalTab({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {currentPlan.journalEntries.map((entry) => (
             <div
-              className="group relative flex flex-col justify-between rounded-2xl border border-[#EDECE4] bg-white p-6 shadow-sm transition-transform duration-300 hover:scale-[1.01]"
+              className="group relative flex flex-col justify-between rounded-2xl border border-[#EDECE4]/50 bg-white p-6 shadow-[0_4px_20px_rgba(0,0,0,0.015)] transition-all duration-300 hover:scale-[1.005] hover:shadow-[0_8px_30px_rgba(0,0,0,0.035)]"
               key={entry._id}
             >
               <div className="space-y-4">
-                <div className="flex items-center justify-between font-mono text-[10px] text-neutral-400">
+                <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-neutral-400">
                   <span>{entry.completedAt ? new Date(entry.completedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : formatDateLabel(entry.dueDate)}</span>
-                  <span className="rounded border border-[#EDECE4] bg-[#FAF9F5] px-2 py-0.5">
-                    {currentPlan.plan.title} - Day {entry.dayNumber}
+                  <span className="rounded-full bg-[#FAF9F5] border border-[#EBE6D7] px-2.5 py-0.5 text-neutral-500">
+                    Day {entry.dayNumber}
                   </span>
                 </div>
 
                 <div className="space-y-1">
-                  <h3 className="font-serif text-lg font-bold text-[#1F332B]">
+                  <h3 className="font-serif text-lg font-bold text-neutral-900 group-hover:text-[#EA7C5A] transition-colors">
                     {entry.passageLabel}
                   </h3>
-                  <p className="text-xs italic text-neutral-400">
-                    Saved reflection
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#EA7C5A]">
+                    Saved note
                   </p>
                 </div>
 
-                <p className="line-clamp-4 select-text text-sm leading-relaxed text-neutral-600">
+                <p className="line-clamp-5 select-text text-sm italic leading-relaxed text-neutral-600">
                   &quot;{entry.reflection}&quot;
                 </p>
               </div>
 
-              <div className="mt-6 flex items-center justify-between border-t border-neutral-100 pt-4 text-xs">
-                <span className="text-[10px] font-bold text-[#2E4A3F]">
-                  Reading Plan Devotions
+              <div className="mt-6 flex items-center justify-between border-t border-neutral-100 pt-4">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+                  Reading Plan Devotion
                 </span>
                 <button
                   className="flex cursor-pointer items-center gap-1 text-xs font-bold text-[#EA7C5A] hover:text-[#D76949]"
@@ -1073,61 +1074,82 @@ function FocusTab({
   onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
 }) {
   const entry = currentPlan.primaryEntry ?? currentPlan.currentEntry;
+  const [breathPhase, setBreathPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
+  const [cycleCount, setCycleCount] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBreathPhase((prev) => {
+        if (prev === "Inhale") return "Hold";
+        if (prev === "Hold") return "Exhale";
+        setCycleCount((c) => c + 1);
+        return "Inhale";
+      });
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div className="space-y-8 text-center">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-serif font-bold tracking-tight text-neutral-900">
+    <div className="space-y-10 text-center">
+      <div className="space-y-2 max-w-md mx-auto">
+        <h2 className="font-serif text-3xl font-bold tracking-tight text-neutral-900">
           Pause & Anchor
-        </h1>
-        <p className="mx-auto max-w-md text-sm leading-relaxed text-neutral-500">
+        </h2>
+        <p className="text-xs leading-relaxed text-neutral-500">
           Clear away digital noise and quiet your thoughts for a moment before looking upon the sacred scripture. Quiet the outer self.
         </p>
       </div>
 
-      <div className="relative overflow-hidden rounded-[32px] border border-[#EDECE4] bg-white p-10 text-center shadow-sm md:p-14">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#F3EFE0]/30 to-transparent pointer-events-none" />
-        <div className="relative z-10 space-y-10 py-6">
+      <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#2E2822] via-[#1F1A15] to-[#14100C] p-8 text-center shadow-lg md:p-12 border border-white/5">
+        <div className="relative z-10 space-y-10 py-4">
           <div className="relative flex h-64 w-64 items-center justify-center mx-auto">
             <motion.div
-              animate={{ scale: [0.9, 1.4, 1.4, 0.9], opacity: [0.65, 1, 1, 0.65] }}
-              className="absolute inset-0 rounded-full border border-[#2E4A3F]/20 bg-[rgba(74,117,98,0.06)]"
-              transition={{ duration: 8, ease: "easeInOut", repeat: Number.POSITIVE_INFINITY }}
+              animate={{
+                scale: breathPhase === "Inhale" ? 1.35 : breathPhase === "Hold" ? 1.35 : 0.95,
+                opacity: breathPhase === "Inhale" ? 0.9 : breathPhase === "Hold" ? 0.9 : 0.5,
+              }}
+              className="absolute inset-0 rounded-full border border-[#EA7C5A]/20 bg-[#EA7C5A]/5 shadow-[0_0_50px_rgba(234,124,90,0.08)]"
+              transition={{ duration: 3.8, ease: "easeInOut" }}
             />
             <motion.div
-              animate={{ scale: [0.85, 1.2, 1.2, 0.85] }}
-              className="relative z-20 flex h-36 w-36 flex-col items-center justify-center rounded-full bg-gradient-to-br from-[#2E4A3F] to-[#1F332B] text-white shadow-xl shadow-[#2E4A3F]/10"
-              transition={{ duration: 8, ease: "easeInOut", repeat: Number.POSITIVE_INFINITY }}
+              animate={{
+                scale: breathPhase === "Inhale" ? 1.15 : breathPhase === "Hold" ? 1.15 : 0.85,
+              }}
+              className="relative z-20 flex h-36 w-36 flex-col items-center justify-center rounded-full bg-gradient-to-br from-[#EA7C5A] to-[#B05338] text-white shadow-xl shadow-[#EA7C5A]/15"
+              transition={{ duration: 3.8, ease: "easeInOut" }}
             >
-              <span className="mb-1 block text-xs font-mono uppercase tracking-widest text-emerald-200">
-                inhale
+              <span className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-amber-200/90">
+                {breathPhase === "Inhale" ? "breathe in" : breathPhase === "Hold" ? "hold" : "breathe out"}
               </span>
-              <span className="text-3xl font-serif font-black text-[#F3EFE0]">
-                In
+              <span className="text-2xl font-serif font-bold tracking-tight">
+                {breathPhase}
               </span>
             </motion.div>
           </div>
 
-          <div className="space-y-2">
-            <h3 className="text-lg font-serif font-bold text-neutral-800">
+          <div className="space-y-1.5">
+            <h3 className="font-serif text-base font-bold text-white">
               Fill your lungs with gratitude.
             </h3>
-            <p className="text-xs font-mono text-neutral-400">
-              Breath cycles completed: pause and continue when you are ready
+            <p className="font-mono text-[9px] uppercase tracking-wider text-neutral-400">
+              Completed cycles: <span className="text-[#EA7C5A] font-bold font-sans text-xs">{cycleCount}</span>
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
-              className="rounded-xl bg-[#2E4A3F] px-5 py-2.5 text-xs font-bold text-white"
-              onClick={() => {}}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-neutral-300 hover:bg-white/10 transition-colors"
+              onClick={() => {
+                setCycleCount(0);
+                setBreathPhase("Inhale");
+              }}
               type="button"
             >
-              Reset Anchor
+              Reset
             </button>
             {entry ? (
               <button
-                className="rounded-xl border border-neutral-200 bg-neutral-100 px-5 py-2.5 text-xs font-bold text-neutral-700 transition-colors hover:bg-neutral-200"
+                className="rounded-xl bg-[#EA7C5A] px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-[#D76949] transition-all"
                 onClick={() => onOpenReading(entry)}
                 type="button"
               >
@@ -1138,9 +1160,9 @@ function FocusTab({
         </div>
       </div>
 
-      <div className="mx-auto inline-flex items-center gap-2.5 rounded-xl border border-[#EBE6D7] bg-[#F3EFE0]/40 p-4 text-xs text-neutral-600">
+      <div className="mx-auto inline-flex items-center gap-2.5 rounded-2xl border border-[#EDECE4]/60 bg-[#FAF9F5] p-4 text-xs text-neutral-600 shadow-sm">
         <Sparkles className="h-4 w-4 text-[#EA7C5A]" />
-        <span>"Be still, and know that I am God." — Psalm 46:10</span>
+        <span className="font-serif italic">"Be still, and know that I am God." — Psalm 46:10</span>
       </div>
     </div>
   );
@@ -1218,41 +1240,43 @@ function ReaderPanel({
   return (
     <>
       {!selectedEntry ? (
-        <div className="flex flex-1 items-center justify-center p-6 text-center">
-          <div>
-            <p className="font-serif text-[28px] font-semibold text-[#25140b]">
+        <div className="flex flex-1 items-center justify-center p-8 text-center bg-[#FDFCF9]">
+          <div className="space-y-3 max-w-sm">
+            <BookOpen className="mx-auto h-8 w-8 text-neutral-300" />
+            <h3 className="font-serif text-2xl font-bold text-neutral-800">
               Open a reading day
-            </p>
-            <p className="mt-2 max-w-[360px] text-[13px] leading-6 text-[#7a6758]">
-              The scripture text stays here so the reading plan page can be your guided reading workspace.
+            </h3>
+            <p className="text-xs leading-relaxed text-neutral-500">
+              Select a chapter from your path. The text will open inside this calm, dedicated environment to protect your focus.
             </p>
           </div>
         </div>
       ) : (
         <>
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#FAF6EE] p-6 text-[#2C2314] transition-colors duration-500 md:p-12">
-            <div className="mb-8 flex items-center justify-between border-b border-black/5 pb-6">
-              <div className="flex items-center gap-2">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#FDFCF9] p-6 text-neutral-800 transition-colors duration-500 md:p-10">
+            <div className="mb-8 flex items-center justify-between border-b border-neutral-100 pb-5">
+              <div className="flex items-center gap-3">
                 <button
-                  className="rounded-full p-1 hover:bg-black/5"
+                  className="rounded-full p-1.5 hover:bg-neutral-100 text-neutral-500 transition-colors"
                   onClick={onClose}
                   type="button"
+                  aria-label="Back"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </button>
                 <div>
-                  <span className="block font-mono text-[9px] uppercase tracking-wider opacity-60">
+                  <span className="block text-[8px] font-bold uppercase tracking-widest text-neutral-400">
                     {currentPlan?.plan.title ?? "Reading Plan"}
                   </span>
-                  <span className="mt-0.5 block font-serif text-sm font-bold">
+                  <span className="mt-0.5 block font-serif text-sm font-bold text-neutral-800">
                     {selectedEntry.passageLabel}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 rounded-lg border border-black/5 bg-[#FCFBF8]/30 p-1 backdrop-blur">
+              <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-[#FAF9F5]/80 p-1">
                 <select
-                  className="h-7 rounded border border-transparent bg-transparent px-1 text-xs font-bold text-neutral-600 outline-none"
+                  className="h-7 rounded-lg bg-transparent px-2 text-xs font-bold text-neutral-600 outline-none"
                   onChange={(event) => setReaderVersionId(event.target.value)}
                   value={readerVersionId}
                 >
@@ -1265,19 +1289,19 @@ function ReaderPanel({
               </div>
             </div>
 
-            <div className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-[#EA7C5A]/25 bg-[#EA7C5A]/10 p-4">
+            <div className="mb-8 flex items-center justify-between gap-5 rounded-2xl border border-[#EDECE4] bg-[#FAF9F5] p-4">
               <div className="flex items-center gap-3">
                 <button
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2E4A3F] text-white transition-transform active:scale-95"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#3a2218] text-white transition-all hover:bg-[#2A1810]"
                   type="button"
                 >
-                  <Play className="ml-0.5 h-4 w-4 fill-current" />
+                  <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
                 </button>
                 <div>
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#EA7C5A]">
-                    Audio companion
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-[#EA7C5A]">
+                    Audio Companion
                   </span>
-                  <h4 className="font-serif text-xs font-bold text-[#1F332B]">
+                  <h4 className="font-serif text-[11px] font-bold text-neutral-800">
                     {selectedEntry.passageLabel} ambient guide
                   </h4>
                 </div>
@@ -1287,86 +1311,82 @@ function ReaderPanel({
               </div>
             </div>
 
-            <div className="mx-auto max-w-2xl flex-1 space-y-10 selection:bg-amber-200/80">
-              <div className="border-b border-black/5 pb-6 text-center">
-                <span className="mb-1 block font-mono text-xs uppercase tracking-widest opacity-50">
-                  Today&apos;s reading passage
+            <div className="mx-auto max-w-xl flex-1 space-y-10 selection:bg-amber-100">
+              <div className="border-b border-neutral-100 pb-5 text-center">
+                <span className="mb-1 block text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+                  Today&apos;s Scripture
                 </span>
-                <h2 className="font-serif text-3xl font-bold tracking-tight">
+                <h2 className="font-serif text-3xl font-bold tracking-tight text-neutral-900">
                   {selectedEntry.passageLabel}
                 </h2>
-                <p className="mt-1 text-sm italic opacity-60">
+                <p className="mt-1 text-xs italic text-neutral-500">
                   &quot;{chapterRangeLabel(selectedEntry)}&quot;
                 </p>
               </div>
 
-              <p className="mx-auto max-w-lg rounded-xl bg-black/5 px-4 py-3 text-xs italic leading-relaxed opacity-60">
-                <span className="font-bold">Highlight Tip:</span> Use this devotional panel to read, reflect, and complete the day&apos;s entry.
-              </p>
-
-            {loading ? (
-              <div className="space-y-3">
-                <div className="h-6 w-44 animate-pulse rounded bg-[#e9dfd1]" />
-                <div className="h-4 w-full animate-pulse rounded bg-[#eee5d8]" />
-                <div className="h-4 w-[88%] animate-pulse rounded bg-[#eee5d8]" />
-                <div className="h-4 w-[92%] animate-pulse rounded bg-[#eee5d8]" />
-              </div>
-            ) : hasError ? (
-              <div className="rounded-2xl border border-[#f2dcc5] bg-[#fff2e6] p-4 text-[13px] leading-6 text-[#a24723]">
-                Scripture text could not be loaded for this reading.
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {chapterData.map((chapter) => (
-                  <article key={`${chapter.book}-${chapter.chapter}`}>
-                    <div className="mb-4 border-b border-black/5 pb-2">
-                      <p className="font-serif text-2xl font-bold">
-                        {chapter.book} {chapter.chapter}
-                      </p>
-                      <p className="font-mono text-[11px] font-bold uppercase tracking-wider opacity-50">
-                        {versionLabel}
-                      </p>
-                    </div>
-                    <div className="space-y-4">
-                      {chapter.verses.map((verse) => (
-                        <VerseRow
-                          chapter={chapter.chapter}
-                          highlighted={
-                            chapter.chapter === selectedEntry.passageChapter &&
-                            verse.number === selectedEntry.passageVerse
-                          }
-                          key={`${chapter.chapter}-${verse.number}`}
-                          verse={verse}
-                        />
-                      ))}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+              {loading ? (
+                <div className="space-y-4">
+                  <div className="h-5 w-36 animate-pulse rounded bg-neutral-200/60" />
+                  <div className="h-4 w-full animate-pulse rounded bg-neutral-200/50" />
+                  <div className="h-4 w-[90%] animate-pulse rounded bg-neutral-200/50" />
+                  <div className="h-4 w-[93%] animate-pulse rounded bg-neutral-200/50" />
+                </div>
+              ) : hasError ? (
+                <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4 text-xs leading-relaxed text-red-600">
+                  Scripture text could not be loaded for this reading.
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {chapterData.map((chapter) => (
+                    <article key={`${chapter.book}-${chapter.chapter}`} className="space-y-4">
+                      <div className="mb-4 border-b border-neutral-100 pb-2">
+                        <p className="font-serif text-xl font-bold text-neutral-800">
+                          {chapter.book} {chapter.chapter}
+                        </p>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+                          {versionLabel}
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        {chapter.verses.map((verse) => (
+                          <VerseRow
+                            chapter={chapter.chapter}
+                            highlighted={
+                              chapter.chapter === selectedEntry.passageChapter &&
+                              verse.number === selectedEntry.passageVerse
+                            }
+                            key={`${chapter.chapter}-${verse.number}`}
+                            verse={verse}
+                          />
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex h-full w-full flex-col justify-between border-l border-[#EDECE4] bg-[#FCFBF8] p-6 md:w-[360px] md:p-8">
+          <div className="flex h-full w-full flex-col justify-between border-l border-[#EDECE4]/80 bg-[#FAF9F5] p-6 md:w-[360px] md:p-8">
             <div className="space-y-6">
               <div>
                 <div className="flex items-center gap-1.5 text-[#EA7C5A]">
                   <Edit3 className="h-4 w-4" />
-                  <span className="font-sans text-[10px] font-black uppercase tracking-widest">
+                  <span className="text-[9px] font-bold uppercase tracking-widest">
                     Personal Journal
                   </span>
                 </div>
-                <h3 className="mt-1 font-serif text-xl font-bold text-[#1F332B]">
+                <h3 className="mt-1.5 font-serif text-lg font-bold text-neutral-900">
                   Devotional Reflection
                 </h3>
-                <p className="mt-1 text-xs text-neutral-400">
+                <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">
                   Record what you hear in the quiet, and keep it in your reflection library.
                 </p>
               </div>
 
-              <div className="rounded-xl border border-[#EDECE4] bg-[#FAF9F5] p-3 text-xs">
-                <span className="mb-1 block font-bold text-[#2E4A3F]">
-                  Reflection Suggestion
+              <div className="rounded-xl border border-[#EDECE4]/60 bg-white p-4 text-xs shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                <span className="mb-1 block font-bold text-[#EA7C5A] uppercase tracking-wider text-[9px]">
+                  Reflection Prompt
                 </span>
                 <p className="italic leading-relaxed text-neutral-500">
                   &quot;How did today&apos;s reading comfort or convict you?&quot;
@@ -1374,17 +1394,13 @@ function ReaderPanel({
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase text-neutral-400">
-                    Write Note
-                  </span>
-                  <span className="text-[10px] font-bold tracking-wider text-neutral-400">
-                    {reflectionDraft.length} chars
-                  </span>
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase text-neutral-400">
+                  <span>Write Note</span>
+                  <span className="font-mono tabular-nums">{reflectionDraft.length} chars</span>
                 </div>
 
                 <textarea
-                  className="h-56 w-full resize-none rounded-xl border border-[#EDECE4] bg-white p-3.5 text-xs leading-relaxed text-neutral-700 shadow-inner outline-none focus:border-[#2E4A3F] focus:ring-1 focus:ring-[#2E4A3F]"
+                  className="h-56 w-full resize-none rounded-2xl border border-neutral-200 bg-white p-4 text-xs leading-relaxed text-neutral-700 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] outline-none focus:border-[#EA7C5A] focus:ring-1 focus:ring-[#EA7C5A] transition-all"
                   onChange={(event) => setReflectionDraft(event.target.value)}
                   placeholder="Type your notes, prayers, or lessons from this reading..."
                   value={reflectionDraft}
@@ -1392,9 +1408,9 @@ function ReaderPanel({
               </div>
             </div>
 
-            <div className="mt-6 space-y-3 border-t border-neutral-200 pt-6">
+            <div className="mt-6 space-y-2 border-t border-neutral-200/80 pt-6">
               <button
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2E4A3F] py-4 text-xs font-bold text-white shadow-md transition-all hover:scale-[1.01] hover:bg-[#20342C]"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#EA7C5A] py-3.5 text-xs font-bold text-white shadow-md hover:bg-[#D76949] transition-all"
                 onClick={async () => {
                   await onSaveReflection();
                   if (selectedEntry.status !== "completed") {
@@ -1409,7 +1425,7 @@ function ReaderPanel({
               </button>
 
               <button
-                className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 text-xs font-bold text-neutral-500 transition-colors hover:bg-neutral-100"
+                className="w-full rounded-xl border border-transparent bg-transparent py-2.5 text-xs font-semibold text-neutral-400 hover:text-neutral-600 transition-colors"
                 onClick={onClose}
                 type="button"
               >
@@ -1435,14 +1451,14 @@ function VerseRow({
   return (
     <div
       className={cn(
-        "grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-xl border-l-2 px-3 py-2",
-        highlighted ? "border-[#f6823c] bg-[#fff8f1]" : "border-transparent",
+        "grid grid-cols-[40px_minmax(0,1fr)] gap-3 rounded-xl px-3 py-2.5 transition-all duration-300",
+        highlighted ? "bg-[#EA7C5A]/5 border-l-2 border-[#EA7C5A]" : "border-l-2 border-transparent",
       )}
     >
-      <span className="pt-0.5 text-[11px] font-semibold text-[#9b8878]">
+      <span className="pt-0.5 text-[10px] font-bold text-neutral-400 font-mono">
         {chapter}:{verse.number}
       </span>
-      <p className="font-serif text-[18px] leading-8 text-[#25140b]">
+      <p className="font-serif text-base md:text-[17px] leading-relaxed text-neutral-800">
         {verse.text}
       </p>
     </div>
@@ -1459,14 +1475,14 @@ function MetricTile({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[#eadfd4] bg-[#fffaf5] p-4">
-      <div className="flex items-center gap-2 text-[#7a6758]">
+    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-[1px] p-4">
+      <div className="flex items-center gap-2 text-neutral-300">
         {icon}
-        <span className="text-[11px] font-bold uppercase tracking-[0.18em]">
+        <span className="text-[9px] font-bold uppercase tracking-widest opacity-80">
           {label}
         </span>
       </div>
-      <p className="mt-3 font-serif text-[24px] font-semibold text-[#25140b]">
+      <p className="mt-2 font-serif text-2xl font-bold text-white tabular-nums">
         {value}
       </p>
     </div>
