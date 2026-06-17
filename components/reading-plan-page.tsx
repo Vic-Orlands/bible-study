@@ -119,7 +119,6 @@ export default function ReadingPlanPage() {
     let cancelled = false;
 
     const initIdentity = async () => {
-      setStoreReady(false);
       if (auth.isLoading) return;
       if (auth.isAuthenticated && authIdentity) {
         try {
