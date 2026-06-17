@@ -120,6 +120,8 @@ export default defineSchema({
     totalEntries: v.number(),
     completedEntries: v.number(),
     currentDayNumber: v.number(),
+    startedAt: v.optional(v.number()),
+    lastOpenedAt: v.optional(v.number()),
     lastCompletedAt: v.optional(v.number()),
   })
     .index("by_owner", ["ownerKey"])
@@ -139,6 +141,8 @@ export default defineSchema({
     startChapter: v.number(),
     endChapter: v.number(),
     status: v.union(v.literal("pending"), v.literal("completed")),
+    startedAt: v.optional(v.number()),
+    lastOpenedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
   })
     .index("by_planId", ["planId"])

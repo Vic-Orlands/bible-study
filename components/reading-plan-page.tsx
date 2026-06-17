@@ -112,6 +112,7 @@ export default function ReadingPlanPage() {
     ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
   });
   const createPlan = useMutation(api.readingPlans.create);
+  const openPlanEntry = useMutation(api.readingPlans.openEntry);
   const toggleEntry = useMutation(api.readingPlans.toggleEntry);
   const router = useRouter();
 
@@ -211,11 +212,23 @@ export default function ReadingPlanPage() {
     return Array.from(groups.entries());
   }, [templateCards]);
 
-  const openReading = (entry: {
+  const openReading = async (entry: {
+    _id?: Id<"userPlanEntries">;
     passageBook: string;
     passageChapter: number;
     passageVerse: number;
   }) => {
+    try {
+      if (entry._id) {
+        await openPlanEntry({
+          entryId: entry._id,
+          ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
+        });
+      }
+    } catch (error) {
+      console.error("Failed to record reading plan open:", error);
+    }
+
     setPassage({
       book: entry.passageBook,
       chapter: entry.passageChapter,

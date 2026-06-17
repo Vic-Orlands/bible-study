@@ -76,7 +76,7 @@ export const current = query({
     if (!primaryEntry) {
       return null;
     }
-    const hasStartedReading = plan.completedEntries > 0;
+    const hasStartedReading = Boolean(plan.startedAt) || plan.completedEntries > 0;
     const templateMeta = getReadingPlanTemplate(plan.templateId);
     const today = todayString();
     const weekEntries = sortedEntries.filter((entry) => {
@@ -163,6 +163,8 @@ export const create = mutation({
       totalEntries: template.readings.length,
       completedEntries: 0,
       currentDayNumber: 1,
+      startedAt: undefined,
+      lastOpenedAt: undefined,
       lastCompletedAt: undefined,
     });
 
@@ -181,6 +183,8 @@ export const create = mutation({
         startChapter: reading.startChapter,
         endChapter: reading.endChapter,
         status: "pending",
+        startedAt: undefined,
+        lastOpenedAt: undefined,
         completedAt: undefined,
       });
     }
@@ -227,8 +231,42 @@ export const toggleEntry = mutation({
     await ctx.db.patch(entry.planId, {
       completedEntries,
       currentDayNumber: nextPending?.dayNumber ?? planEntries.length,
+      startedAt: entry.startedAt ?? completedAt ?? Date.now(),
+      lastOpenedAt: entry.lastOpenedAt ?? Date.now(),
       lastCompletedAt: nextStatus === "completed" ? completedAt : undefined,
       status: completedEntries === planEntries.length ? "completed" : "active",
+    });
+  },
+});
+
+export const openEntry = mutation({
+  args: {
+    entryId: v.id("userPlanEntries"),
+    identityId: v.optional(v.id("identities")),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await requireViewer(ctx, args.identityId);
+    const entry = await ctx.db.get(args.entryId);
+    if (!entry || entry.ownerKey !== viewer.ownerKey) {
+      throw new Error("Reading plan entry not found");
+    }
+
+    const openedAt = Date.now();
+
+    await ctx.db.patch(args.entryId, {
+      startedAt: entry.startedAt ?? openedAt,
+      lastOpenedAt: openedAt,
+    });
+
+    const plan = await ctx.db.get(entry.planId);
+    if (!plan || plan.ownerKey !== viewer.ownerKey) {
+      throw new Error("Reading plan not found");
+    }
+
+    await ctx.db.patch(entry.planId, {
+      currentDayNumber: entry.dayNumber,
+      startedAt: plan.startedAt ?? openedAt,
+      lastOpenedAt: openedAt,
     });
   },
 });
@@ -284,6 +322,8 @@ export const resetCurrent = mutation({
     await ctx.db.patch(activePlan._id, {
       completedEntries: 0,
       currentDayNumber: 1,
+      startedAt: undefined,
+      lastOpenedAt: undefined,
       lastCompletedAt: undefined,
       status: "active",
     });

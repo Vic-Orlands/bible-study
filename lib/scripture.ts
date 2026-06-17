@@ -742,12 +742,18 @@ export function parseVerseReference(
   const chapter = parseInt(match[2], 10);
   const verse = match[3] ? parseInt(match[3], 10) : 1;
 
-  const bookModel = bibleBooks.find(({ book }) => {
+  const bookModel = bibleBooks.find(({ book, id, usfm }) => {
     const normalizedBook = normalizeBookReference(book);
+    const normalizedId = normalizeBookReference(id);
+    const normalizedUsfm = normalizeBookReference(usfm);
     return (
       normalizedBook === bookQuery ||
+      normalizedId === bookQuery ||
+      normalizedUsfm === bookQuery ||
       normalizedBook.startsWith(bookQuery) ||
-      normalizedBook.replace(/\s+/g, "").startsWith(bookQuery.replace(/\s+/g, ""))
+      normalizedBook.replace(/\s+/g, "").startsWith(bookQuery.replace(/\s+/g, "")) ||
+      normalizedId.replace(/\s+/g, "") === bookQuery.replace(/\s+/g, "") ||
+      normalizedUsfm.replace(/\s+/g, "") === bookQuery.replace(/\s+/g, "")
     );
   });
 

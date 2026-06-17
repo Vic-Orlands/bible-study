@@ -12,7 +12,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CheckCircle,
-  Download,
   Heart,
   Link2,
   List,
@@ -354,8 +353,7 @@ export default function BibleApp() {
   const bookmarks =
     useQuery(api.bookmarks.listForGuest, {
       ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
-    }) ||
-    [];
+    }) || [];
   const groupedBookmarks = useMemo(
     () => groupBookmarkRanges(bookmarks),
     [bookmarks],
@@ -400,7 +398,8 @@ export default function BibleApp() {
     const map: Record<string, string> = {};
     chapterQueries.forEach((q, i) => {
       if (q.error)
-        map[normalizedVisibleVersions[i]] = "Unable to load this translation right now.";
+        map[normalizedVisibleVersions[i]] =
+          "Unable to load this translation right now.";
     });
     return map;
   }, [chapterQueries, normalizedVisibleVersions]);
@@ -598,7 +597,9 @@ export default function BibleApp() {
               onBookmark={async () => {
                 try {
                   const added = await toggleBookmark({
-                    ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
+                    ...(currentIdentityId
+                      ? { identityId: currentIdentityId }
+                      : {}),
                     passageBook: selectedPassage.book,
                     passageChapter: selectedPassage.chapter,
                     passageVerse: selectedPassage.verse,
@@ -620,7 +621,9 @@ export default function BibleApp() {
               onBookmarkVerses={async (verses) => {
                 try {
                   const result = await addBookmarks({
-                    ...(currentIdentityId ? { identityId: currentIdentityId } : {}),
+                    ...(currentIdentityId
+                      ? { identityId: currentIdentityId }
+                      : {}),
                     passageBook: selectedPassage.book,
                     passageChapter: selectedPassage.chapter,
                     passageVerses: verses,
@@ -969,7 +972,9 @@ function MobileStudyControls({
           <button
             className="flex flex-col items-center justify-center gap-1 px-1 py-1.5 text-[10px] font-semibold text-[#7a6758] hover:text-[#3a2218]"
             key={view}
-            onClick={() => onOpen(view as "index" | "study" | "notes" | "audio" | "activity")}
+            onClick={() =>
+              onOpen(view as "index" | "study" | "notes" | "audio" | "activity")
+            }
             type="button"
           >
             <Icon className="h-4 w-4" />
@@ -1338,7 +1343,7 @@ function LeftPanel({
         <div className="flex items-center justify-between">
           <div />
           <button
-            className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#7a6758] hover:bg-[#fbf7f2]"
+            className="icon-button flex h-[30px] w-[30px] items-center justify-center border border-[#f3c7ab] bg-[#fff3e8] text-[#a24723] hover:bg-[#ffe8d8]"
             onClick={onCollapse}
             type="button"
           >
@@ -2235,11 +2240,12 @@ function Reader({
       [...bibleVersions]
         .sort((left, right) => left.title.localeCompare(right.title))
         .filter(({ abbreviation, title }) => {
-        const q = versionSearch.trim().toLowerCase();
-        return (
-          abbreviation.toLowerCase().includes(q) || title.toLowerCase().includes(q)
-        );
-      }),
+          const q = versionSearch.trim().toLowerCase();
+          return (
+            abbreviation.toLowerCase().includes(q) ||
+            title.toLowerCase().includes(q)
+          );
+        }),
     [bibleVersions, versionSearch],
   );
 
@@ -2401,11 +2407,7 @@ function Reader({
 
   useEffect(() => {
     clearVerseSelection();
-  }, [
-    selectedPassage.book,
-    selectedPassage.chapter,
-    clearVerseSelection,
-  ]);
+  }, [selectedPassage.book, selectedPassage.chapter, clearVerseSelection]);
 
   return (
     <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white">
@@ -2457,7 +2459,8 @@ function Reader({
                 transition={{ duration: 0.15, ease: [0.215, 0.61, 0.355, 1] }}
                 type="button"
               >
-                {resolveBibleVersion(version, bibleVersions)?.abbreviation ?? version}
+                {resolveBibleVersion(version, bibleVersions)?.abbreviation ??
+                  version}
               </motion.button>
             ))}
           </AnimatePresence>
@@ -2474,8 +2477,8 @@ function Reader({
             >
               {replaceTarget
                 ? `Change ${
-                    resolveBibleVersion(replaceTarget, bibleVersions)?.abbreviation ??
-                    replaceTarget
+                    resolveBibleVersion(replaceTarget, bibleVersions)
+                      ?.abbreviation ?? replaceTarget
                   }`
                 : visibleVersions.length >= 3
                   ? "3 versions max"
@@ -2503,41 +2506,45 @@ function Reader({
                     />
                   </div>
                   <div className="max-h-64 overflow-y-auto bible-app-scroll">
-                    {availableTranslations.map(({ id, abbreviation, title, provider }) => {
-                      const selected = visibleVersions.includes(id);
-                      return (
-                        <button
-                          className={cn(
-                            "flex w-full flex-col px-3 py-2 text-left hover:bg-[#fbf7f2]",
-                            selected &&
-                              "cursor-default opacity-50 hover:bg-white",
-                          )}
-                          disabled={selected}
-                          key={id}
-                          onClick={() => handleVersionChoice(id)}
-                          type="button"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-bold text-[#3a2218]">
-                              {abbreviation}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-medium uppercase text-[#9b8878]">
-                                {provider === "custom" ? "Custom" : "API.Bible"}
+                    {availableTranslations.map(
+                      ({ id, abbreviation, title, provider }) => {
+                        const selected = visibleVersions.includes(id);
+                        return (
+                          <button
+                            className={cn(
+                              "flex w-full flex-col px-3 py-2 text-left hover:bg-[#fbf7f2]",
+                              selected &&
+                                "cursor-default opacity-50 hover:bg-white",
+                            )}
+                            disabled={selected}
+                            key={id}
+                            onClick={() => handleVersionChoice(id)}
+                            type="button"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-[12px] font-bold text-[#3a2218]">
+                                {abbreviation}
                               </span>
-                              {selected && (
-                                <span className="text-[10px] font-medium text-[#f6823c]">
-                                  Active
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-medium uppercase text-[#9b8878]">
+                                  {provider === "custom"
+                                    ? "Custom"
+                                    : "API.Bible"}
                                 </span>
-                              )}
+                                {selected && (
+                                  <span className="text-[10px] font-medium text-[#f6823c]">
+                                    Active
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <span className="text-[11px] text-[#7a6758] truncate">
-                            {title}
-                          </span>
-                        </button>
-                      );
-                    })}
+                            <span className="text-[11px] text-[#7a6758] truncate">
+                              {title}
+                            </span>
+                          </button>
+                        );
+                      },
+                    )}
                     {bibleVersionsLoading && (
                       <p className="px-3 py-2 text-[12px] font-medium text-[#9b8878]">
                         Loading translations...
@@ -2664,7 +2671,10 @@ function Reader({
         </div>
       </div>
 
-      <BottomDrawerPanel selectedPassage={selectedPassage} />
+      <BottomDrawerPanel
+        selectedPassage={selectedPassage}
+        visibleVersions={visibleVersions}
+      />
 
       <ReaderFooter />
     </section>
@@ -2944,11 +2954,7 @@ function NavButton({
 
 const translationColumnMotion = (visibleCount: number) => {
   const width =
-    visibleCount === 1
-      ? "52%"
-      : visibleCount === 2
-        ? "50%"
-        : "33.333333%";
+    visibleCount === 1 ? "52%" : visibleCount === 2 ? "50%" : "33.333333%";
 
   return {
     animate: {
@@ -3094,7 +3100,8 @@ function TranslationVerses({
                   className={cn(
                     "group relative flex gap-3 px-2 py-2 transition-colors duration-150 ease-out hover:bg-[#fbf7f2] cursor-pointer",
                     highlightedVerse === verseKey && "bg-[#fff3e8]",
-                    isSelected && "bg-[#fff3e8] ring-1 ring-inset ring-[#f6823c]/30",
+                    isSelected &&
+                      "bg-[#fff3e8] ring-1 ring-inset ring-[#f6823c]/30",
                   )}
                   data-verse={number}
                   key={`${label}-${selectedPassage.book}-${selectedPassage.chapter}-${number}`}
@@ -3173,6 +3180,23 @@ function TranslationVerses({
 }
 
 function ReaderFooter() {
+  const identityId = useStudyStore((s) => s.identityId);
+  const currentPlan = useQuery(api.readingPlans.current, {
+    ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
+  });
+
+  if (!currentPlan) {
+    return null;
+  }
+
+  const progressPercent =
+    currentPlan.plan.totalEntries > 0
+      ? Math.round(
+          (currentPlan.plan.completedEntries / currentPlan.plan.totalEntries) *
+            100,
+        )
+      : 0;
+
   return (
     <div className="flex shrink-0 items-center justify-center border-t border-[#f1e8df] bg-white">
       <div className="flex w-full max-w-6xl items-center justify-between gap-3 px-5 py-2.5">
@@ -3185,17 +3209,25 @@ function ReaderFooter() {
               Current Plan
             </p>
             <p className="text-[13px] font-semibold text-[#25140b]">
-              Gospel of John
+              {currentPlan.plan.title}
             </p>
           </div>
         </div>
         <div className="min-w-0 flex-1 px-4">
           <p className="mb-1 text-[12px] font-semibold text-[#25140b]">
-            Today: John 1–3{" "}
-            <span className="font-normal text-[#9b8878]">· Day 3 of 21</span>
+            Today: {currentPlan.primaryEntry?.passageLabel ?? "Plan Complete"}{" "}
+            <span className="font-normal text-[#9b8878]">
+              · Day{" "}
+              {currentPlan.primaryEntry?.dayNumber ??
+                currentPlan.plan.totalEntries}{" "}
+              of {currentPlan.plan.totalEntries}
+            </span>
           </p>
           <div className="h-1 bg-[#f1e8df]">
-            <div className="h-full w-[42%] bg-[#f6823c]" />
+            <div
+              className="h-full bg-[#f6823c] transition-[width] duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
         </div>
       </div>
@@ -3259,7 +3291,7 @@ function RightPanel({
           )}
         </div>
         <button
-          className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#7a6758] hover:bg-[#fbf7f2]"
+          className="icon-button flex h-[30px] w-[30px] items-center justify-center border border-[#f3c7ab] bg-[#fff3e8] text-[#a24723] hover:bg-[#ffe8d8]"
           onClick={onCollapse}
           type="button"
         >
@@ -3455,19 +3487,26 @@ function PublicStudy({
   useEffect(() => {
     if (!focusedCommentId || !comments) return;
 
-    const targetComment = comments.find((comment) => comment._id === focusedCommentId);
+    const targetComment = comments.find(
+      (comment) => comment._id === focusedCommentId,
+    );
     if (!targetComment) {
       setFocusedCommentId(null);
       return;
     }
 
     if (targetComment.parentId) {
-      setExpandedReplies((prev) => ({ ...prev, [targetComment.parentId!]: true }));
+      setExpandedReplies((prev) => ({
+        ...prev,
+        [targetComment.parentId!]: true,
+      }));
     }
 
     const delay = targetComment.parentId ? 220 : 80;
     const timer = window.setTimeout(() => {
-      const target = document.getElementById(`study-comment-${focusedCommentId}`);
+      const target = document.getElementById(
+        `study-comment-${focusedCommentId}`,
+      );
       if (target) {
         target.scrollIntoView({ behavior: "smooth", block: "center" });
       }
@@ -3565,8 +3604,9 @@ function PublicStudy({
                     highlighted={focusedCommentId === comment._id}
                     initialContent={comment.content}
                     isOwner={
-                      (comment.ownerKey ?? comment.userId ?? comment.identityId) ===
-                      userId
+                      (comment.ownerKey ??
+                        comment.userId ??
+                        comment.identityId) === userId
                     }
                     isReplying={replyingTo === comment._id}
                     likeIcon={isLiked ? "heart" : "thumb"}
@@ -3701,8 +3741,10 @@ type DrawerTab = "commentary" | "cross-refs";
 
 function BottomDrawerPanel({
   selectedPassage,
+  visibleVersions,
 }: {
   selectedPassage: PassageSelection;
+  visibleVersions: string[];
 }) {
   const [activeTab, setActiveTab] = useState<DrawerTab>("commentary");
   const [isOpen, setIsOpen] = useState(false);
@@ -3759,21 +3801,24 @@ function BottomDrawerPanel({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            animate={{ height: "auto", opacity: 1 }}
-            className="absolute inset-x-0 z-40 bottom-12 flex max-h-[40vh] flex-col overflow-hidden border-t border-[#f1e8df] bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
-            exit={{ height: 0, opacity: 0 }}
-            initial={{ height: 0, opacity: 0 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute inset-x-0 bottom-9 z-40 flex h-[60vh] flex-col overflow-hidden border-t border-[#f1e8df] bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+            exit={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.3, ease: [0.215, 0.61, 0.355, 1] }}
           >
             <div className="flex items-center justify-center border-b border-[#f1e8df] py-2">
-              <div className="h-1 w-8 rounded-full bg-[#e5d6c9]" />
+              <div className="h-1 w-8 rounded-full bg-red-700" />
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-hidden">
               {activeTab === "commentary" && (
                 <CommentaryPanel selectedPassage={selectedPassage} />
               )}
               {activeTab === "cross-refs" && (
-                <CrossRefsPanel selectedPassage={selectedPassage} />
+                <CrossRefsPanel
+                  selectedPassage={selectedPassage}
+                  visibleVersions={visibleVersions}
+                />
               )}
             </div>
           </motion.div>
@@ -4708,43 +4753,15 @@ function ChatInput({
   );
 }
 
-function FileRow({
-  icon,
-  label,
-  meta,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  meta: string;
-}) {
-  return (
-    <div className="flex items-center gap-2.5 border border-[#f1e8df] bg-[#fbf7f2] px-2.5 py-2">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-white">
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[12px] font-semibold text-[#25140b]">
-          {label}
-        </p>
-        <p className="text-[10px] text-[#9b8878]">{meta}</p>
-      </div>
-      <button
-        className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#9b8878] hover:bg-[#fff3e8]"
-        type="button"
-      >
-        <Download className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-}
-
 function CommentaryPanel({
   selectedPassage,
 }: {
   selectedPassage: PassageSelection;
 }) {
   const [loading, setLoading] = useState(false);
-  const [content, setContent] = useState<Awaited<ReturnType<typeof fetchCommentaryChapter>> | null>(null);
+  const [content, setContent] = useState<Awaited<
+    ReturnType<typeof fetchCommentaryChapter>
+  > | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -4831,24 +4848,94 @@ function CommentaryPanel({
   );
 }
 
+function normalizeCrossRefTarget(target: string) {
+  return target.replace(/:(\d+)-\d+$/, ":$1");
+}
+
+function resolveCrossRefRange(target: string, bibleBooks: BibleBookIndex[]) {
+  const normalizedTarget = target.trim();
+  const rangeMatch = normalizedTarget.match(/^(.*:\d+)-(\d+)$/);
+  const selection = parseVerseReference(
+    rangeMatch ? rangeMatch[1] : normalizedTarget,
+    bibleBooks,
+  );
+
+  if (!selection) {
+    return null;
+  }
+
+  const endVerse = rangeMatch ? parseInt(rangeMatch[2], 10) : selection.verse;
+  return {
+    ...selection,
+    endVerse: Number.isNaN(endVerse) ? selection.verse : endVerse,
+  };
+}
+
 function CrossRefsPanel({
   selectedPassage,
+  visibleVersions,
 }: {
   selectedPassage: PassageSelection;
+  visibleVersions: string[];
 }) {
   const [loading, setLoading] = useState(false);
-  const [crossRefs, setCrossRefs] = useState<Awaited<ReturnType<typeof fetchCrossRefChapter>> | null>(null);
+  const [crossRefs, setCrossRefs] = useState<Awaited<
+    ReturnType<typeof fetchCrossRefChapter>
+  > | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTarget, setActiveTarget] = useState<string | null>(null);
+  const { data: bibleBooks = [] } = useBibleBooks();
+  const { data: bibleVersions = [] } = useBibleVersions();
+
+  const previewVersion = useMemo(
+    () =>
+      visibleVersions
+        .map((versionId) => resolveBibleVersion(versionId, bibleVersions))
+        .find((version): version is BibleVersion => Boolean(version)) ??
+      bibleVersions[0] ??
+      null,
+    [bibleVersions, visibleVersions],
+  );
+
+  const activeReference = useMemo(
+    () =>
+      (crossRefs?.references ?? []).find(
+        (reference) => reference.target === activeTarget,
+      ) ?? null,
+    [activeTarget, crossRefs?.references],
+  );
+
+  const previewSelection = useMemo(() => {
+    if (!activeReference?.target) return null;
+    return resolveCrossRefRange(activeReference.target, bibleBooks);
+  }, [activeReference?.target, bibleBooks]);
+
+  const previewBookId = useMemo(
+    () =>
+      previewSelection
+        ? getBookId(bibleBooks, previewSelection.book)
+        : undefined,
+    [bibleBooks, previewSelection],
+  );
+
+  const previewChapterQuery = useBibleChapters(
+    previewVersion ? [previewVersion.id] : [],
+    previewBookId,
+    previewSelection?.chapter ?? 1,
+  );
+  const previewVerses = previewChapterQuery[0]?.data?.verses ?? [];
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     setCrossRefs(null);
+    setActiveTarget(null);
     fetchCrossRefChapter(selectedPassage.book, selectedPassage.chapter)
       .then((data) => {
         if (!cancelled) {
           setCrossRefs(data);
+          setActiveTarget(data.references[0]?.target ?? null);
           setLoading(false);
         }
       })
@@ -4875,7 +4962,7 @@ function CrossRefsPanel({
           {selectedPassage.chapter}
         </p>
       </div>
-      <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-24">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#f6823c] border-t-transparent" />
@@ -4899,25 +4986,121 @@ function CrossRefsPanel({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {(crossRefs?.references ?? []).map((ref, i: number) => {
-              const fromVerse = ref.sourceVerse ?? "?";
-              const toVerse = ref.target || "Reference";
-              const toText = ref.text;
-              return (
-                <div
-                  key={i}
-                  className="border border-[#f1e8df] bg-[#fbf7f2] p-2.5"
+          <div className="grid h-full min-h-0 overflow-hidden gap-4 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <div className="bible-app-scroll h-full min-h-0 overflow-y-auto pr-1">
+              <div className="grid gap-2 md:grid-cols-3">
+                {(crossRefs?.references ?? []).map((ref, i: number) => {
+                  const fromVerse = ref.sourceVerse ?? "?";
+                  const toVerse = ref.target || "Reference";
+                  return (
+                    <button
+                      key={`${toVerse}-${fromVerse}-${i}`}
+                      className={cn(
+                        "flex min-h-[108px] flex-col items-start justify-between border px-3 py-3 text-left transition-colors duration-150",
+                        activeTarget === ref.target
+                          ? "border-[#f6823c] bg-[#fff3e8]"
+                          : "border-[#f1e8df] bg-white hover:bg-[#fbf7f2]",
+                      )}
+                      onClick={() => setActiveTarget(ref.target)}
+                      type="button"
+                    >
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9b8878]">
+                          Verse {fromVerse}
+                        </p>
+                        <p className="mt-1 text-[13px] font-semibold text-[#25140b]">
+                          {toVerse}
+                        </p>
+                      </div>
+                      {ref.text ? (
+                        <p className="mt-3 text-[12px] leading-5 text-[#7a6758]">
+                          {ref.text}
+                        </p>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="h-full min-h-0 overflow-hidden border border-[#f1e8df] bg-[#fbf7f2]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeReference?.target ?? "empty"}
+                  {...fadeMotion}
+                  className="bible-app-scroll h-full min-h-0 overflow-y-auto p-4"
                 >
-                  <div className="mb-1 text-[11px] font-semibold text-[#f6823c]">
-                    v{fromVerse} → {toVerse}
-                  </div>
-                  <p className="text-[12px] font-serif leading-relaxed text-[#3a2218]">
-                    {toText}
-                  </p>
-                </div>
-              );
-            })}
+                  {!activeReference ? (
+                    <div className="flex h-full min-h-[220px] items-center justify-center text-center">
+                      <div>
+                        <p className="text-[13px] font-semibold text-[#3a2218]">
+                          Select a cross-reference
+                        </p>
+                        <p className="mt-1 text-[11px] text-[#9b8878]">
+                          The linked passage will open here.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="border-b border-[#eadccf] pb-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9b8878]">
+                          Linked Passage
+                        </p>
+                        <p className="mt-1 text-[14px] font-semibold text-[#25140b]">
+                          {activeReference.target}
+                        </p>
+                        <p className="mt-1 text-[11px] text-[#9b8878]">
+                          {previewVersion?.abbreviation ??
+                            "Preview unavailable"}
+                        </p>
+                      </div>
+
+                      {!previewSelection ? (
+                        <div className="py-6">
+                          <p className="text-[12px] text-[#7a6758]">
+                            This reference could not be resolved into a preview
+                            passage yet.
+                          </p>
+                        </div>
+                      ) : previewChapterQuery[0]?.isLoading ? (
+                        <div className="flex items-center justify-center py-10">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#f6823c] border-t-transparent" />
+                        </div>
+                      ) : previewChapterQuery[0]?.error ? (
+                        <div className="py-6">
+                          <p className="text-[12px] text-[#7a6758]">
+                            Unable to load this preview passage right now.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 py-4">
+                          {previewVerses.map((verse) => (
+                            <div
+                              key={verse.number}
+                              className={cn(
+                                "border border-transparent px-2 py-1.5 text-[12px] leading-6 text-[#3a2218]",
+                                verse.number >= previewSelection.verse &&
+                                  verse.number <= previewSelection.endVerse &&
+                                  "border-[#f6d4c0] bg-white",
+                              )}
+                            >
+                              <span className="mr-2 text-[10px] font-semibold text-[#9b8878]">
+                                {verse.number}
+                              </span>
+                              <RichScriptureText
+                                className="inline font-serif"
+                                text={verse.text}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
         )}
       </div>
@@ -5275,7 +5458,7 @@ function RailCollapseHandle({
   return (
     <button
       className={cn(
-        "icon-button rail-handle absolute top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center border border-[#f1e8df] bg-white text-[#7a6758] shadow-[0_8px_24px_rgba(31,18,9,0.12)] hover:bg-[#fbf7f2]",
+        "icon-button rail-handle absolute top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center border border-[#f3c7ab] bg-[#fff3e8] text-[#a24723] shadow-[0_8px_24px_rgba(31,18,9,0.12)] hover:bg-[#ffe8d8]",
         side === "left" ? "-right-4" : "-left-4",
       )}
       onClick={onClick}
@@ -5313,7 +5496,7 @@ function RailOpenHandle({
     >
       <button
         className={cn(
-          "icon-button rail-handle absolute top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center border border-[#f1e8df] bg-white text-[#7a6758] shadow-[0_8px_24px_rgba(31,18,9,0.12)] hover:bg-[#fbf7f2]",
+          "icon-button rail-handle absolute top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center border border-[#f3c7ab] bg-[#fff3e8] text-[#a24723] shadow-[0_8px_24px_rgba(31,18,9,0.12)] hover:bg-[#ffe8d8]",
           side === "left" ? "-right-4" : "-left-4",
         )}
         onClick={onClick}
