@@ -6,6 +6,10 @@ import {
   fetchCustomTranslationChapter,
   fetchCustomTranslationIndex,
 } from "@/lib/custom-translation-source";
+import { readServerCache, writeServerCache } from "@/lib/server-cache";
+
+const CUSTOM_TRANSLATION_METADATA_TTL_SECONDS = 60 * 10;
+const CUSTOM_TRANSLATION_CONTENT_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 function getConvexClient() {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -30,7 +34,17 @@ export async function GET(request: NextRequest) {
 
     if (kind === "enabled") {
       try {
+        const cacheKey = "custom-translations:enabled";
+        const cached = await readServerCache<unknown>(cacheKey);
+        if (cached) {
+          return NextResponse.json({ data: cached });
+        }
         const data = await client.query(api.customTranslations.listEnabled, {});
+        await writeServerCache(
+          cacheKey,
+          data,
+          CUSTOM_TRANSLATION_METADATA_TTL_SECONDS,
+        );
         return NextResponse.json({ data });
       } catch (error) {
         console.error(
@@ -57,9 +71,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const translation = await client.query(api.customTranslations.getEnabledById, {
-      id: customId,
-    });
+    const translationCacheKey = `custom-translations:meta:${customId}`;
+    const cachedTranslation = await readServerCache<Awaited<
+      ReturnType<typeof client.query<typeof api.customTranslations.getEnabledById>>
+    >>(translationCacheKey);
+    const translation =
+      cachedTranslation ??
+      (await client.query(api.customTranslations.getEnabledById, {
+        id: customId,
+      }));
+
+    if (translation) {
+      await writeServerCache(
+        translationCacheKey,
+        translation,
+        CUSTOM_TRANSLATION_METADATA_TTL_SECONDS,
+      );
+    }
 
     if (!translation) {
       return NextResponse.json(
@@ -69,9 +97,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (kind === "index") {
+      const cacheKey = `custom-translations:index:${translation._id}`;
+      const cached = await readServerCache<unknown>(cacheKey);
+      if (cached) {
+        return NextResponse.json({ data: cached });
+      }
       const data = await fetchCustomTranslationIndex({
         indexUrl: translation.indexUrl,
       });
+      await writeServerCache(
+        cacheKey,
+        data,
+        CUSTOM_TRANSLATION_CONTENT_TTL_SECONDS,
+      );
       return NextResponse.json({ data });
     }
 
@@ -86,6 +124,12 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      const cacheKey = `custom-translations:chapter:${translation._id}:${bookId}:${chapter}`;
+      const cached = await readServerCache<unknown>(cacheKey);
+      if (cached) {
+        return NextResponse.json({ data: cached });
+      }
+
       const data = await fetchCustomTranslationChapter(
         {
           chapterUrlTemplate: translation.chapterUrlTemplate,
@@ -95,6 +139,11 @@ export async function GET(request: NextRequest) {
           bookId,
           chapter,
         },
+      );
+      await writeServerCache(
+        cacheKey,
+        data,
+        CUSTOM_TRANSLATION_CONTENT_TTL_SECONDS,
       );
       return NextResponse.json({ data });
     }

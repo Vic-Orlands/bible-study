@@ -6,9 +6,22 @@ type CanonBook = {
   testament: "Old Testament" | "New Testament";
 };
 
+type ChapterRef = { book: string; chapter: number };
+
+type ReadingPlanCategory =
+  | "Beginner"
+  | "Wisdom"
+  | "Church Life"
+  | "Jesus"
+  | "New Testament"
+  | "Whole Bible";
+
 export type ReadingPlanTemplate = {
-  description: string;
+  cadenceLabel: string;
+  category: ReadingPlanCategory;
   durationDays: number;
+  estimatedMinutes: number;
+  featured: boolean;
   id: string;
   readings: {
     dayNumber: number;
@@ -17,6 +30,8 @@ export type ReadingPlanTemplate = {
     selection: PassageSelection;
     startChapter: number;
   }[];
+  scopeLabel: string;
+  summary: string;
   title: string;
 };
 
@@ -89,16 +104,6 @@ const CANON: CanonBook[] = [
   { book: "Revelation", chapters: 22, testament: "New Testament" },
 ];
 
-type ChapterRef = { book: string; chapter: number };
-
-function chunk<T>(items: T[], size: number) {
-  const groups: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    groups.push(items.slice(i, i + size));
-  }
-  return groups;
-}
-
 function flattenChapters(books: CanonBook[]) {
   const chapters: ChapterRef[] = [];
   for (const book of books) {
@@ -109,9 +114,23 @@ function flattenChapters(books: CanonBook[]) {
   return chapters;
 }
 
-function formatPassageLabel(readings: ChapterRef[]) {
-  const first = readings[0];
-  const last = readings[readings.length - 1];
+function chaptersForBook(bookName: string, start = 1, end?: number) {
+  const book = CANON.find((entry) => entry.book === bookName);
+  if (!book) {
+    throw new Error(`Unknown reading plan book: ${bookName}`);
+  }
+
+  const lastChapter = end ?? book.chapters;
+  const chapters: ChapterRef[] = [];
+  for (let chapter = start; chapter <= lastChapter; chapter += 1) {
+    chapters.push({ book: bookName, chapter });
+  }
+  return chapters;
+}
+
+function formatPassageLabel(group: ChapterRef[]) {
+  const first = group[0];
+  const last = group[group.length - 1];
   if (!first || !last) return "";
   if (first.book === last.book) {
     return first.chapter === last.chapter
@@ -121,15 +140,24 @@ function formatPassageLabel(readings: ChapterRef[]) {
   return `${first.book} ${first.chapter} - ${last.book} ${last.chapter}`;
 }
 
-function buildTemplate(
-  id: string,
-  title: string,
-  description: string,
-  chapters: ChapterRef[],
-  durationDays: number,
-): ReadingPlanTemplate {
-  const chunkSize = Math.max(1, Math.ceil(chapters.length / durationDays));
-  const readings = chunk(chapters, chunkSize).map((group, index) => {
+function partitionChapters(chapters: ChapterRef[], durationDays: number) {
+  const days = Math.max(1, Math.min(durationDays, chapters.length));
+  const baseSize = Math.floor(chapters.length / days);
+  const remainder = chapters.length % days;
+  const groups: ChapterRef[][] = [];
+  let cursor = 0;
+
+  for (let day = 0; day < days; day += 1) {
+    const size = baseSize + (day < remainder ? 1 : 0);
+    groups.push(chapters.slice(cursor, cursor + size));
+    cursor += size;
+  }
+
+  return groups.filter((group) => group.length > 0);
+}
+
+function toReadings(groups: ChapterRef[][]) {
+  return groups.map((group, index) => {
     const first = group[0];
     const last = group[group.length - 1];
     return {
@@ -144,57 +172,228 @@ function buildTemplate(
       startChapter: first.chapter,
     };
   });
-
-  return {
-    description,
-    durationDays: readings.length,
-    id,
-    readings,
-    title,
-  };
 }
 
-const WHOLE_BIBLE = buildTemplate(
-  "whole-bible-year",
-  "Whole Bible in a Year",
-  "A steady path through the full canon across a year.",
-  flattenChapters(CANON),
-  365,
-);
+function formatList(values: string[]) {
+  if (values.length <= 1) {
+    return values[0] ?? "";
+  }
+  if (values.length === 2) {
+    return `${values[0]} and ${values[1]}`;
+  }
+  return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
+}
 
-const NEW_TESTAMENT = buildTemplate(
-  "new-testament-180",
-  "New Testament in 180 Days",
-  "A focused six-month walk through the New Testament.",
-  flattenChapters(CANON.filter((book) => book.testament === "New Testament")),
-  180,
-);
+function uniqueBooks(chapters: ChapterRef[]) {
+  return chapters.filter((chapter, index, all) => all.findIndex((entry) => entry.book === chapter.book) === index);
+}
 
-const GOSPELS = buildTemplate(
-  "gospels-90",
-  "Gospels in 90 Days",
-  "Ninety days with Matthew, Mark, Luke, and John.",
-  flattenChapters(CANON.filter((book) =>
-    ["Matthew", "Mark", "Luke", "John"].includes(book.book),
-  )),
-  90,
-);
+function deriveScopeLabel(chapters: ChapterRef[]) {
+  const books = uniqueBooks(chapters).map((chapter) => chapter.book);
+  const newTestamentBooks = CANON.filter((book) => book.testament === "New Testament").map(
+    (book) => book.book,
+  );
+  const oldTestamentBooks = CANON.filter((book) => book.testament === "Old Testament").map(
+    (book) => book.book,
+  );
 
-const PSALMS_PROVERBS = buildTemplate(
-  "psalms-proverbs-60",
-  "Psalms & Proverbs in 60 Days",
-  "A wisdom-focused plan through Psalms and Proverbs.",
-  flattenChapters(CANON.filter((book) =>
-    ["Psalms", "Proverbs"].includes(book.book),
-  )),
-  60,
-);
+  if (books.length === CANON.length) {
+    return "Whole Bible";
+  }
+  if (
+    books.length === newTestamentBooks.length &&
+    books.every((book) => newTestamentBooks.includes(book))
+  ) {
+    return "New Testament";
+  }
+  if (
+    books.length === oldTestamentBooks.length &&
+    books.every((book) => oldTestamentBooks.includes(book))
+  ) {
+    return "Old Testament";
+  }
+  if (books.length <= 3) {
+    return formatList(books);
+  }
+  if (books.length <= 5) {
+    return `${books[0]} to ${books[books.length - 1]}`;
+  }
+  return `${books.length} books`;
+}
+
+function deriveCadenceLabel(groups: ChapterRef[][]) {
+  const sizes = groups.map((group) => group.length);
+  const min = Math.min(...sizes);
+  const max = Math.max(...sizes);
+  const average = Math.round(sizes.reduce((sum, size) => sum + size, 0) / sizes.length);
+
+  if (min === 1 && max === 1) {
+    return "1 chapter a day";
+  }
+  if (min === max) {
+    return `${min} chapters a day`;
+  }
+  if (max - min <= 1) {
+    return `${min}-${max} chapters a day`;
+  }
+  return `About ${average} chapters a day`;
+}
+
+function deriveEstimatedMinutes(groups: ChapterRef[][]) {
+  const averageChapters =
+    groups.reduce((sum, group) => sum + group.length, 0) / Math.max(groups.length, 1);
+  return Math.max(5, Math.round(averageChapters * 4));
+}
+
+function deriveSummary(scopeLabel: string, durationDays: number) {
+  return `${scopeLabel} • ${durationDays} daily readings`;
+}
+
+function buildGeneratedTemplate({
+  category,
+  chapters,
+  durationDays,
+  featured,
+  id,
+  title,
+}: Pick<ReadingPlanTemplate, "category" | "featured" | "id" | "title"> & {
+  chapters: ChapterRef[];
+  durationDays: number;
+}) {
+  const groups = partitionChapters(chapters, durationDays);
+  const readings = toReadings(groups);
+  const scopeLabel = deriveScopeLabel(chapters);
+  return {
+    category,
+    durationDays: readings.length,
+    cadenceLabel: deriveCadenceLabel(groups),
+    estimatedMinutes: deriveEstimatedMinutes(groups),
+    featured,
+    id,
+    readings,
+    scopeLabel,
+    summary: deriveSummary(scopeLabel, readings.length),
+    title,
+  } satisfies ReadingPlanTemplate;
+}
+
+function buildCuratedTemplate({
+  category,
+  chapters,
+  featured,
+  id,
+  title,
+}: Pick<ReadingPlanTemplate, "category" | "featured" | "id" | "title"> & {
+  chapters: ChapterRef[][];
+}) {
+  const readings = toReadings(chapters);
+  const flatChapters = chapters.flat();
+  const scopeLabel = deriveScopeLabel(flatChapters);
+  return {
+    category,
+    cadenceLabel: deriveCadenceLabel(chapters),
+    durationDays: readings.length,
+    estimatedMinutes: deriveEstimatedMinutes(chapters),
+    featured,
+    id,
+    readings,
+    scopeLabel,
+    summary: deriveSummary(scopeLabel, readings.length),
+    title,
+  } satisfies ReadingPlanTemplate;
+}
+
+const START_WITH_JOHN = buildCuratedTemplate({
+  id: "start-with-john-21",
+  title: "Start with John",
+  category: "Beginner",
+  featured: true,
+  chapters: chaptersForBook("John").map((chapter) => [chapter]),
+});
+
+const PSALMS_30 = buildGeneratedTemplate({
+  id: "psalms-30",
+  title: "Psalms in 30 Days",
+  category: "Wisdom",
+  featured: true,
+  chapters: chaptersForBook("Psalms"),
+  durationDays: 30,
+});
+
+const PROVERBS_31 = buildCuratedTemplate({
+  id: "proverbs-31",
+  title: "Proverbs in 31 Days",
+  category: "Wisdom",
+  featured: false,
+  chapters: chaptersForBook("Proverbs").map((chapter) => [chapter]),
+});
+
+const ACTS_AND_EARLY_CHURCH = buildGeneratedTemplate({
+  id: "acts-early-church-45",
+  title: "Acts & the Early Church",
+  category: "Church Life",
+  featured: false,
+  chapters: [
+    ...chaptersForBook("Acts"),
+    ...chaptersForBook("James"),
+    ...chaptersForBook("Galatians"),
+    ...chaptersForBook("1 Thessalonians"),
+    ...chaptersForBook("2 Thessalonians"),
+  ],
+  durationDays: 45,
+});
+
+const PSALMS_AND_PROVERBS = buildGeneratedTemplate({
+  id: "psalms-proverbs-60",
+  title: "Psalms & Proverbs",
+  category: "Wisdom",
+  featured: false,
+  chapters: [...chaptersForBook("Psalms"), ...chaptersForBook("Proverbs")],
+  durationDays: 60,
+});
+
+const GOSPELS_90 = buildGeneratedTemplate({
+  id: "gospels-90",
+  title: "Gospels in 90 Days",
+  category: "Jesus",
+  featured: true,
+  chapters: [
+    ...chaptersForBook("Matthew"),
+    ...chaptersForBook("Mark"),
+    ...chaptersForBook("Luke"),
+    ...chaptersForBook("John"),
+    ...chaptersForBook("Acts", 1, 1),
+  ],
+  durationDays: 90,
+});
+
+const NEW_TESTAMENT_180 = buildGeneratedTemplate({
+  id: "new-testament-180",
+  title: "New Testament in 180 Days",
+  category: "New Testament",
+  featured: true,
+  chapters: flattenChapters(CANON.filter((book) => book.testament === "New Testament")),
+  durationDays: 180,
+});
+
+const WHOLE_BIBLE = buildGeneratedTemplate({
+  id: "whole-bible-year",
+  title: "Whole Bible in a Year",
+  category: "Whole Bible",
+  featured: true,
+  chapters: flattenChapters(CANON),
+  durationDays: 365,
+});
 
 export const READING_PLAN_TEMPLATES: ReadingPlanTemplate[] = [
+  START_WITH_JOHN,
+  PSALMS_30,
+  PROVERBS_31,
+  ACTS_AND_EARLY_CHURCH,
+  PSALMS_AND_PROVERBS,
+  GOSPELS_90,
+  NEW_TESTAMENT_180,
   WHOLE_BIBLE,
-  NEW_TESTAMENT,
-  GOSPELS,
-  PSALMS_PROVERBS,
 ];
 
 export function getReadingPlanTemplate(templateId: string) {

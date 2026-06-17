@@ -33,10 +33,15 @@ export const templates = query({
   args: {},
   handler: async () => {
     return READING_PLAN_TEMPLATES.map((template) => ({
+      cadenceLabel: template.cadenceLabel,
+      category: template.category,
       id: template.id,
-      title: template.title,
-      description: template.description,
       durationDays: template.durationDays,
+      estimatedMinutes: template.estimatedMinutes,
+      featured: template.featured,
+      scopeLabel: template.scopeLabel,
+      summary: template.summary,
+      title: template.title,
     }));
   },
 });
@@ -54,12 +59,7 @@ export const current = query({
       .withIndex("by_owner_and_status", (q) =>
         q.eq("ownerKey", viewer.ownerKey).eq("status", "active"),
       )
-      .first() ??
-      (await ctx.db
-        .query("userPlans")
-        .withIndex("by_owner", (q) => q.eq("ownerKey", viewer.ownerKey))
-        .order("desc")
-        .first());
+      .first();
 
     if (!plan) return null;
 
@@ -69,10 +69,15 @@ export const current = query({
       .collect();
 
     const sortedEntries = [...entries].sort((left, right) => left.dayNumber - right.dayNumber);
-    const nextEntry =
-      sortedEntries.find((entry) => entry.status === "pending") ??
-      sortedEntries[sortedEntries.length - 1] ??
-      null;
+    if (sortedEntries.length === 0) {
+      return null;
+    }
+    const primaryEntry = sortedEntries.find((entry) => entry.status === "pending") ?? null;
+    if (!primaryEntry) {
+      return null;
+    }
+    const hasStartedReading = plan.completedEntries > 0;
+    const templateMeta = getReadingPlanTemplate(plan.templateId);
     const today = todayString();
     const weekEntries = sortedEntries.filter((entry) => {
       const diff = Math.floor(
@@ -82,17 +87,39 @@ export const current = query({
       );
       return diff >= -1 && diff <= 5;
     });
+    const upcomingEntries = (primaryEntry
+      ? sortedEntries.filter(
+          (entry) =>
+            entry.status === "pending" && entry.dayNumber >= primaryEntry.dayNumber,
+        )
+      : []
+    ).slice(0, 7);
 
     return {
       plan,
+      primaryEntry,
+      hasStartedReading,
       progressPercent:
         plan.totalEntries === 0
           ? 0
           : Math.round((plan.completedEntries / plan.totalEntries) * 100),
       streak: calculateStreak(sortedEntries),
-      nextEntry,
+      templateMeta: templateMeta
+        ? {
+            cadenceLabel: templateMeta.cadenceLabel,
+            category: templateMeta.category,
+            durationDays: templateMeta.durationDays,
+            estimatedMinutes: templateMeta.estimatedMinutes,
+            featured: templateMeta.featured,
+            id: templateMeta.id,
+            scopeLabel: templateMeta.scopeLabel,
+            summary: templateMeta.summary,
+            title: templateMeta.title,
+          }
+        : null,
       todayEntry:
-        sortedEntries.find((entry) => entry.dueDate === today) ?? nextEntry,
+        sortedEntries.find((entry) => entry.dueDate === today) ?? primaryEntry,
+      upcomingEntries,
       weekEntries,
       allEntries: sortedEntries,
     };
@@ -129,7 +156,7 @@ export const create = mutation({
       userId: viewer.ownerKey,
       templateId: template.id,
       title: template.title,
-      description: template.description,
+      description: template.summary,
       status: "active",
       startDate: args.startDate,
       durationDays: template.durationDays,

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
+import { readServerCache, writeServerCache } from "@/lib/server-cache";
 
 const YOUVERSION_API_BASE = "https://api.youversion.com/v1";
+const YOUVERSION_CACHE_TTL_SECONDS = 60 * 60 * 12;
 
 async function fetchYouVersion(path: string, searchParams: URLSearchParams) {
   const appKey = process.env.YVP_APP_KEY;
@@ -10,21 +11,11 @@ async function fetchYouVersion(path: string, searchParams: URLSearchParams) {
     throw new Error("Missing YVP_APP_KEY");
   }
 
-  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-  const redis =
-    redisUrl && redisToken
-      ? new Redis({
-          url: redisUrl,
-          token: redisToken,
-        })
-      : null;
-
   const cacheKey = `youversion:${path}?${searchParams.toString()}`;
 
-  if (redis) {
-    const cached = await redis.get(cacheKey);
-    if (cached) return cached;
+  const cached = await readServerCache<unknown>(cacheKey);
+  if (cached) {
+    return cached;
   }
 
   const response = await fetch(`${YOUVERSION_API_BASE}${path}?${searchParams.toString()}`, {
@@ -41,9 +32,7 @@ async function fetchYouVersion(path: string, searchParams: URLSearchParams) {
 
   const data = await response.json();
 
-  if (redis) {
-    await redis.set(cacheKey, data, { ex: 60 * 60 * 12 });
-  }
+  await writeServerCache(cacheKey, data, YOUVERSION_CACHE_TTL_SECONDS);
 
   return data;
 }

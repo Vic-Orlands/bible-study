@@ -132,8 +132,28 @@ This document exists to protect implemented work from being overwritten by futur
 - Reading plans are app-owned Convex data, not outsourced to a scripture provider.
 - Plan templates are defined in `lib/reading-plan-templates.ts`.
 - Convex plan state and progress logic live in `convex/readingPlans.ts`.
-- Users can start a curated plan, see their current progress, continue reading into `/study`, and mark plan entries complete.
-- Current templates include Whole Bible, New Testament, Gospels, and Psalms/Proverbs variants.
+- The reading-plan browse UI reads template catalog metadata from the local app-owned template registry, while Convex is used for user-specific plan state.
+- `/reading-plan` now has two intentional states:
+  - browse state for discovering curated templates
+  - active-plan state centered on the current reading and next few entries
+- The primary CTA rule is:
+  - `Start Reading` when the user has not completed any entries
+  - `Continue Reading` after the user has started the plan
+  - no reading CTA when the plan is complete
+- Convex `readingPlans.current` returns UI-ready reading-plan data including `primaryEntry`, `hasStartedReading`, `upcomingEntries`, and `templateMeta`.
+- If Convex returns an active plan with no entries or no pending entry, the UI must treat it as invalid and fall back to browse state rather than rendering a false `Plan Complete` state.
+- Users can start a curated plan, open the current reading directly into `/study`, and mark plan entries complete.
+- Template summaries shown in the UI should stay factual and derived from the template structure, such as scope, duration, cadence, and estimated reading time. Do not reintroduce invented editorial blurbs as hardcoded copy.
+- Current templates include:
+  - Start with John
+  - Psalms in 30 Days
+  - Proverbs in 31 Days
+  - Acts & the Early Church
+  - Psalms & Proverbs
+  - Gospels in 90 Days
+  - New Testament in 180 Days
+  - Whole Bible in a Year
+- Plan templates remain app-owned and chapter-based. Do not widen the entry model to multi-passage-per-day unless the schema and `/study` navigation model are intentionally redesigned together.
 
 ### Mobile Study Tools
 

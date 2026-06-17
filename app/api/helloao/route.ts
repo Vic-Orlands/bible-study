@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
+import { readServerCache, writeServerCache } from "@/lib/server-cache";
 
 const HELLO_AO_API_BASE = "https://bible.helloao.org/api";
+const HELLO_AO_CACHE_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -14,27 +15,14 @@ export async function GET(req: NextRequest) {
   const cacheKey = `helloao:${path}`;
 
   try {
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-    const redis =
-      redisUrl && redisToken
-        ? new Redis({
-            url: redisUrl,
-            token: redisToken,
-          })
-        : null;
-
-    // Check Upstash Redis Cache
-    if (redis) {
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        return NextResponse.json(cached);
-      }
+    const cached = await readServerCache<unknown>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
-    // Fetch from HelloAO
     const response = await fetch(`${HELLO_AO_API_BASE}/${path}`);
     if (!response.ok) {
+      console.error("HelloAO request failed:", response.status, path);
       return NextResponse.json(
         { error: `HelloAO API returned ${response.status}` },
         { status: response.status }
@@ -43,10 +31,7 @@ export async function GET(req: NextRequest) {
 
     const data = await response.json();
 
-    // Store in Upstash Redis Cache (cache for 30 days since Bible text rarely changes)
-    if (redis) {
-      await redis.set(cacheKey, data, { ex: 60 * 60 * 24 * 30 });
-    }
+    await writeServerCache(cacheKey, data, HELLO_AO_CACHE_TTL_SECONDS);
 
     return NextResponse.json(data);
   } catch (error) {

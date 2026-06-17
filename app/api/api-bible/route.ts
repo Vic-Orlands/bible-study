@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
+import { readServerCache, writeServerCache } from "@/lib/server-cache";
 
-function getRedis() {
-  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!redisUrl || !redisToken) return null;
-  return new Redis({ token: redisToken, url: redisUrl });
-}
+const API_BIBLE_CACHE_TTL_SECONDS = 60 * 60 * 12;
 
 async function fetchApiBible(path: string, searchParams: URLSearchParams) {
   const apiUrl = process.env.API_BIBLE_URL;
@@ -17,12 +12,11 @@ async function fetchApiBible(path: string, searchParams: URLSearchParams) {
     throw new Error("Missing API.Bible environment configuration.");
   }
 
-  const redis = getRedis();
   const cacheKey = `api-bible:${path}?${searchParams.toString()}`;
 
-  if (redis) {
-    const cached = await redis.get(cacheKey);
-    if (cached) return cached;
+  const cached = await readServerCache<unknown>(cacheKey);
+  if (cached) {
+    return cached;
   }
 
   const response = await fetch(`${apiUrl}${path}?${searchParams.toString()}`, {
@@ -40,9 +34,7 @@ async function fetchApiBible(path: string, searchParams: URLSearchParams) {
 
   const data = await response.json();
 
-  if (redis) {
-    await redis.set(cacheKey, data, { ex: 60 * 60 * 12 });
-  }
+  await writeServerCache(cacheKey, data, API_BIBLE_CACHE_TTL_SECONDS);
 
   return data;
 }
