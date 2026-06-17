@@ -347,7 +347,7 @@ export default function ReadingPlanPage() {
   if (!storeReady) {
     return (
       <ProductShell>
-        <div className="flex flex-1 items-center justify-center bg-white text-[13px] text-[#7a6758]">
+        <div className="flex flex-1 items-center justify-center bg-[#FAF9F6] text-[13px] text-[#7a6758]">
           Loading plans...
         </div>
       </ProductShell>
@@ -356,7 +356,7 @@ export default function ReadingPlanPage() {
 
   return (
     <ProductShell>
-      <div className="flex min-h-0 flex-1 overflow-hidden bg-white">
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-[#FAF9F6]">
         <ReadingPlanRail
           currentPlan={currentPlan}
           featuredTemplates={featuredTemplates}
@@ -366,7 +366,7 @@ export default function ReadingPlanPage() {
           selectedTemplateId={currentPlan?.plan.templateId ?? null}
         />
 
-        <main className="bible-app-scroll min-w-0 flex-1 overflow-y-auto bg-white px-4 py-5 md:px-6 md:py-6 xl:px-8">
+        <main className="bible-app-scroll min-w-0 flex-1 overflow-y-auto bg-[#FAF9F6] px-4 py-8 md:px-8 xl:px-12">
           <PageHeader
             activeTab={activeTab}
             currentPlan={currentPlan}
@@ -455,7 +455,10 @@ function PageHeader({
   onChangeTab: (tab: ReadingTab) => void;
 }) {
   return (
-    <div className="mb-8 flex flex-col gap-6 border-b border-[#EDECE4]/50 pb-8">
+    <div className={cn(
+      "mb-8 flex flex-col gap-6 border-b border-[#EDECE4]/50 pb-8 mx-auto w-full",
+      currentPlan ? "max-w-3xl" : "max-w-5xl"
+    )}>
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-2">
           <p className="text-[9px] font-bold uppercase tracking-widest text-[#EA7C5A]">
@@ -692,7 +695,7 @@ function BrowseState({
   onStartPlan: (templateId: string, title: string) => Promise<void>;
 }) {
   return (
-    <div className="space-y-12">
+    <div className="space-y-12 max-w-5xl mx-auto w-full">
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="relative overflow-hidden rounded-3xl border border-[#EDECE4]/60 bg-gradient-to-br from-[#FDFCF9] via-[#FAF9F5] to-[#F3EFE0]/40 p-8 text-neutral-900 shadow-sm md:p-10">
           <div className="relative z-10 max-w-[700px]">
@@ -803,172 +806,171 @@ function HubTab({
   const ctaLabel = relativeStartLabel(currentPlan);
 
   return (
-    <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2E2822] via-[#1F1A15] to-[#14100C] p-6 text-[#FAF6EE] shadow-lg md:p-8">
-        <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="flex flex-col justify-between">
-            <div>
-              <span className="inline-block rounded-full bg-[#EA7C5A] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
-                Today&apos;s recommended entry
-              </span>
-              <h2 className="mt-5 font-serif text-3xl font-bold leading-tight text-white md:text-5xl">
-                {heroEntry?.passageLabel ?? "Plan Complete"}
-              </h2>
-              <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-amber-200/80">
-                {heroEntry ? chapterRangeLabel(heroEntry) : "You finished every reading"}
-              </p>
-              <p className="mt-4 max-w-xl text-xs leading-relaxed text-neutral-300">
-                {heroEntry
-                  ? `Day ${heroEntry.dayNumber} of ${currentPlan.plan.totalEntries} · ${currentPlan.templateMeta?.cadenceLabel ?? "Daily reading"}`
-                  : "You have finished every scheduled reading in this plan. Well done!"}
-              </p>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-2.5">
-              {heroEntry ? (
-                <button
-                  className="flex items-center gap-2 rounded-xl bg-[#EA7C5A] px-6 py-3 text-xs font-bold text-white shadow-lg shadow-[#EA7C5A]/10 hover:bg-[#D76949]"
-                  onClick={() => onOpenReading(heroEntry)}
-                  type="button"
-                >
-                  {ctaLabel}
-                  <ArrowRight className="h-4.5 w-4.5" />
-                </button>
-              ) : null}
-              {currentPlan.currentEntry && currentPlan.hasStartedReading ? (
-                <button
-                  className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-xs font-bold text-white hover:bg-white/10"
-                  onClick={() => onOpenReading(currentPlan.currentEntry!)}
-                  type="button"
-                >
-                  Open Reader
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <MetricTile
-              icon={<CheckCircle2 className="h-4 w-4 text-[#EA7C5A]" />}
-              label="Progress"
-              value={`${currentPlan.progressPercent}%`}
-            />
-            <MetricTile
-              icon={<Flame className="h-4 w-4 text-amber-400" />}
-              label="Streak"
-              value={`${currentPlan.streak} day${currentPlan.streak === 1 ? "" : "s"}`}
-            />
-            <MetricTile
-              icon={<Clock3 className="h-4 w-4 text-neutral-300" />}
-              label="Pace"
-              value={currentPlan.templateMeta ? `~${currentPlan.templateMeta.estimatedMinutes} min` : "Daily"}
-            />
+    <div className="space-y-10 max-w-3xl mx-auto w-full">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2E2822] via-[#1F1A15] to-[#14100C] p-8 text-[#FAF6EE] shadow-sm">
+        <div className="relative z-10 max-w-xl">
+          <span className="inline-block rounded-full bg-[#EA7C5A] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
+            Today&apos;s recommended entry
+          </span>
+          <h2 className="mt-5 font-serif text-3xl font-bold leading-tight text-white md:text-4xl text-wrap-balance">
+            {heroEntry?.passageLabel ?? "Plan Complete"}
+          </h2>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-amber-200/80">
+            {heroEntry ? chapterRangeLabel(heroEntry) : "You finished every reading"}
+          </p>
+          <p className="mt-4 text-xs leading-relaxed text-neutral-300">
+            {heroEntry
+              ? `Day ${heroEntry.dayNumber} of ${currentPlan.plan.totalEntries} · ${currentPlan.templateMeta?.cadenceLabel ?? "Daily reading"}`
+              : "You have finished every scheduled reading in this plan. Well done!"}
+          </p>
+          
+          <div className="mt-8 flex flex-wrap gap-2.5">
+            {heroEntry ? (
+              <button
+                className="flex items-center gap-2 rounded-xl bg-[#EA7C5A] px-5 py-3 text-xs font-bold text-white shadow-lg shadow-[#EA7C5A]/10 hover:bg-[#D76949]"
+                onClick={() => onOpenReading(heroEntry)}
+                type="button"
+              >
+                {ctaLabel}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            ) : null}
+            {currentPlan.currentEntry && currentPlan.hasStartedReading ? (
+              <button
+                className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-xs font-bold text-white hover:bg-white/10"
+                onClick={() => onOpenReading(currentPlan.currentEntry!)}
+                type="button"
+              >
+                Open Reader
+              </button>
+            ) : null}
           </div>
         </div>
         <div className="absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-[#EA7C5A]/5 blur-3xl" />
       </section>
 
-      <section className="rounded-3xl border border-[#EDECE4]/60 bg-[#FAF9F5]/30 p-6">
-        <div className="mb-6 flex items-center justify-between border-b border-[#EDECE4]/50 pb-4">
+      {/* Borderless Metrics Row */}
+      <div className="flex items-center justify-around py-6 border-y border-[#EDECE4]/60 bg-transparent rounded-none">
+        <div className="text-center">
+          <span className="block text-[8px] font-bold uppercase tracking-widest text-neutral-400">Progress</span>
+          <span className="mt-1 block font-serif text-3xl font-bold text-neutral-800">{currentPlan.progressPercent}%</span>
+        </div>
+        <div className="h-8 w-px bg-neutral-200" />
+        <div className="text-center">
+          <span className="block text-[8px] font-bold uppercase tracking-widest text-neutral-400">Streak</span>
+          <span className="mt-1 block font-serif text-3xl font-bold text-neutral-800">{currentPlan.streak} days</span>
+        </div>
+        <div className="h-8 w-px bg-neutral-200" />
+        <div className="text-center">
+          <span className="block text-[8px] font-bold uppercase tracking-widest text-neutral-400">Pace</span>
+          <span className="mt-1 block font-serif text-3xl font-bold text-neutral-800">{currentPlan.templateMeta ? `~${currentPlan.templateMeta.estimatedMinutes}m` : "Daily"}</span>
+        </div>
+      </div>
+
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
           <div>
             <h3 className="font-serif text-lg font-bold text-neutral-900">
               Journey Path
             </h3>
-            <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
-              Select a card to read or toggle complete state
+            <p className="text-[10px] text-neutral-400 uppercase tracking-wider mt-0.5">
+              Select a day node to read or log completion
             </p>
           </div>
-          <span className="rounded-full bg-[#EFECE6] px-3 py-1 font-mono text-[10px] font-bold text-neutral-600">
+          <span className="rounded-full bg-[#EFECE6]/70 px-3 py-1 font-mono text-[10px] font-bold text-neutral-600">
             {currentPlan.plan.completedEntries}/{currentPlan.plan.totalEntries} Done
           </span>
         </div>
 
-        <div className="space-y-3">
+        <div className="relative pl-2 space-y-2">
           {currentPlan.allEntries.map((entry) => {
             const isSelected = selectedEntryId === entry._id;
             const isPrimary = currentPlan.primaryEntry?._id === entry._id;
             return (
-              <div
-                className={cn(
-                  "grid gap-4 items-center rounded-2xl p-4 transition-all duration-300 md:grid-cols-[72px_minmax(0,1fr)_auto]",
-                  entry.status === "completed"
-                    ? "border border-[#EDECE4]/45 bg-white/40 opacity-70 hover:opacity-100 hover:bg-white"
-                    : isPrimary
-                      ? "scale-[1.01] border-2 border-[#EA7C5A] bg-white shadow-md shadow-[#EA7C5A]/5"
-                      : isSelected
-                        ? "border border-neutral-300 bg-[#FAF9F5]"
-                        : "border border-[#EDECE4]/60 bg-white hover:border-neutral-300",
-                )}
-                key={entry._id}
-              >
-                <button
-                  className={cn(
-                    "flex h-[56px] w-[56px] flex-col items-center justify-center rounded-xl border text-center transition-colors",
-                    entry.status === "completed"
-                      ? "border-transparent bg-[#EFECE6] text-neutral-500"
-                      : isPrimary
-                        ? "border-transparent bg-[#EA7C5A] text-white shadow-sm"
-                        : "border-transparent bg-[#FAF9F5] text-neutral-800",
-                  )}
-                  onClick={() => onOpenReading(entry)}
-                  type="button"
-                >
-                  <span className="text-[8px] font-bold uppercase tracking-wider opacity-70">
-                    Day
-                  </span>
-                  <span className="font-serif text-lg font-bold leading-none">
-                    {entry.dayNumber}
-                  </span>
-                </button>
-
-                <button
-                  className="min-w-0 text-left"
-                  onClick={() => onOpenReading(entry)}
-                  type="button"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className={cn("font-serif text-base font-bold tracking-tight text-neutral-900", entry.status === "completed" && "text-neutral-400 line-through decoration-neutral-300")}>
-                      {entry.passageLabel}
-                    </p>
-                    {isPrimary ? (
-                      <span className="rounded-full bg-[#FAF9F5] border border-[#EBE6D7] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#EA7C5A]">
-                        Up Next
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-0.5 text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
-                    {chapterRangeLabel(entry)} · {formatLongDate(entry.dueDate)}
-                  </p>
-                  {entry.reflection?.trim() ? (
-                    <div className="mt-2 border-l border-[#E5D6C9] pl-3">
-                      <p className="line-clamp-2 text-xs italic leading-relaxed text-neutral-500">
-                        &quot;{entry.reflection}&quot;
-                      </p>
+              <div key={entry._id} className="relative pl-10 pb-8 last:pb-0 group">
+                {/* Timeline Line */}
+                <div className="absolute left-[11px] top-3 bottom-0 w-px bg-neutral-200 group-last:hidden" />
+                
+                {/* Timeline Icon Node */}
+                <div className="absolute left-0 top-1 flex h-6 w-6 items-center justify-center">
+                  {entry.status === "completed" ? (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#EA7C5A] text-[#FAF6EE] shadow-sm">
+                      <Check className="h-3.5 w-3.5" />
                     </div>
-                  ) : null}
-                </button>
+                  ) : isPrimary ? (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#EA7C5A] bg-white shadow-[0_0_12px_rgba(234,124,90,0.2)]">
+                      <div className="h-2 w-2 rounded-full bg-[#EA7C5A] animate-pulse" />
+                    </div>
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border border-neutral-300 bg-white" />
+                  )}
+                </div>
 
-                <div className="flex items-center gap-2">
+                {/* Card details */}
+                <div
+                  className={cn(
+                    "grid gap-4 items-center rounded-2xl p-5 transition-all duration-300 md:grid-cols-[1fr_auto]",
+                    entry.status === "completed"
+                      ? "bg-white/40 border border-[#EDECE4]/45 opacity-70 hover:opacity-100 hover:bg-white"
+                      : isPrimary
+                        ? "bg-white border border-[#EBE6D7] shadow-[0_4px_20px_rgba(0,0,0,0.02)] scale-[1.01]"
+                        : isSelected
+                          ? "bg-[#FAF9F5] border border-neutral-300"
+                          : "bg-white/70 border border-[#EDECE4]/50 hover:bg-white hover:border-neutral-300 hover:shadow-sm",
+                  )}
+                >
                   <button
-                    className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-800 hover:bg-[#FAF9F5]"
+                    className="min-w-0 text-left"
                     onClick={() => onOpenReading(entry)}
                     type="button"
                   >
-                    {entry.startedAt ? "Resume" : "Read"}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-[9px] font-bold text-neutral-400 tracking-wider">
+                        DAY {entry.dayNumber}
+                      </span>
+                      <span className="text-neutral-300 font-mono text-[9px]">•</span>
+                      <p className={cn("font-serif text-base font-bold text-neutral-900", entry.status === "completed" && "text-neutral-400 line-through decoration-neutral-300")}>
+                        {entry.passageLabel}
+                      </p>
+                      {isPrimary ? (
+                        <span className="rounded-full bg-[#FAF9F5] border border-[#EBE6D7] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#EA7C5A]">
+                          Up Next
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
+                      {chapterRangeLabel(entry)} · {formatLongDate(entry.dueDate)}
+                    </p>
+                    {entry.reflection?.trim() ? (
+                      <div className="mt-3 border-l border-[#E5D6C9] pl-3 italic text-xs text-neutral-500 leading-relaxed">
+                        &quot;{entry.reflection}&quot;
+                      </div>
+                    ) : null}
                   </button>
-                  <button
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full border transition-all",
-                      entry.status === "completed"
-                        ? "border-[#EA7C5A] bg-[#EA7C5A] text-white"
-                        : "border-neutral-200 bg-transparent text-neutral-300 hover:border-[#EA7C5A] hover:text-[#EA7C5A]",
-                    )}
-                    onClick={async () => {
-                      await onToggleEntry(entry._id);
-                    }}
-                    type="button"
-                  >
-                    <Check className="h-4.5 w-4.5" />
-                  </button>
+
+                  <div className="flex items-center gap-2 self-center shrink-0">
+                    <button
+                      className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-800 hover:bg-[#FAF9F5]"
+                      onClick={() => onOpenReading(entry)}
+                      type="button"
+                    >
+                      {entry.startedAt ? "Resume" : "Read"}
+                    </button>
+                    <button
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full border transition-all",
+                        entry.status === "completed"
+                          ? "border-[#EA7C5A] bg-[#EA7C5A] text-white"
+                          : "border-neutral-200 bg-transparent text-neutral-300 hover:border-[#EA7C5A] hover:text-[#EA7C5A]",
+                      )}
+                      onClick={async () => {
+                        await onToggleEntry(entry._id);
+                      }}
+                      type="button"
+                    >
+                      <Check className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -987,7 +989,7 @@ function JournalTab({
   onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
 }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-3xl mx-auto w-full">
       <div className="space-y-1">
         <h2 className="font-serif text-2xl font-bold tracking-tight text-neutral-900">
           Reflections Library
@@ -1017,7 +1019,7 @@ function JournalTab({
           ) : null}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="flex flex-col gap-6">
           {currentPlan.journalEntries.map((entry) => (
             <div
               className="group relative flex flex-col justify-between rounded-2xl border border-[#EDECE4]/50 bg-white p-6 shadow-[0_4px_20px_rgba(0,0,0,0.015)] transition-all duration-300 hover:scale-[1.005] hover:shadow-[0_8px_30px_rgba(0,0,0,0.035)]"
@@ -1090,7 +1092,7 @@ function FocusTab({
   }, []);
 
   return (
-    <div className="space-y-10 text-center">
+    <div className="space-y-10 text-center max-w-md mx-auto w-full">
       <div className="space-y-2 max-w-md mx-auto">
         <h2 className="font-serif text-3xl font-bold tracking-tight text-neutral-900">
           Pause & Anchor
