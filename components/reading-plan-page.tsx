@@ -640,18 +640,13 @@ function ReadingPlanRail({
         <div className="space-y-5">
           {currentPlan ? (
             <section>
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
-                  Active Plan
-                </span>
-                <BookOpen className="h-4 w-4 text-[#9b8878]" />
-              </div>
-              <div className="relative overflow-hidden rounded-xl border border-[#f1e8df] bg-[#fbf7f2] p-4">
+              <h2 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
+                Active Plan
+              </h2>
+
+              <div className="relative overflow-hidden border border-[#f1e8df] bg-[#fbf7f2] p-4">
                 <div>
-                  <span className="inline-block rounded-full bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
-                    In Progress
-                  </span>
-                  <h2 className="mt-3 font-serif text-[17px] font-semibold leading-snug text-[#25140b]">
+                  <h2 className="font-serif text-[17px] font-semibold leading-snug text-[#25140b]">
                     {currentPlan.plan.title}
                   </h2>
                   <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#9b8878]">
@@ -673,7 +668,7 @@ function ReadingPlanRail({
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#f1e8df] pt-4">
+                  <div className="mt-4 grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
                         Streak
@@ -682,19 +677,19 @@ function ReadingPlanRail({
                         {currentPlan.streak} days
                       </p>
                     </div>
-                    <div>
+                    <div className="ml-auto text-right">
                       <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
                         Day
                       </p>
                       <p className="mt-1 text-[13px] font-semibold text-[#25140b] tabular-nums">
-                        {currentPlan.plan.currentDayNumber}/
+                        {currentPlan.plan.currentDayNumber}-
                         {currentPlan.plan.totalEntries}
                       </p>
                     </div>
                   </div>
 
                   <button
-                    className="mt-4 w-full rounded-full border border-[#e5d6c9] bg-white px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7a6758] transition-colors hover:border-[#f6823c] hover:text-[#25140b]"
+                    className="mt-4 w-full rounded-sm border border-[#e5d6c9] bg-white px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7a6758] transition-colors hover:border-[#f6823c] hover:text-[#25140b]"
                     onClick={onArchiveCurrent}
                     type="button"
                   >
@@ -705,13 +700,10 @@ function ReadingPlanRail({
             </section>
           ) : (
             <section>
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
-                  Active Plan
-                </span>
-                <BookOpen className="h-4 w-4 text-[#9b8878]" />
-              </div>
-              <div className="rounded-xl border border-[#f1e8df] bg-[#fbf7f2] p-4">
+              <h2 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
+                Active Plan
+              </h2>
+              <div className="border border-[#f1e8df] bg-[#fbf7f2] p-4">
                 <span className="inline-block rounded-full bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
                   No Plan Yet
                 </span>
@@ -726,7 +718,7 @@ function ReadingPlanRail({
           )}
 
           <button
-            className="flex w-full items-center justify-between rounded-full border border-[#e5d6c9] bg-white px-2 py-1.5 text-left text-[12px] font-semibold text-[#25140b] transition-colors hover:border-[#f6823c] hover:bg-[#fbf7f2]"
+            className="flex w-full items-center justify-between rounded-lg border border-[#e5d6c9] bg-white px-2 py-1.5 text-left text-[12px] font-semibold text-[#25140b] transition-colors hover:border-[#f6823c] hover:bg-[#fbf7f2]"
             onClick={onOpenPlans}
             type="button"
           >
