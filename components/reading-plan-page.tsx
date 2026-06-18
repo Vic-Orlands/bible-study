@@ -1357,7 +1357,7 @@ function JournalTab({
 }) {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
-      <div className="space-y-1">
+      <div className="space-y-1 mb-16">
         <h2 className="font-serif text-[22px] font-semibold tracking-tight text-[#25140b]">
           Reflections Library
         </h2>
@@ -1368,18 +1368,21 @@ function JournalTab({
       </div>
 
       {currentPlan.journalEntries.length === 0 ? (
-        <div className="mx-auto max-w-xl rounded-2xl border border-[#f1e8df] bg-white px-6 py-12 text-center">
-          <FileText className="mx-auto mb-4 h-8 w-8 text-[#9b8878]" />
-          <h3 className="font-serif text-[18px] font-semibold text-[#25140b]">
+        <div>
+          <FileText
+            className="mb-6 h-10 w-10 text-[#9b8878]"
+            strokeWidth={1.4}
+          />
+          <h3 className="font-serif text-xl font-semibold text-[#25140b]">
             Your journal is waiting
           </h3>
-          <p className="mx-auto mt-2 max-w-xs text-[12px] leading-relaxed text-[#7a6758]">
+          <p className="mt-2 max-w-xl text-sm text-[#7a6758]">
             Write down contemplative reflections inside reading mode or complete
             specific daily readings to catalog your journey.
           </p>
           {currentPlan.primaryEntry ? (
             <button
-              className="mt-6 rounded-full bg-[#3a2218] px-2 py-1.5 text-[12px] font-semibold text-white hover:bg-[#2A1810]"
+              className="mt-6 rounded-lg bg-[#3a2218] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2A1810]"
               onClick={() => onOpenReading(currentPlan.primaryEntry!)}
               type="button"
             >
@@ -1391,7 +1394,7 @@ function JournalTab({
         <div className="flex flex-col gap-4">
           {currentPlan.journalEntries.map((entry) => (
             <div
-              className="group relative flex flex-col justify-between rounded-2xl border border-[#f1e8df] bg-white p-5 transition-colors hover:bg-[#fbf7f2]"
+              className="group relative flex flex-col justify-between rounded-lg border border-[#f1e8df] bg-white p-5 transition-colors hover:bg-[#fbf7f2]"
               key={entry._id}
             >
               <div className="space-y-3">
@@ -1429,7 +1432,7 @@ function JournalTab({
                   Reading Plan Devotion
                 </span>
                 <button
-                  className="flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 text-[12px] font-semibold text-[#f6823c] hover:text-[#dd6f2f]"
+                  className="flex cursor-pointer items-center gap-1 rounded-lg px-4 py-2 text-xs font-semibold text-[#f6823c] hover:text-[#dd6f2f]"
                   onClick={() => onOpenReading(entry)}
                   type="button"
                 >
@@ -1463,97 +1466,96 @@ function FocusTab({
       setBreathPhase((prev) => {
         if (prev === "Inhale") return "Hold";
         if (prev === "Hold") return "Exhale";
-        setCycleCount((c) => c + 1);
         return "Inhale";
       });
+      setCycleCount((c) => c + 1);
     }, 4000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 text-center">
-      <div className="mx-auto max-w-md space-y-2">
+    <div className="max-w-3xl mx-auto mt-24 space-y-6">
+      <div className="space-y-2 mb-8">
         <h2 className="font-serif text-[22px] font-semibold tracking-tight text-[#25140b]">
           Pause & Anchor
         </h2>
-        <p className="text-[13px] leading-relaxed text-[#7a6758]">
+        <p className="text-sm text-[#7a6758] max-w-md">
           Clear away digital noise and quiet your thoughts for a moment before
           looking upon the sacred scripture. Quiet the outer self.
         </p>
       </div>
 
-      <div className="relative overflow-hidden rounded-2xl border border-[#f1e8df] bg-white p-6 text-center">
+      <div className="relative overflow-hidden">
         <div className="space-y-8 py-4">
-          <div className="relative mx-auto flex h-56 w-56 items-center justify-center">
-            <motion.div
-              animate={{
-                scale:
-                  breathPhase === "Inhale"
-                    ? 1.35
-                    : breathPhase === "Hold"
-                      ? 1.35
-                      : 0.95,
-                opacity:
-                  breathPhase === "Inhale"
-                    ? 0.9
-                    : breathPhase === "Hold"
+          <section className="p-4">
+            <div className="relative flex h-40 w-40 items-center justify-center">
+              <motion.div
+                animate={{
+                  scale:
+                    breathPhase === "Inhale"
+                      ? 1.3
+                      : breathPhase === "Hold"
+                        ? 1.3
+                        : 0.8,
+                  opacity:
+                    breathPhase === "Inhale"
                       ? 0.9
-                      : 0.5,
-              }}
-              className="absolute inset-0 rounded-full border border-[#f6823c]/25 bg-[#fbf7f2]"
-              transition={{ duration: 3.8, ease: "easeInOut" }}
-            />
-            <motion.div
-              animate={{
-                scale:
-                  breathPhase === "Inhale"
-                    ? 1.15
-                    : breathPhase === "Hold"
+                      : breathPhase === "Hold"
+                        ? 0.9
+                        : 0.5,
+                }}
+                className="absolute inset-0 rounded-full border border-[#f6823c]/25 bg-[#fbf7f2]"
+                transition={{ duration: 3.8, ease: "easeInOut" }}
+              />
+              <motion.div
+                animate={{
+                  scale:
+                    breathPhase === "Inhale"
                       ? 1.15
-                      : 0.85,
-              }}
-              className="relative z-20 flex h-32 w-32 flex-col items-center justify-center rounded-full bg-[#f6823c] text-white"
-              transition={{ duration: 3.8, ease: "easeInOut" }}
-            >
-              <span className="mb-1 block text-[8px] font-semibold uppercase tracking-[0.14em] text-white/80">
-                {breathPhase === "Inhale"
-                  ? "breathe in"
-                  : breathPhase === "Hold"
-                    ? "hold"
-                    : "breathe out"}
-              </span>
-              <span className="font-serif text-[22px] font-semibold tracking-tight">
-                {breathPhase}
-              </span>
-            </motion.div>
-          </div>
+                      : breathPhase === "Hold"
+                        ? 1.15
+                        : 0.85,
+                }}
+                className="relative z-20 flex h-32 w-32 flex-col items-center justify-center rounded-full bg-[#f6823c] text-white"
+                transition={{ duration: 3.8, ease: "easeInOut" }}
+              >
+                <span className="mb-1 block text-[8px] font-semibold uppercase tracking-[0.14em] text-white/80">
+                  {breathPhase === "Inhale"
+                    ? "breathe in"
+                    : breathPhase === "Hold"
+                      ? "hold"
+                      : "breathe out"}
+                </span>
+                <span className="font-serif text-[22px] font-semibold tracking-tight">
+                  {breathPhase}
+                </span>
+              </motion.div>
+            </div>
+          </section>
 
-          <div className="space-y-1.5">
-            <h3 className="font-serif text-[16px] font-semibold text-[#25140b]">
-              Fill your lungs with gratitude.
-            </h3>
+          <div className="space-y-1.5 pt-4">
             <p className="text-[9px] uppercase tracking-[0.14em] text-[#9b8878]">
-              Completed cycles:{" "}
+              Breath cycles completed:{" "}
               <span className="text-[12px] font-semibold text-[#f6823c]">
-                {cycleCount}
+                {Math.floor(cycleCount / 3)}
               </span>
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
-              className="rounded-full border border-[#f1e8df] bg-white px-2 py-1.5 text-[12px] font-semibold text-[#7a6758] transition-colors hover:bg-[#fbf7f2] hover:text-[#25140b]"
+              className="rounded-full border border-[#f1e8df] bg-white px-4 py-2 text-xs font-semibold text-[#7a6758] transition-colors hover:bg-[#fbf7f2] hover:text-[#25140b]"
               onClick={() => {
                 setCycleCount(0);
                 setBreathPhase("Inhale");
               }}
               type="button"
             >
-              Reset
+              Reset Counter
             </button>
             {entry ? (
               <button
-                className="rounded-full bg-[#f6823c] px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
+                className="rounded-full bg-[#f6823c] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
                 onClick={() => onOpenReading(entry)}
                 type="button"
               >
