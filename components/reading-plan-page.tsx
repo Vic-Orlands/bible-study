@@ -450,7 +450,6 @@ export default function ReadingPlanPage() {
             currentPlan={currentPlan}
             journalCount={currentPlan?.journalEntries.length ?? 0}
             onChangeTab={setActiveTab}
-            onOpenPlans={() => setPlansSheetOpen(true)}
           />
 
           {!currentPlan ? (
@@ -538,18 +537,16 @@ function PageHeader({
   currentPlan,
   journalCount,
   onChangeTab,
-  onOpenPlans,
 }: {
   activeTab: ReadingTab;
   currentPlan: ReadingPlanCurrent | null | undefined;
   journalCount: number;
   onChangeTab: (tab: ReadingTab) => void;
-  onOpenPlans: () => void;
 }) {
   return (
     <div
       className={cn(
-        "mx-auto mb-5 flex w-full flex-col gap-4 border-b border-[#f1e8df] pb-4",
+        "mx-auto mb-5 flex w-full flex-col gap-4",
         currentPlan ? "max-w-3xl" : "max-w-5xl",
       )}
     >
@@ -756,20 +753,20 @@ function ReadingPlanRail({
 
 function BrowseState({ onOpenPlans }: { onOpenPlans: () => void }) {
   return (
-    <div className="mx-auto flex min-h-[440px] w-full max-w-3xl items-center">
-      <section className="w-full rounded-2xl border border-[#f1e8df] bg-white p-6 md:p-8">
-        <span className="inline-block rounded-full bg-[#fbf7f2] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
+    <div className="mx-auto flex mt-24 w-full max-w-5xl items-center">
+      <section className="w-full">
+        <span className="inline-block rounded-full bg-[#fbf7f2] px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
           No active plan
         </span>
-        <h2 className="mt-4 max-w-xl font-serif text-[26px] font-semibold leading-tight text-[#25140b] md:text-[30px]">
+        <h2 className="mt-4 max-w-xl font-serif font-semibold text-[#25140b] text-xl">
           Start with one reading path and keep the workspace quiet.
         </h2>
-        <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#7a6758]">
+        <p className="mt-3 max-w-xl text-sm text-[#7a6758]">
           The plan library now lives in a side sheet so this page stays focused
           on your current reading rhythm.
         </p>
         <button
-          className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#f6823c] px-2 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#f6823c] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
           onClick={onOpenPlans}
           type="button"
         >
@@ -866,12 +863,12 @@ function PlansSheet({
       />
       <motion.aside
         animate={{ x: 0 }}
-        className="reading-plan-page relative z-10 flex h-full w-full max-w-[520px] flex-col border-l border-[#e5d6c9] bg-white shadow-2xl"
+        className="reading-plan-page relative z-10 flex h-full w-full max-w-[520px] flex-col bg-white shadow-2xl"
         exit={{ x: "100%" }}
         initial={{ x: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 240 }}
       >
-        <div className="border-b border-[#f1e8df] px-5 py-5">
+        <div className="px-5 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f6823c]">
@@ -885,7 +882,7 @@ function PlansSheet({
               </p>
             </div>
             <button
-              className="rounded-full border border-[#f1e8df] px-2 py-1.5 text-[11px] font-semibold text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#25140b]"
+              className="px-2 py-1.5 text-[11px] font-semibold text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#25140b]"
               onClick={onClose}
               type="button"
             >
@@ -893,7 +890,7 @@ function PlansSheet({
             </button>
           </div>
           <button
-            className="mt-4 flex w-full items-center justify-between rounded-full border border-[#e5d6c9] bg-[#fbf7f2] px-2 py-1.5 text-left text-[12px] font-semibold text-[#25140b] transition-colors hover:border-[#f6823c]"
+            className="mt-4 flex w-full items-center rounded-lg justify-between bg-[#fbf7f2] px-3 py-2 text-left text-[12px] font-semibold text-[#25140b] transition-colors hover:bg-[#f5eee6]"
             onClick={() => setCuratorOpen((open) => !open)}
             type="button"
           >
@@ -906,7 +903,7 @@ function PlansSheet({
           <div className="space-y-7">
             {curatorOpen ? (
               <form
-                className="rounded-2xl border border-[#e5d6c9] bg-[#fbf7f2] p-4"
+                className="bg-[#fbf7f2] p-4"
                 onSubmit={async (event) => {
                   event.preventDefault();
                   await onCreateCustomPlan(customDraft);
@@ -924,7 +921,7 @@ function PlansSheet({
                       Plan title
                     </span>
                     <input
-                      className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                      className="mt-1 h-9 w-full bg-white px-3 text-[13px] text-[#25140b] outline-none"
                       onChange={(event) =>
                         setCustomDraft((draft) => ({
                           ...draft,
@@ -939,7 +936,7 @@ function PlansSheet({
                       Book
                     </span>
                     <select
-                      className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                      className="mt-1 h-9 w-full bg-white px-3 text-[13px] text-[#25140b] outline-none"
                       onChange={(event) => updateCustomBook(event.target.value)}
                       value={customDraft.book}
                     >
@@ -956,7 +953,7 @@ function PlansSheet({
                         Start
                       </span>
                       <input
-                        className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                        className="mt-1 h-9 w-full bg-white px-3 text-[13px] text-[#25140b] outline-none"
                         max={selectedBook.chapters}
                         min={1}
                         onChange={(event) =>
@@ -974,7 +971,7 @@ function PlansSheet({
                         End
                       </span>
                       <input
-                        className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                        className="mt-1 h-9 w-full bg-white px-3 text-[13px] text-[#25140b] outline-none"
                         max={selectedBook.chapters}
                         min={customDraft.startChapter}
                         onChange={(event) =>
@@ -993,7 +990,7 @@ function PlansSheet({
                       Days
                     </span>
                     <input
-                      className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                      className="mt-1 h-9 w-full bg-white px-3 text-[13px] text-[#25140b] outline-none"
                       max={chapterCount}
                       min={1}
                       onChange={(event) =>
@@ -1010,7 +1007,7 @@ function PlansSheet({
                     />
                   </label>
                 </div>
-                <div className="mt-4 rounded-2xl bg-white px-2 py-1.5 text-[12px] text-[#7a6758]">
+                <div className="mt-4 bg-white px-2 py-1.5 text-[12px] text-[#7a6758]">
                   {customDraft.book} {customDraft.startChapter}
                   {customDraft.startChapter === customDraft.endChapter
                     ? ""
@@ -1019,7 +1016,7 @@ function PlansSheet({
                   {customDraft.durationDays === 1 ? "" : "s"}.
                 </div>
                 <button
-                  className="mt-4 w-full rounded-full bg-[#f6823c] px-2 py-1.5 text-[12px] font-semibold text-white hover:bg-[#dd6f2f]"
+                  className="mt-4 w-full bg-[#f6823c] px-2 py-1.5 text-[12px] font-semibold text-white hover:bg-[#dd6f2f]"
                   type="submit"
                 >
                   Start Custom Plan
@@ -1029,7 +1026,7 @@ function PlansSheet({
 
             {groupedTemplates.map(([category, items]) => (
               <section className="space-y-3" key={category}>
-                <div className="flex items-baseline justify-between border-b border-[#f1e8df] pb-2">
+                <div className="flex items-baseline justify-between pb-1 border-b">
                   <h3 className="font-serif text-[17px] font-semibold text-[#25140b]">
                     {category}
                   </h3>
@@ -1037,44 +1034,46 @@ function PlansSheet({
                     {items.length} plans
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-5">
                   {items.map((template) => (
-                    <button
+                    <div
                       className={cn(
-                        "group w-full rounded-full border p-4 text-left transition-colors",
+                        "group grid items-start gap-3 py-2 transition-colors sm:grid-cols-[minmax(0,1fr)_auto]",
                         selectedTemplateId === template.id
-                          ? "border-[#e5d6c9] bg-[#fbf7f2]"
-                          : "border-[#f1e8df] bg-white hover:bg-[#fbf7f2]",
+                          ? "bg-[#fbf7f2]"
+                          : "bg-white hover:bg-[#fbf7f2]",
                       )}
                       key={template.id}
-                      onClick={() => onStartPlan(template.id, template.title)}
-                      type="button"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h4 className="font-serif text-[16px] font-semibold leading-snug text-[#25140b] group-hover:text-[#f6823c]">
-                            {template.title}
-                          </h4>
-                          <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-[#7a6758]">
-                            {template.summary}
-                          </p>
+                      <div className="min-w-0">
+                        <h4 className="font-serif text-[16px] font-semibold leading-snug text-[#25140b] group-hover:text-[#f6823c]">
+                          {template.title}
+                        </h4>
+                        <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-[#7a6758]">
+                          {template.summary}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          <span className="bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
+                            {formatDuration(template.durationDays)}
+                          </span>
+                          <span className="bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
+                            {template.cadenceLabel}
+                          </span>
+                          <span className="bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
+                            ~{template.estimatedMinutes} min
+                          </span>
                         </div>
-                        {selectedTemplateId === template.id ? (
-                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#f6823c]" />
-                        ) : null}
                       </div>
-                      <div className="mt-4 flex flex-wrap gap-1.5">
-                        <span className="rounded bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
-                          {formatDuration(template.durationDays)}
-                        </span>
-                        <span className="rounded bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
-                          {template.cadenceLabel}
-                        </span>
-                        <span className="rounded bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
-                          ~{template.estimatedMinutes} min
-                        </span>
-                      </div>
-                    </button>
+                      <button
+                        className="px-3 py-1.5 text-[12px] font-semibold text-[#f6823c] transition-colors hover:bg-white hover:text-[#dd6f2f]"
+                        onClick={() => onStartPlan(template.id, template.title)}
+                        type="button"
+                      >
+                        {selectedTemplateId === template.id
+                          ? "Selected"
+                          : "Select"}
+                      </button>
+                    </div>
                   ))}
                 </div>
               </section>

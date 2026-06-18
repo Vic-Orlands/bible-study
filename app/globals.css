@@ -134,6 +134,15 @@ a {
   transform: translateY(-50%);
 }
 
+.bible-app .reading-plan-page button:hover,
+.bible-app .reading-plan-page button:active {
+  transform: none;
+}
+
+.reading-plan-page .font-serif {
+  font-family: "Fraunces", Georgia, serif;
+}
+
 .bible-app-scroll {
   scrollbar-width: thin;
   scrollbar-color: #e5d6c9 transparent;
