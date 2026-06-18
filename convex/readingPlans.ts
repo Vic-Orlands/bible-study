@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 import { requireViewer, getViewer } from "./ownership";
-import { getReadingPlanTemplate, READING_PLAN_TEMPLATES } from "../lib/reading-plan-templates";
+import { CANON, getReadingPlanTemplate, READING_PLAN_TEMPLATES } from "../lib/reading-plan-templates";
 
 function addDays(date: string, amount: number) {
   const base = new Date(`${date}T00:00:00.000Z`);
@@ -27,6 +27,42 @@ function calculateStreak(entries: { dueDate: string; status: string }[]) {
   }
 
   return streak;
+}
+
+function partitionCustomChapters(
+  chapters: { book: string; chapter: number }[],
+  durationDays: number,
+) {
+  const days = Math.max(1, Math.min(durationDays, chapters.length));
+  const baseSize = Math.floor(chapters.length / days);
+  const remainder = chapters.length % days;
+  const groups: { book: string; chapter: number }[][] = [];
+  let cursor = 0;
+
+  for (let day = 0; day < days; day += 1) {
+    const size = baseSize + (day < remainder ? 1 : 0);
+    groups.push(chapters.slice(cursor, cursor + size));
+    cursor += size;
+  }
+
+  return groups.filter((group) => group.length > 0);
+}
+
+function customPassageLabel(group: { book: string; chapter: number }[]) {
+  const first = group[0];
+  const last = group[group.length - 1];
+  if (!first || !last) return "";
+  if (first.chapter === last.chapter) return `${first.book} ${first.chapter}`;
+  return `${first.book} ${first.chapter}-${last.chapter}`;
+}
+
+function customCadenceLabel(groups: { book: string; chapter: number }[][]) {
+  const sizes = groups.map((group) => group.length);
+  const min = Math.min(...sizes);
+  const max = Math.max(...sizes);
+  if (min === 1 && max === 1) return "1 chapter a day";
+  if (min === max) return `${min} chapters a day`;
+  return `${min}-${max} chapters a day`;
 }
 
 export const templates = query({
@@ -214,6 +250,93 @@ export const create = mutation({
     }
 
     return planId;
+  },
+});
+
+export const createCustom = mutation({
+  args: {
+    identityId: v.optional(v.id("identities")),
+    startDate: v.string(),
+    title: v.string(),
+    book: v.string(),
+    startChapter: v.number(),
+    endChapter: v.number(),
+    durationDays: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await requireViewer(ctx, args.identityId);
+    const book = CANON.find((entry) => entry.book === args.book);
+    if (!book) {
+      throw new Error("Selected book is not available.");
+    }
+
+    const startChapter = Math.max(1, Math.min(book.chapters, Math.floor(args.startChapter)));
+    const endChapter = Math.max(startChapter, Math.min(book.chapters, Math.floor(args.endChapter)));
+    const durationDays = Math.max(1, Math.min(365, Math.floor(args.durationDays)));
+    const title = args.title.trim() || `${book.book} ${startChapter}-${endChapter}`;
+    const chapters = Array.from(
+      { length: endChapter - startChapter + 1 },
+      (_, index) => ({ book: book.book, chapter: startChapter + index }),
+    );
+    const groups = partitionCustomChapters(chapters, durationDays);
+
+    const activePlans = await ctx.db
+      .query("userPlans")
+      .withIndex("by_owner_and_status", (q) =>
+        q.eq("ownerKey", viewer.ownerKey).eq("status", "active"),
+      )
+      .collect();
+
+    for (const activePlan of activePlans) {
+      await ctx.db.patch(activePlan._id, { status: "archived" });
+    }
+
+    const planId = await ctx.db.insert("userPlans", {
+      ownerKey: viewer.ownerKey,
+      identityId: args.identityId ?? undefined,
+      userId: viewer.ownerKey,
+      templateId: `custom:${Date.now()}`,
+      title,
+      description: `${book.book} ${startChapter}-${endChapter} • ${groups.length} daily readings`,
+      status: "active",
+      startDate: args.startDate,
+      durationDays: groups.length,
+      totalEntries: groups.length,
+      completedEntries: 0,
+      currentDayNumber: 1,
+      startedAt: undefined,
+      lastOpenedAt: undefined,
+      lastCompletedAt: undefined,
+    });
+
+    for (const [index, group] of groups.entries()) {
+      const first = group[0];
+      const last = group[group.length - 1];
+      await ctx.db.insert("userPlanEntries", {
+        ownerKey: viewer.ownerKey,
+        identityId: args.identityId ?? undefined,
+        userId: viewer.ownerKey,
+        planId,
+        dayNumber: index + 1,
+        dueDate: addDays(args.startDate, index),
+        passageBook: first.book,
+        passageChapter: first.chapter,
+        passageVerse: 1,
+        passageLabel: customPassageLabel(group),
+        startChapter: first.chapter,
+        endChapter: last.chapter,
+        status: "pending",
+        reflection: undefined,
+        startedAt: undefined,
+        lastOpenedAt: undefined,
+        completedAt: undefined,
+      });
+    }
+
+    return {
+      cadenceLabel: customCadenceLabel(groups),
+      planId,
+    };
   },
 });
 

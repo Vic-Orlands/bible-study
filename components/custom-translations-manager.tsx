@@ -75,7 +75,11 @@ function normalizeForm(form: FormState) {
 
 export function CustomTranslationsManager() {
   const adminState = useQuery(api.auth.getAdminState);
-  const translations = useQuery(api.customTranslations.listAdmin);
+  const canAccessAdmin = adminState?.isAdmin === true;
+  const translations = useQuery(
+    api.customTranslations.listAdmin,
+    canAccessAdmin ? {} : "skip",
+  );
   const createTranslation = useMutation(api.customTranslations.create);
   const updateTranslation = useMutation(api.customTranslations.update);
   const removeTranslation = useMutation(api.customTranslations.remove);
@@ -137,7 +141,7 @@ export function CustomTranslationsManager() {
           </p>
         </div>
         <button
-          className="flex items-center justify-center gap-2 bg-[#3a2218] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1f1209]"
+          className="flex items-center justify-center gap-2 rounded-full bg-[#3a2218] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1f1209]"
           onClick={async () => {
             try {
               await signInWithGoogle("/admin");
@@ -269,7 +273,7 @@ export function CustomTranslationsManager() {
               </p>
             </div>
             <button
-              className="flex h-8 items-center gap-1 border border-[#e5d6c9] px-3 text-[12px] font-semibold text-[#3a2218] hover:border-[#f6823c]"
+              className="flex h-8 items-center gap-1 rounded-full border border-[#e5d6c9] px-3 text-[12px] font-semibold text-[#3a2218] hover:border-[#f6823c]"
               onClick={resetForCreate}
               type="button"
             >
@@ -282,7 +286,7 @@ export function CustomTranslationsManager() {
             {sortedTranslations.map((translation) => (
               <button
                 className={cn(
-                  "flex w-full items-start justify-between border-b border-[#f7efe7] px-4 py-3 text-left hover:bg-[#fbf7f2]",
+                  "flex w-full items-start justify-between rounded-full border-b border-[#f7efe7] px-4 py-3 text-left hover:bg-[#fbf7f2]",
                   selectedId === translation._id && "bg-[#fff8f0]",
                 )}
                 key={translation._id}
@@ -334,7 +338,7 @@ export function CustomTranslationsManager() {
             <div className="flex items-center gap-2">
               {selectedTranslation && (
                 <button
-                  className="flex h-9 items-center gap-2 border border-[#e5d6c9] px-3 text-[12px] font-semibold text-[#3a2218] hover:border-[#f6823c]"
+                  className="flex h-9 items-center gap-2 rounded-full border border-[#e5d6c9] px-3 text-[12px] font-semibold text-[#3a2218] hover:border-[#f6823c]"
                   onClick={async () => {
                     try {
                       await setEnabled({
@@ -359,7 +363,7 @@ export function CustomTranslationsManager() {
               )}
               {selectedTranslation && (
                 <button
-                  className="flex h-9 items-center gap-2 border border-[#f4d4d4] px-3 text-[12px] font-semibold text-[#a24723] hover:bg-[#fff5f5]"
+                  className="flex h-9 items-center gap-2 rounded-full border border-[#f4d4d4] px-3 text-[12px] font-semibold text-[#a24723] hover:bg-[#fff5f5]"
                   onClick={async () => {
                     try {
                       await removeTranslation({ id: selectedTranslation._id });
@@ -446,7 +450,7 @@ export function CustomTranslationsManager() {
                 </div>
 
                 <button
-                  className="flex h-10 w-full items-center justify-center gap-2 bg-[#3a2218] text-[12px] font-semibold text-white hover:bg-[#1f1209] disabled:opacity-60"
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-[#3a2218] text-[12px] font-semibold text-white hover:bg-[#1f1209] disabled:opacity-60"
                   disabled={isValidating}
                   onClick={handleValidate}
                   type="button"
@@ -497,7 +501,7 @@ export function CustomTranslationsManager() {
                 )}
 
                 <button
-                  className="flex h-10 w-full items-center justify-center gap-2 border border-[#e5d6c9] bg-white text-[12px] font-semibold text-[#3a2218] hover:border-[#f6823c] disabled:opacity-60"
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-[#e5d6c9] bg-white text-[12px] font-semibold text-[#3a2218] hover:border-[#f6823c] disabled:opacity-60"
                   disabled={isSaving}
                   onClick={handleSave}
                   type="button"

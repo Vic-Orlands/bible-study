@@ -1,6 +1,6 @@
 import type { PassageSelection } from "./scripture";
 
-type CanonBook = {
+export type CanonBook = {
   book: string;
   chapters: number;
   testament: "Old Testament" | "New Testament";
@@ -35,7 +35,7 @@ export type ReadingPlanTemplate = {
   title: string;
 };
 
-const CANON: CanonBook[] = [
+export const CANON: CanonBook[] = [
   { book: "Genesis", chapters: 50, testament: "Old Testament" },
   { book: "Exodus", chapters: 40, testament: "Old Testament" },
   { book: "Leviticus", chapters: 27, testament: "Old Testament" },

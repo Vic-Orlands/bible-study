@@ -137,29 +137,30 @@ function ProductTopNav({
   }, [profileOpen, onProfileOpen]);
 
   return (
-    <header className="z-10 flex h-14 shrink-0 items-center gap-4 border-b border-[#f1e8df] bg-white px-5">
-      <Link className="flex w-[220px] items-center gap-2" href="/study">
+    <header className="z-10 flex h-14 shrink-0 items-center gap-2 border-b border-[#f1e8df] bg-white px-3 md:gap-4 md:px-5">
+      <Link className="flex shrink-0 items-center gap-2 md:w-[220px]" href="/study">
         <BibleLogo className="h-8 w-8" />
-        <span className="font-serif text-[15px] font-semibold tracking-tight text-[#25140b]">
+        <span className="hidden font-serif text-[15px] font-semibold tracking-tight text-[#25140b] sm:block">
           Bible Study
         </span>
       </Link>
 
-      <nav className="absolute left-1/2 flex -translate-x-1/2 items-center gap-8">
+      <nav className="flex min-w-0 flex-1 items-center justify-center gap-1 md:absolute md:left-1/2 md:flex-none md:-translate-x-1/2 md:gap-8">
         {navItems.map(({ href, icon: Icon, label }) => {
           const active = pathname === href;
 
           return (
             <Link
+              aria-label={label}
               className={cn(
-                "relative flex items-center gap-1.5 px-1 py-4 text-sm font-medium text-[#7a6758] hover:text-[#3a2218]",
+                "relative flex h-14 min-w-10 items-center justify-center gap-1.5 px-2 text-[13px] font-medium text-[#7a6758] hover:text-[#3a2218] md:min-w-0 md:px-1 md:text-sm",
                 active && "font-semibold text-[#25140b]",
               )}
               href={href}
               key={href}
             >
               <Icon className="h-4 w-4" />
-              {label}
+              <span className="hidden lg:inline">{label}</span>
               {active && (
                 <motion.span
                   className="absolute inset-x-0 bottom-0 h-0.5 bg-[#f6823c]"
@@ -175,7 +176,7 @@ function ProductTopNav({
         })}
       </nav>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 md:gap-3">
         <button
           className={cn(
             "cta-button hidden items-center gap-1.5 border border-[#f1e8df] bg-[#fbf7f2] px-3 py-1.5 text-[13px] font-semibold md:flex",
@@ -203,7 +204,7 @@ function ProductTopNav({
         </button>
         <div className="relative" ref={profileMenuRef}>
           <div
-            className="flex items-center gap-2 cursor-pointer hover:bg-[#fbf7f2] p-1 pr-2 rounded-full transition-colors duration-150"
+            className="flex cursor-pointer items-center gap-1 rounded-full p-1 transition-colors duration-150 hover:bg-[#fbf7f2] md:gap-2 md:pr-2"
             onClick={onProfileOpen}
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3a2218] text-[11px] font-semibold text-[#f6823c]">
@@ -219,7 +220,7 @@ function ProductTopNav({
                 </span>
               </div>
             )}
-            <ChevronDown className="h-3 w-3 text-[#7a6758]" />
+            <ChevronDown className="hidden h-3 w-3 text-[#7a6758] sm:block" />
           </div>
 
           <AnimatePresence>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import { useQueries } from "@tanstack/react-query";
@@ -11,12 +11,12 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
-  Clock3,
   Edit3,
   FileText,
-  Flame,
+  Pause,
   Play,
   Sparkles,
+  Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,6 +32,7 @@ import {
 } from "@/lib/scripture";
 import { useStudyStore } from "@/lib/study-store";
 import { cn } from "@/lib/utils";
+import { CANON } from "@/lib/reading-plan-templates";
 
 type ReadingTab = "hub" | "journal" | "focus";
 
@@ -44,6 +45,14 @@ type TemplateCard = {
   id: string;
   scopeLabel: string;
   summary: string;
+  title: string;
+};
+
+type CustomPlanDraft = {
+  book: string;
+  durationDays: number;
+  endChapter: number;
+  startChapter: number;
   title: string;
 };
 
@@ -99,6 +108,37 @@ type ReadingPlanCurrent = {
   journalEntries: ReadingPlanEntry[];
 };
 
+const dailyInsights = [
+  {
+    text: "Like cold water to a weary soul is good news from a distant land.",
+    reference: "Proverbs 25:25",
+  },
+  {
+    text: "Your word is a lamp to my feet and a light to my path.",
+    reference: "Psalm 119:105",
+  },
+  {
+    text: "The unfolding of your words gives light; it imparts understanding to the simple.",
+    reference: "Psalm 119:130",
+  },
+  {
+    text: "Incline my heart to your testimonies, and not to selfish gain.",
+    reference: "Psalm 119:36",
+  },
+  {
+    text: "Teach me your way, O Lord, that I may walk in your truth.",
+    reference: "Psalm 86:11",
+  },
+  {
+    text: "The entrance of wisdom begins with attention.",
+    reference: "Proverbs 4:20",
+  },
+  {
+    text: "Blessed is the one whose delight is in the law of the Lord.",
+    reference: "Psalm 1:1-2",
+  },
+];
+
 function todayString() {
   const today = new Date();
   const year = today.getFullYear();
@@ -139,6 +179,14 @@ function relativeStartLabel(currentPlan: ReadingPlanCurrent) {
   return "Plan Complete";
 }
 
+function dailyInsight() {
+  const date = new Date();
+  const dayKey = Math.floor(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000,
+  );
+  return dailyInsights[dayKey % dailyInsights.length];
+}
+
 export default function ReadingPlanPage() {
   const auth = useConvexAuth();
   const authIdentity = useQuery(api.auth.getUserIdentity);
@@ -147,8 +195,11 @@ export default function ReadingPlanPage() {
   const identityId = useStudyStore((s) => s.identityId);
   const [storeReady, setStoreReady] = useState(false);
   const [activeTab, setActiveTab] = useState<ReadingTab>("hub");
-  const [selectedEntryId, setSelectedEntryId] = useState<Id<"userPlanEntries"> | null>(null);
+  const [selectedEntryId, setSelectedEntryId] =
+    useState<Id<"userPlanEntries"> | null>(null);
   const [readerOpenMobile, setReaderOpenMobile] = useState(false);
+  const [plansSheetOpen, setPlansSheetOpen] = useState(false);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [reflectionDraft, setReflectionDraft] = useState("");
   const [readerVersionId, setReaderVersionId] = useState("");
 
@@ -157,6 +208,7 @@ export default function ReadingPlanPage() {
     ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
   }) as ReadingPlanCurrent | null | undefined;
   const createPlan = useMutation(api.readingPlans.create);
+  const createCustomPlan = useMutation(api.readingPlans.createCustom);
   const openPlanEntry = useMutation(api.readingPlans.openEntry);
   const toggleEntry = useMutation(api.readingPlans.toggleEntry);
   const saveReflection = useMutation(api.readingPlans.saveReflection);
@@ -178,7 +230,10 @@ export default function ReadingPlanPage() {
           });
           setIdentity(synced.identityId, synced.displayName, false);
         } catch (error) {
-          console.error("Failed to sync signed-in identity in reading plan:", error);
+          console.error(
+            "Failed to sync signed-in identity in reading plan:",
+            error,
+          );
           setIdentity(
             authIdentity.identityId,
             authIdentity.fullName ?? authIdentity.email ?? "Anonymous",
@@ -201,10 +256,16 @@ export default function ReadingPlanPage() {
           const data = await res.json();
           setIdentity(data.identityId, data.displayName, data.isAnonymous);
         } else {
-          console.error("Anonymous identity request failed in reading plan:", res.status);
+          console.error(
+            "Anonymous identity request failed in reading plan:",
+            res.status,
+          );
         }
       } catch (error) {
-        console.error("Failed to get anonymous identity in reading plan:", error);
+        console.error(
+          "Failed to get anonymous identity in reading plan:",
+          error,
+        );
       } finally {
         if (!cancelled) setStoreReady(true);
       }
@@ -227,7 +288,10 @@ export default function ReadingPlanPage() {
     if (!bibleVersions.length) return;
     const preferred = preferredVisibleVersions([], bibleVersions)[0];
     if (!preferred) return;
-    if (!readerVersionId || !bibleVersions.find((version) => version.id === readerVersionId)) {
+    if (
+      !readerVersionId ||
+      !bibleVersions.find((version) => version.id === readerVersionId)
+    ) {
       setReaderVersionId(preferred);
     }
   }, [bibleVersions, readerVersionId]);
@@ -261,11 +325,6 @@ export default function ReadingPlanPage() {
     return Array.from(groups.entries());
   }, [templates]);
 
-  const featuredTemplates = useMemo(
-    () => (templates as TemplateCard[]).filter((template) => template.featured).slice(0, 4),
-    [templates],
-  );
-
   const selectedEntry =
     currentPlan?.allEntries.find((entry) => entry._id === selectedEntryId) ??
     currentPlan?.currentEntry ??
@@ -284,10 +343,31 @@ export default function ReadingPlanPage() {
         templateId,
       });
       setActiveTab("hub");
+      setPlansSheetOpen(false);
       toast.success(`Started ${title}`);
     } catch (error) {
       console.error("Failed to create reading plan:", error);
       toast.error("Failed to create reading plan.");
+    }
+  };
+
+  const startCustomPlan = async (draft: CustomPlanDraft) => {
+    try {
+      await createCustomPlan({
+        ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
+        startDate: todayString(),
+        title: draft.title,
+        book: draft.book,
+        startChapter: draft.startChapter,
+        endChapter: draft.endChapter,
+        durationDays: draft.durationDays,
+      });
+      setActiveTab("hub");
+      setPlansSheetOpen(false);
+      toast.success(`Started ${draft.title}`);
+    } catch (error) {
+      console.error("Failed to create custom reading plan:", error);
+      toast.error("Failed to create custom reading plan.");
     }
   };
 
@@ -337,6 +417,7 @@ export default function ReadingPlanPage() {
       await archiveCurrent({
         ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
       });
+      setArchiveConfirmOpen(false);
       toast.success("Current plan archived.");
     } catch (error) {
       console.error("Failed to archive current plan:", error);
@@ -347,7 +428,7 @@ export default function ReadingPlanPage() {
   if (!storeReady) {
     return (
       <ProductShell>
-        <div className="flex flex-1 items-center justify-center bg-[#FAF9F6] text-[13px] text-[#7a6758]">
+        <div className="flex flex-1 items-center justify-center bg-white text-[13px] text-[#7a6758]">
           Loading plans...
         </div>
       </ProductShell>
@@ -356,30 +437,24 @@ export default function ReadingPlanPage() {
 
   return (
     <ProductShell>
-      <div className="flex min-h-0 flex-1 overflow-hidden bg-[#FAF9F6]">
+      <div className="reading-plan-page flex min-h-0 flex-1 overflow-hidden bg-white">
         <ReadingPlanRail
           currentPlan={currentPlan}
-          featuredTemplates={featuredTemplates}
-          groupedTemplates={groupedTemplates}
-          onArchiveCurrent={handleArchiveCurrent}
-          onStartPlan={startPlan}
-          selectedTemplateId={currentPlan?.plan.templateId ?? null}
+          onArchiveCurrent={() => setArchiveConfirmOpen(true)}
+          onOpenPlans={() => setPlansSheetOpen(true)}
         />
 
-        <main className="bible-app-scroll min-w-0 flex-1 overflow-y-auto bg-[#FAF9F6] px-4 py-8 md:px-8 xl:px-12">
+        <main className="bible-app-scroll min-w-0 flex-1 overflow-y-auto bg-white px-4 py-5 md:px-7 xl:px-10">
           <PageHeader
             activeTab={activeTab}
             currentPlan={currentPlan}
             journalCount={currentPlan?.journalEntries.length ?? 0}
             onChangeTab={setActiveTab}
+            onOpenPlans={() => setPlansSheetOpen(true)}
           />
 
           {!currentPlan ? (
-            <BrowseState
-              featuredTemplates={featuredTemplates}
-              groupedTemplates={groupedTemplates}
-              onStartPlan={startPlan}
-            />
+            <BrowseState onOpenPlans={() => setPlansSheetOpen(true)} />
           ) : activeTab === "hub" ? (
             <HubTab
               currentPlan={currentPlan}
@@ -388,19 +463,34 @@ export default function ReadingPlanPage() {
               selectedEntryId={selectedEntry?._id ?? null}
             />
           ) : activeTab === "journal" ? (
-            <JournalTab
-              currentPlan={currentPlan}
-              onOpenReading={openReading}
-            />
+            <JournalTab currentPlan={currentPlan} onOpenReading={openReading} />
           ) : (
-            <FocusTab
-              currentPlan={currentPlan}
-              onOpenReading={openReading}
-            />
+            <FocusTab currentPlan={currentPlan} onOpenReading={openReading} />
           )}
         </main>
-
       </div>
+
+      <AnimatePresence>
+        {plansSheetOpen ? (
+          <PlansSheet
+            groupedTemplates={groupedTemplates}
+            onClose={() => setPlansSheetOpen(false)}
+            onCreateCustomPlan={startCustomPlan}
+            onStartPlan={startPlan}
+            selectedTemplateId={currentPlan?.plan.templateId ?? null}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {archiveConfirmOpen ? (
+          <ArchiveConfirmDialog
+            currentPlan={currentPlan}
+            onCancel={() => setArchiveConfirmOpen(false)}
+            onConfirm={handleArchiveCurrent}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {readerOpenMobile && currentPlan ? (
@@ -412,13 +502,13 @@ export default function ReadingPlanPage() {
           >
             <button
               aria-label="Close reader"
-              className="absolute inset-0"
+              className="absolute inset-0 rounded-full"
               onClick={() => setReaderOpenMobile(false)}
               type="button"
             />
             <motion.div
               animate={{ x: 0 }}
-              className="relative z-20 flex h-full w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl md:flex-row"
+              className="reading-plan-page relative z-20 flex h-full w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl md:flex-row"
               exit={{ x: "100%" }}
               initial={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 200 }}
@@ -448,56 +538,63 @@ function PageHeader({
   currentPlan,
   journalCount,
   onChangeTab,
+  onOpenPlans,
 }: {
   activeTab: ReadingTab;
   currentPlan: ReadingPlanCurrent | null | undefined;
   journalCount: number;
   onChangeTab: (tab: ReadingTab) => void;
+  onOpenPlans: () => void;
 }) {
   return (
-    <div className={cn(
-      "mb-8 flex flex-col gap-6 border-b border-[#EDECE4]/50 pb-8 mx-auto w-full",
-      currentPlan ? "max-w-3xl" : "max-w-5xl"
-    )}>
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+    <div
+      className={cn(
+        "mx-auto mb-5 flex w-full flex-col gap-4 border-b border-[#f1e8df] pb-4",
+        currentPlan ? "max-w-3xl" : "max-w-5xl",
+      )}
+    >
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-2">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-[#EA7C5A]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f6823c]">
             Reading Workspace
           </p>
-          <h1 className="font-serif text-3xl font-bold tracking-tight text-neutral-900 md:text-4xl lg:text-5xl text-wrap-balance leading-none">
+          <h1 className="font-serif text-[22px] font-semibold leading-tight text-[#25140b] md:text-[24px]">
             {currentPlan ? currentPlan.plan.title : "Reading Plans"}
           </h1>
-          <p className="max-w-[700px] text-xs leading-relaxed text-neutral-500 md:text-sm">
+          <p className="max-w-[660px] text-[13px] leading-relaxed text-[#7a6758]">
             {currentPlan
-              ? currentPlan.templateMeta?.summary ?? currentPlan.plan.description
+              ? (currentPlan.templateMeta?.summary ??
+                currentPlan.plan.description)
               : "Choose a curated path, read inside this page, and keep your progress, reflections, and current passage together."}
           </p>
         </div>
 
-        {currentPlan?.templateMeta ? (
-          <div className="flex items-center gap-6 rounded-2xl border border-[#EDECE4]/60 bg-[#FAF9F5]/50 px-5 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)] shrink-0">
-            <div className="text-xs">
-              <span className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400">
-                Category
-              </span>
-              <span className="mt-0.5 block font-serif font-bold text-neutral-800">
-                {currentPlan.templateMeta.category}
-              </span>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {currentPlan?.templateMeta ? (
+            <div className="flex items-center gap-5 rounded-xl border border-[#f1e8df] bg-white px-2 py-1.5">
+              <div className="text-xs">
+                <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                  Category
+                </span>
+                <span className="mt-0.5 block text-[12px] font-semibold text-[#25140b]">
+                  {currentPlan.templateMeta.category}
+                </span>
+              </div>
+              <div className="h-6 w-px bg-[#f1e8df]" />
+              <div className="text-xs">
+                <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                  Pace
+                </span>
+                <span className="mt-0.5 block text-[12px] font-semibold text-[#25140b]">
+                  {currentPlan.templateMeta.cadenceLabel}
+                </span>
+              </div>
             </div>
-            <div className="h-6 w-px bg-[#EDECE4]" />
-            <div className="text-xs">
-              <span className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400">
-                Pace
-              </span>
-              <span className="mt-0.5 block font-serif font-bold text-neutral-800">
-                {currentPlan.templateMeta.cadenceLabel}
-              </span>
-            </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
 
-      <div className="inline-flex w-fit items-center gap-1 rounded-full border border-[#EDECE4]/60 bg-[#FAF9F5] p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]">
+      <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-1 rounded-full border border-[#f1e8df] bg-white p-1">
         {[
           { id: "hub", label: "Reading Hub" },
           { id: "journal", label: "My Journal", count: journalCount },
@@ -505,18 +602,20 @@ function PageHeader({
         ].map((tab) => (
           <button
             className={cn(
-              "relative rounded-full px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
+              "relative rounded-full px-2 py-1.5 text-[11px] font-semibold transition-colors",
               activeTab === tab.id
-                ? "bg-[#3a2218] text-[#FDFCF9] shadow-[0_2px_8px_rgba(58,34,24,0.15)]"
-                : "text-neutral-500 hover:text-neutral-900",
+                ? "bg-[#3a2218] text-white"
+                : "text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#25140b]",
             )}
             key={tab.id}
             onClick={() => onChangeTab(tab.id as ReadingTab)}
             type="button"
           >
             {tab.label}
-            {"count" in tab && typeof tab.count === "number" && tab.count > 0 ? (
-              <span className="absolute -right-0.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-white bg-[#EA7C5A] px-1 font-mono text-[8px] font-bold text-white tabular-nums">
+            {"count" in tab &&
+            typeof tab.count === "number" &&
+            tab.count > 0 ? (
+              <span className="absolute -right-0.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-white bg-[#f6823c] px-1 text-[8px] font-semibold text-white tabular-nums">
                 {tab.count}
               </span>
             ) : null}
@@ -529,155 +628,125 @@ function PageHeader({
 
 function ReadingPlanRail({
   currentPlan,
-  featuredTemplates,
-  groupedTemplates,
   onArchiveCurrent,
-  onStartPlan,
-  selectedTemplateId,
+  onOpenPlans,
 }: {
   currentPlan: ReadingPlanCurrent | null | undefined;
-  featuredTemplates: TemplateCard[];
-  groupedTemplates: [string, TemplateCard[]][];
-  onArchiveCurrent: () => Promise<void>;
-  onStartPlan: (templateId: string, title: string) => Promise<void>;
-  selectedTemplateId: string | null;
+  onArchiveCurrent: () => void;
+  onOpenPlans: () => void;
 }) {
+  const insight = dailyInsight();
+
   return (
-    <aside className="hidden min-h-0 w-[300px] shrink-0 overflow-y-auto border-r border-[#EDECE4]/80 bg-[#FDFCF9] lg:block">
-      <div className="bible-app-scroll h-full flex flex-col justify-between p-6">
-        <div className="space-y-8">
+    <aside className="hidden min-h-0 w-[300px] shrink-0 overflow-y-auto border-r border-[#f1e8df] bg-white lg:block">
+      <div className="bible-app-scroll flex h-full flex-col justify-between p-5">
+        <div className="space-y-5">
           {currentPlan ? (
             <section>
               <div className="mb-4 flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                  Active Itinerary
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
+                  Active Plan
                 </span>
-                <BookOpen className="h-4 w-4 text-neutral-400" />
+                <BookOpen className="h-4 w-4 text-[#9b8878]" />
               </div>
-              <div className="relative overflow-hidden rounded-2xl border border-[#EDECE4] bg-[#FAF9F5] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+              <div className="relative overflow-hidden rounded-xl border border-[#f1e8df] bg-[#fbf7f2] p-4">
                 <div>
-                  <span className="inline-block rounded-full bg-[#EFECE6] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-neutral-500">
-                    Active Plan
+                  <span className="inline-block rounded-full bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
+                    In Progress
                   </span>
-                  <h2 className="mt-3 font-serif text-lg font-bold leading-tight text-neutral-900">
+                  <h2 className="mt-3 font-serif text-[17px] font-semibold leading-snug text-[#25140b]">
                     {currentPlan.plan.title}
                   </h2>
-                  <p className="mt-1 text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
+                  <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#9b8878]">
                     {currentPlan.templateMeta?.category ?? "Plan"}
                   </p>
-                  
-                  <div className="mt-5 space-y-2">
+
+                  <div className="mt-4 space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-neutral-400">Completion</span>
-                      <span className="font-semibold text-neutral-800">{currentPlan.progressPercent}%</span>
+                      <span className="text-[#7a6758]">Completion</span>
+                      <span className="font-semibold text-[#25140b]">
+                        {currentPlan.progressPercent}%
+                      </span>
                     </div>
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-[#EFECE6]">
+                    <div className="h-1 w-full overflow-hidden rounded-full bg-[#f1e8df]">
                       <div
-                        className="h-full rounded-full bg-[#EA7C5A] transition-all duration-500"
+                        className="h-full rounded-full bg-[#f6823c] transition-all duration-500"
                         style={{ width: `${currentPlan.progressPercent}%` }}
                       />
                     </div>
                   </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#f1e8df] pt-4">
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                        Streak
+                      </p>
+                      <p className="mt-1 text-[13px] font-semibold text-[#25140b] tabular-nums">
+                        {currentPlan.streak} days
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                        Day
+                      </p>
+                      <p className="mt-1 text-[13px] font-semibold text-[#25140b] tabular-nums">
+                        {currentPlan.plan.currentDayNumber}/
+                        {currentPlan.plan.totalEntries}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    className="mt-4 w-full rounded-full border border-[#e5d6c9] bg-white px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7a6758] transition-colors hover:border-[#f6823c] hover:text-[#25140b]"
+                    onClick={onArchiveCurrent}
+                    type="button"
+                  >
+                    Archive Plan
+                  </button>
                 </div>
               </div>
-              <button
-                className="mt-3 w-full rounded-xl border border-transparent bg-transparent py-2 text-[11px] font-bold uppercase tracking-wider text-neutral-400 transition-colors hover:text-neutral-600"
-                onClick={onArchiveCurrent}
-                type="button"
-              >
-                Archive Current Plan
-              </button>
             </section>
           ) : (
             <section>
               <div className="mb-4 flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                  Featured Plans
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
+                  Active Plan
                 </span>
-                <BookOpen className="h-4 w-4 text-neutral-400" />
+                <BookOpen className="h-4 w-4 text-[#9b8878]" />
               </div>
-              <div className="mt-3 space-y-2">
-                {featuredTemplates.map((template) => (
-                  <button
-                    className="group w-full rounded-xl border border-transparent bg-[#FAF9F5]/40 p-3.5 text-left transition-all hover:bg-[#FAF9F5] hover:shadow-sm"
-                    key={template.id}
-                    onClick={() => onStartPlan(template.id, template.title)}
-                    type="button"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="block font-serif text-[13px] font-bold text-neutral-800 group-hover:text-neutral-900 transition-colors">
-                        {template.title}
-                      </span>
-                      <span className="shrink-0 rounded bg-[#EFECE6]/60 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-500">
-                        {formatDuration(template.durationDays)}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between text-[10px] text-neutral-400">
-                      <span>{template.category}</span>
-                      <span>~{template.estimatedMinutes}m daily</span>
-                    </div>
-                  </button>
-                ))}
+              <div className="rounded-xl border border-[#f1e8df] bg-[#fbf7f2] p-4">
+                <span className="inline-block rounded-full bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
+                  No Plan Yet
+                </span>
+                <h2 className="mt-3 font-serif text-[17px] font-semibold leading-snug text-[#25140b]">
+                  Choose a path to begin
+                </h2>
+                <p className="mt-2 text-[12px] leading-relaxed text-[#7a6758]">
+                  Open the plan library and start with a guided reading rhythm.
+                </p>
               </div>
             </section>
           )}
 
-          <section className="space-y-6">
-            <span className="block border-b border-[#EDECE4]/60 pb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-              Itinerary Options
-            </span>
-            {groupedTemplates.map(([category, items]) => (
-              <div key={category}>
-                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                  {category}
-                </h3>
-                <div className="space-y-2">
-                  {items.map((template) => (
-                    <button
-                      className={cn(
-                        "group w-full rounded-xl border p-3.5 text-left transition-all",
-                        selectedTemplateId === template.id
-                          ? "border-[#E5D6C9] bg-white shadow-sm text-neutral-900"
-                          : "border-transparent bg-[#FAF9F5]/30 text-neutral-600 hover:bg-[#FAF9F5] hover:shadow-sm",
-                      )}
-                      key={template.id}
-                      onClick={() => onStartPlan(template.id, template.title)}
-                      type="button"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={cn(
-                          "truncate font-serif text-sm tracking-tight text-neutral-800 group-hover:text-neutral-900 transition-colors",
-                          selectedTemplateId === template.id && "font-bold"
-                        )}>
-                          {template.title}
-                        </span>
-                        {selectedTemplateId === template.id ? (
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#EA7C5A]" />
-                        ) : null}
-                      </div>
-                      <div className="mt-1 flex items-center justify-between text-[10px] text-neutral-400">
-                        <span>{template.category}</span>
-                        <span className="font-mono text-[9px] uppercase">
-                          {formatDuration(template.durationDays)}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </section>
+          <button
+            className="flex w-full items-center justify-between rounded-full border border-[#e5d6c9] bg-white px-2 py-1.5 text-left text-[12px] font-semibold text-[#25140b] transition-colors hover:border-[#f6823c] hover:bg-[#fbf7f2]"
+            onClick={onOpenPlans}
+            type="button"
+          >
+            <span>See all plans</span>
+            <ArrowRight className="h-4 w-4 text-[#f6823c]" />
+          </button>
         </div>
 
-        <div className="mt-8 border-l-2 border-[#E5D6C9] pl-4 py-1 text-neutral-700">
-          <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+        <div className="mt-8 border-l-2 border-[#e5d6c9] py-1 pl-4 text-[#7a6758]">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
             Today&apos;s Insight
           </span>
-          <p className="mt-1.5 font-serif text-[12px] italic leading-relaxed text-neutral-600">
-            "Like cold water to a weary soul is good news from a distant land."
+          <p className="mt-1.5 font-serif text-[12px] italic leading-relaxed text-[#7a6758]">
+            &quot;{insight.text}&quot;
           </p>
-          <span className="mt-1.5 block font-mono text-[9px] text-neutral-400">
-            — Proverbs 25:25
+          <span className="mt-1.5 block text-[9px] text-[#9b8878]">
+            {insight.reference}
           </span>
         </div>
       </div>
@@ -685,109 +754,389 @@ function ReadingPlanRail({
   );
 }
 
-function BrowseState({
-  featuredTemplates,
-  groupedTemplates,
-  onStartPlan,
-}: {
-  featuredTemplates: TemplateCard[];
-  groupedTemplates: [string, TemplateCard[]][];
-  onStartPlan: (templateId: string, title: string) => Promise<void>;
-}) {
+function BrowseState({ onOpenPlans }: { onOpenPlans: () => void }) {
   return (
-    <div className="space-y-12 max-w-5xl mx-auto w-full">
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="relative overflow-hidden rounded-3xl border border-[#EDECE4]/60 bg-gradient-to-br from-[#FDFCF9] via-[#FAF9F5] to-[#F3EFE0]/40 p-8 text-neutral-900 shadow-sm md:p-10">
-          <div className="relative z-10 max-w-[700px]">
-            <span className="inline-block rounded-full bg-[#EFECE6] px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-neutral-500">
-              Start a Curated Plan
-            </span>
-            <h2 className="mt-5 font-serif text-3xl font-bold leading-tight text-neutral-900 md:text-4xl lg:text-5xl text-wrap-balance">
-              Keep scripture, structure, and reflection in one calm reading flow.
-            </h2>
-            <p className="mt-4 text-sm leading-relaxed text-neutral-500 md:text-base">
-              Pick a plan, read at your own pace inside this workspace, and keep your journal notes and focus tools aligned with the day&apos;s passage.
-            </p>
-          </div>
-          <div className="absolute -bottom-16 -right-16 h-48 w-48 rounded-full bg-[#EFECE6]/40 blur-3xl" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-          {featuredTemplates.slice(0, 2).map((template) => (
+    <div className="mx-auto flex min-h-[440px] w-full max-w-3xl items-center">
+      <section className="w-full rounded-2xl border border-[#f1e8df] bg-white p-6 md:p-8">
+        <span className="inline-block rounded-full bg-[#fbf7f2] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
+          No active plan
+        </span>
+        <h2 className="mt-4 max-w-xl font-serif text-[26px] font-semibold leading-tight text-[#25140b] md:text-[30px]">
+          Start with one reading path and keep the workspace quiet.
+        </h2>
+        <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-[#7a6758]">
+          The plan library now lives in a side sheet so this page stays focused
+          on your current reading rhythm.
+        </p>
+        <button
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#f6823c] px-2 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
+          onClick={onOpenPlans}
+          type="button"
+        >
+          See all plans
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function PlansSheet({
+  groupedTemplates,
+  onClose,
+  onCreateCustomPlan,
+  onStartPlan,
+  selectedTemplateId,
+}: {
+  groupedTemplates: [string, TemplateCard[]][];
+  onClose: () => void;
+  onCreateCustomPlan: (draft: CustomPlanDraft) => Promise<void>;
+  onStartPlan: (templateId: string, title: string) => Promise<void>;
+  selectedTemplateId: string | null;
+}) {
+  const defaultBook = CANON.find((book) => book.book === "John") ?? CANON[0];
+  const [curatorOpen, setCuratorOpen] = useState(false);
+  const [customDraft, setCustomDraft] = useState<CustomPlanDraft>({
+    book: defaultBook.book,
+    durationDays: Math.min(defaultBook.chapters, 21),
+    endChapter: defaultBook.chapters,
+    startChapter: 1,
+    title: `${defaultBook.book} Reading Path`,
+  });
+  const selectedBook =
+    CANON.find((book) => book.book === customDraft.book) ?? defaultBook;
+
+  const updateCustomBook = (bookName: string) => {
+    const nextBook =
+      CANON.find((book) => book.book === bookName) ?? defaultBook;
+    setCustomDraft({
+      book: nextBook.book,
+      durationDays: Math.min(nextBook.chapters, customDraft.durationDays),
+      endChapter: nextBook.chapters,
+      startChapter: 1,
+      title: `${nextBook.book} Reading Path`,
+    });
+  };
+
+  const updateCustomRange = (
+    key: "startChapter" | "endChapter",
+    value: number,
+  ) => {
+    const nextValue = Math.max(1, Math.min(selectedBook.chapters, value));
+    setCustomDraft((draft) => {
+      if (key === "startChapter") {
+        const startChapter = nextValue;
+        const endChapter = Math.max(startChapter, draft.endChapter);
+        return {
+          ...draft,
+          startChapter,
+          endChapter,
+          durationDays: Math.min(
+            draft.durationDays,
+            endChapter - startChapter + 1,
+          ),
+        };
+      }
+      const endChapter = Math.max(draft.startChapter, nextValue);
+      return {
+        ...draft,
+        endChapter,
+        durationDays: Math.min(
+          draft.durationDays,
+          endChapter - draft.startChapter + 1,
+        ),
+      };
+    });
+  };
+
+  const chapterCount = customDraft.endChapter - customDraft.startChapter + 1;
+
+  return (
+    <motion.div
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 flex justify-end bg-black/35 backdrop-blur-[2px]"
+      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }}
+    >
+      <button
+        aria-label="Close plans"
+        className="absolute inset-0 rounded-full"
+        onClick={onClose}
+        type="button"
+      />
+      <motion.aside
+        animate={{ x: 0 }}
+        className="reading-plan-page relative z-10 flex h-full w-full max-w-[520px] flex-col border-l border-[#e5d6c9] bg-white shadow-2xl"
+        exit={{ x: "100%" }}
+        initial={{ x: "100%" }}
+        transition={{ type: "spring", damping: 30, stiffness: 240 }}
+      >
+        <div className="border-b border-[#f1e8df] px-5 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f6823c]">
+                Plan Library
+              </p>
+              <h2 className="mt-1 font-serif text-[24px] font-semibold leading-tight text-[#25140b]">
+                Choose your next path
+              </h2>
+              <p className="mt-2 text-[12px] leading-relaxed text-[#7a6758]">
+                Browse guided plans without crowding the reading workspace.
+              </p>
+            </div>
             <button
-              className="group rounded-2xl border border-[#EDECE4]/50 bg-white p-6 text-left shadow-[0_4px_20px_rgba(0,0,0,0.015)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
-              key={template.id}
-              onClick={() => onStartPlan(template.id, template.title)}
+              className="rounded-full border border-[#f1e8df] px-2 py-1.5 text-[11px] font-semibold text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#25140b]"
+              onClick={onClose}
               type="button"
             >
-              <p className="text-[9px] font-bold uppercase tracking-widest text-[#EA7C5A]">
-                Featured
-              </p>
-              <h3 className="mt-3 font-serif text-xl font-bold leading-snug text-neutral-900 group-hover:text-[#EA7C5A] transition-colors">
-                {template.title}
-              </h3>
-              <p className="mt-2 text-xs leading-relaxed text-neutral-500 line-clamp-2">
-                {template.summary}
-              </p>
-              <p className="mt-4 text-[9px] font-bold uppercase tracking-widest text-neutral-400">
-                {formatDuration(template.durationDays)} · {template.cadenceLabel}
-              </p>
+              Close
             </button>
-          ))}
+          </div>
+          <button
+            className="mt-4 flex w-full items-center justify-between rounded-full border border-[#e5d6c9] bg-[#fbf7f2] px-2 py-1.5 text-left text-[12px] font-semibold text-[#25140b] transition-colors hover:border-[#f6823c]"
+            onClick={() => setCuratorOpen((open) => !open)}
+            type="button"
+          >
+            <span>Curate your own plan</span>
+            <ArrowRight className="h-4 w-4 text-[#f6823c]" />
+          </button>
         </div>
-      </section>
 
-      <div className="space-y-10">
-        {groupedTemplates.map(([category, items]) => (
-          <section key={category} className="space-y-4">
-            <div className="flex items-baseline justify-between border-b border-[#EDECE4]/50 pb-2">
-              <h3 className="font-serif text-xl font-bold text-neutral-900">
-                {category}
-              </h3>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                {items.length} plans
-              </span>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-              {items.map((template) => (
+        <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <div className="space-y-7">
+            {curatorOpen ? (
+              <form
+                className="rounded-2xl border border-[#e5d6c9] bg-[#fbf7f2] p-4"
+                onSubmit={async (event) => {
+                  event.preventDefault();
+                  await onCreateCustomPlan(customDraft);
+                }}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f6823c]">
+                  Custom Plan
+                </p>
+                <h3 className="mt-1 font-serif text-[18px] font-semibold text-[#25140b]">
+                  Build a reading path
+                </h3>
+                <div className="mt-4 space-y-3">
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                      Plan title
+                    </span>
+                    <input
+                      className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                      onChange={(event) =>
+                        setCustomDraft((draft) => ({
+                          ...draft,
+                          title: event.target.value,
+                        }))
+                      }
+                      value={customDraft.title}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                      Book
+                    </span>
+                    <select
+                      className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                      onChange={(event) => updateCustomBook(event.target.value)}
+                      value={customDraft.book}
+                    >
+                      {CANON.map((book) => (
+                        <option key={book.book} value={book.book}>
+                          {book.book}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                        Start
+                      </span>
+                      <input
+                        className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                        max={selectedBook.chapters}
+                        min={1}
+                        onChange={(event) =>
+                          updateCustomRange(
+                            "startChapter",
+                            Number(event.target.value),
+                          )
+                        }
+                        type="number"
+                        value={customDraft.startChapter}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                        End
+                      </span>
+                      <input
+                        className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                        max={selectedBook.chapters}
+                        min={customDraft.startChapter}
+                        onChange={(event) =>
+                          updateCustomRange(
+                            "endChapter",
+                            Number(event.target.value),
+                          )
+                        }
+                        type="number"
+                        value={customDraft.endChapter}
+                      />
+                    </label>
+                  </div>
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                      Days
+                    </span>
+                    <input
+                      className="mt-1 h-9 w-full rounded-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none focus:border-[#f6823c]"
+                      max={chapterCount}
+                      min={1}
+                      onChange={(event) =>
+                        setCustomDraft((draft) => ({
+                          ...draft,
+                          durationDays: Math.max(
+                            1,
+                            Math.min(chapterCount, Number(event.target.value)),
+                          ),
+                        }))
+                      }
+                      type="number"
+                      value={customDraft.durationDays}
+                    />
+                  </label>
+                </div>
+                <div className="mt-4 rounded-2xl bg-white px-2 py-1.5 text-[12px] text-[#7a6758]">
+                  {customDraft.book} {customDraft.startChapter}
+                  {customDraft.startChapter === customDraft.endChapter
+                    ? ""
+                    : `-${customDraft.endChapter}`}{" "}
+                  across {customDraft.durationDays} day
+                  {customDraft.durationDays === 1 ? "" : "s"}.
+                </div>
                 <button
-                  className="group flex flex-col justify-between rounded-2xl border border-[#EDECE4]/50 bg-[#FAF9F5]/20 p-5 text-left transition-all duration-300 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                  key={template.id}
-                  onClick={() => onStartPlan(template.id, template.title)}
-                  type="button"
+                  className="mt-4 w-full rounded-full bg-[#f6823c] px-2 py-1.5 text-[12px] font-semibold text-white hover:bg-[#dd6f2f]"
+                  type="submit"
                 >
-                  <div>
-                    <div className="flex items-start justify-between gap-3">
-                      <h4 className="font-serif text-lg font-bold leading-tight text-neutral-900 group-hover:text-[#EA7C5A] transition-colors">
-                        {template.title}
-                      </h4>
-                      {template.featured && (
-                        <span className="shrink-0 rounded-full bg-[#FAF9F5] border border-[#EBE6D7] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#EA7C5A]">
-                          Featured
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-xs leading-relaxed text-neutral-500 line-clamp-3">
-                      {template.summary}
-                    </p>
-                  </div>
-                  <div className="mt-5 flex flex-wrap gap-1.5">
-                    <span className="rounded bg-[#EFECE6]/50 px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-600">
-                      {formatDuration(template.durationDays)}
-                    </span>
-                    <span className="rounded bg-[#EFECE6]/50 px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-600">
-                      {template.cadenceLabel}
-                    </span>
-                    <span className="rounded bg-[#EFECE6]/50 px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-600">
-                      ~{template.estimatedMinutes} min
-                    </span>
-                  </div>
+                  Start Custom Plan
                 </button>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>
+              </form>
+            ) : null}
+
+            {groupedTemplates.map(([category, items]) => (
+              <section className="space-y-3" key={category}>
+                <div className="flex items-baseline justify-between border-b border-[#f1e8df] pb-2">
+                  <h3 className="font-serif text-[17px] font-semibold text-[#25140b]">
+                    {category}
+                  </h3>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                    {items.length} plans
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {items.map((template) => (
+                    <button
+                      className={cn(
+                        "group w-full rounded-full border p-4 text-left transition-colors",
+                        selectedTemplateId === template.id
+                          ? "border-[#e5d6c9] bg-[#fbf7f2]"
+                          : "border-[#f1e8df] bg-white hover:bg-[#fbf7f2]",
+                      )}
+                      key={template.id}
+                      onClick={() => onStartPlan(template.id, template.title)}
+                      type="button"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h4 className="font-serif text-[16px] font-semibold leading-snug text-[#25140b] group-hover:text-[#f6823c]">
+                            {template.title}
+                          </h4>
+                          <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-[#7a6758]">
+                            {template.summary}
+                          </p>
+                        </div>
+                        {selectedTemplateId === template.id ? (
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#f6823c]" />
+                        ) : null}
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-1.5">
+                        <span className="rounded bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
+                          {formatDuration(template.durationDays)}
+                        </span>
+                        <span className="rounded bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
+                          {template.cadenceLabel}
+                        </span>
+                        <span className="rounded bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
+                          ~{template.estimatedMinutes} min
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      </motion.aside>
+    </motion.div>
+  );
+}
+
+function ArchiveConfirmDialog({
+  currentPlan,
+  onCancel,
+  onConfirm,
+}: {
+  currentPlan: ReadingPlanCurrent | null | undefined;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  return (
+    <motion.div
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4 backdrop-blur-[2px]"
+      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }}
+    >
+      <motion.div
+        animate={{ y: 0, scale: 1 }}
+        className="reading-plan-page w-full max-w-sm rounded-2xl border border-[#e5d6c9] bg-white p-5 shadow-2xl"
+        exit={{ y: 8, scale: 0.98 }}
+        initial={{ y: 8, scale: 0.98 }}
+        transition={{ duration: 0.16, ease: [0.215, 0.61, 0.355, 1] }}
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f6823c]">
+          Archive Plan
+        </p>
+        <h2 className="mt-2 font-serif text-[22px] font-semibold leading-tight text-[#25140b]">
+          Archive {currentPlan?.plan.title ?? "this plan"}?
+        </h2>
+        <p className="mt-3 text-[13px] leading-relaxed text-[#7a6758]">
+          This removes it from your active workspace. You can start another plan
+          from the plan library afterward.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            className="rounded-full border border-[#f1e8df] px-2 py-1.5 text-[12px] font-semibold text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#25140b]"
+            onClick={onCancel}
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            className="rounded-full bg-[#3a2218] px-2 py-1.5 text-[12px] font-semibold text-white hover:bg-[#1f1209]"
+            onClick={onConfirm}
+            type="button"
+          >
+            Archive
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -806,28 +1155,32 @@ function HubTab({
   const ctaLabel = relativeStartLabel(currentPlan);
 
   return (
-    <div className="space-y-10 max-w-3xl mx-auto w-full">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2E2822] via-[#1F1A15] to-[#14100C] p-8 text-[#FAF6EE] shadow-sm">
-        <div className="relative z-10 max-w-xl">
-          <span className="inline-block rounded-full bg-[#EA7C5A] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
-            Today&apos;s recommended entry
-          </span>
-          <h2 className="mt-5 font-serif text-3xl font-bold leading-tight text-white md:text-4xl text-wrap-balance">
-            {heroEntry?.passageLabel ?? "Plan Complete"}
-          </h2>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-amber-200/80">
-            {heroEntry ? chapterRangeLabel(heroEntry) : "You finished every reading"}
-          </p>
-          <p className="mt-4 text-xs leading-relaxed text-neutral-300">
-            {heroEntry
-              ? `Day ${heroEntry.dayNumber} of ${currentPlan.plan.totalEntries} · ${currentPlan.templateMeta?.cadenceLabel ?? "Daily reading"}`
-              : "You have finished every scheduled reading in this plan. Well done!"}
-          </p>
-          
-          <div className="mt-8 flex flex-wrap gap-2.5">
+    <div className="mx-auto w-full max-w-3xl space-y-7">
+      <section className="rounded-2xl border border-[#f1e8df] bg-white p-5">
+        <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <div>
+            <span className="inline-block rounded-full bg-[#fbf7f2] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
+              Today&apos;s recommended entry
+            </span>
+            <h2 className="mt-4 font-serif text-[24px] font-semibold leading-snug text-[#25140b] md:text-[26px]">
+              {heroEntry?.passageLabel ?? "Plan Complete"}
+            </h2>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#f6823c]">
+              {heroEntry
+                ? chapterRangeLabel(heroEntry)
+                : "You finished every reading"}
+            </p>
+            <p className="mt-3 text-[13px] leading-relaxed text-[#7a6758]">
+              {heroEntry
+                ? `Day ${heroEntry.dayNumber} of ${currentPlan.plan.totalEntries} · ${currentPlan.templateMeta?.cadenceLabel ?? "Daily reading"}`
+                : "You have finished every scheduled reading in this plan. Well done!"}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2.5 md:justify-end">
             {heroEntry ? (
               <button
-                className="flex items-center gap-2 rounded-xl bg-[#EA7C5A] px-5 py-3 text-xs font-bold text-white shadow-lg shadow-[#EA7C5A]/10 hover:bg-[#D76949]"
+                className="flex items-center gap-2 rounded-full bg-[#f6823c] px-2 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
                 onClick={() => onOpenReading(heroEntry)}
                 type="button"
               >
@@ -837,7 +1190,7 @@ function HubTab({
             ) : null}
             {currentPlan.currentEntry && currentPlan.hasStartedReading ? (
               <button
-                className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-xs font-bold text-white hover:bg-white/10"
+                className="rounded-full border border-[#f1e8df] bg-white px-2 py-1.5 text-[12px] font-semibold text-[#25140b] transition-colors hover:bg-[#fbf7f2]"
                 onClick={() => onOpenReading(currentPlan.currentEntry!)}
                 type="button"
               >
@@ -846,111 +1199,134 @@ function HubTab({
             ) : null}
           </div>
         </div>
-        <div className="absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-[#EA7C5A]/5 blur-3xl" />
       </section>
 
-      {/* Borderless Metrics Row */}
-      <div className="flex items-center justify-around py-6 border-y border-[#EDECE4]/60 bg-transparent rounded-none">
+      <div className="grid grid-cols-3 rounded-2xl border border-[#f1e8df] bg-white">
         <div className="text-center">
-          <span className="block text-[8px] font-bold uppercase tracking-widest text-neutral-400">Progress</span>
-          <span className="mt-1 block font-serif text-3xl font-bold text-neutral-800">{currentPlan.progressPercent}%</span>
+          <div className="px-3 py-4">
+            <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+              Progress
+            </span>
+            <span className="mt-1 block font-serif text-[22px] font-semibold text-[#25140b]">
+              {currentPlan.progressPercent}%
+            </span>
+          </div>
         </div>
-        <div className="h-8 w-px bg-neutral-200" />
-        <div className="text-center">
-          <span className="block text-[8px] font-bold uppercase tracking-widest text-neutral-400">Streak</span>
-          <span className="mt-1 block font-serif text-3xl font-bold text-neutral-800">{currentPlan.streak} days</span>
+        <div className="border-x border-[#f1e8df] text-center">
+          <div className="px-3 py-4">
+            <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+              Streak
+            </span>
+            <span className="mt-1 block font-serif text-[22px] font-semibold text-[#25140b]">
+              {currentPlan.streak} days
+            </span>
+          </div>
         </div>
-        <div className="h-8 w-px bg-neutral-200" />
         <div className="text-center">
-          <span className="block text-[8px] font-bold uppercase tracking-widest text-neutral-400">Pace</span>
-          <span className="mt-1 block font-serif text-3xl font-bold text-neutral-800">{currentPlan.templateMeta ? `~${currentPlan.templateMeta.estimatedMinutes}m` : "Daily"}</span>
+          <div className="px-3 py-4">
+            <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+              Pace
+            </span>
+            <span className="mt-1 block font-serif text-[22px] font-semibold text-[#25140b]">
+              {currentPlan.templateMeta
+                ? `~${currentPlan.templateMeta.estimatedMinutes}m`
+                : "Daily"}
+            </span>
+          </div>
         </div>
       </div>
 
-      <section className="space-y-6">
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-serif text-lg font-bold text-neutral-900">
+            <h3 className="font-serif text-[18px] font-semibold text-[#25140b]">
               Journey Path
             </h3>
-            <p className="text-[10px] text-neutral-400 uppercase tracking-wider mt-0.5">
+            <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-[#9b8878]">
               Select a day node to read or log completion
             </p>
           </div>
-          <span className="rounded-full bg-[#EFECE6]/70 px-3 py-1 font-mono text-[10px] font-bold text-neutral-600">
-            {currentPlan.plan.completedEntries}/{currentPlan.plan.totalEntries} Done
+          <span className="rounded-full bg-[#fbf7f2] px-3 py-1 text-[10px] font-semibold text-[#7a6758]">
+            {currentPlan.plan.completedEntries}/{currentPlan.plan.totalEntries}{" "}
+            Done
           </span>
         </div>
 
-        <div className="relative pl-2 space-y-2">
+        <div className="relative space-y-2 pl-2">
           {currentPlan.allEntries.map((entry) => {
             const isSelected = selectedEntryId === entry._id;
             const isPrimary = currentPlan.primaryEntry?._id === entry._id;
             return (
-              <div key={entry._id} className="relative pl-10 pb-8 last:pb-0 group">
-                {/* Timeline Line */}
-                <div className="absolute left-[11px] top-3 bottom-0 w-px bg-neutral-200 group-last:hidden" />
-                
-                {/* Timeline Icon Node */}
+              <div
+                key={entry._id}
+                className="group relative pb-5 pl-10 last:pb-0"
+              >
+                <div className="absolute bottom-0 left-[11px] top-3 w-px bg-[#f1e8df] group-last:hidden" />
                 <div className="absolute left-0 top-1 flex h-6 w-6 items-center justify-center">
                   {entry.status === "completed" ? (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#EA7C5A] text-[#FAF6EE] shadow-sm">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f6823c] text-white">
                       <Check className="h-3.5 w-3.5" />
                     </div>
                   ) : isPrimary ? (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#EA7C5A] bg-white shadow-[0_0_12px_rgba(234,124,90,0.2)]">
-                      <div className="h-2 w-2 rounded-full bg-[#EA7C5A] animate-pulse" />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#f6823c] bg-white">
+                      <div className="h-2 w-2 rounded-full bg-[#f6823c]" />
                     </div>
                   ) : (
-                    <div className="h-4 w-4 rounded-full border border-neutral-300 bg-white" />
+                    <div className="h-4 w-4 rounded-full border border-[#e5d6c9] bg-white" />
                   )}
                 </div>
 
-                {/* Card details */}
                 <div
                   className={cn(
-                    "grid gap-4 items-center rounded-2xl p-5 transition-all duration-300 md:grid-cols-[1fr_auto]",
+                    "grid items-center gap-4 rounded-2xl border p-4 transition-colors md:grid-cols-[1fr_auto]",
                     entry.status === "completed"
-                      ? "bg-white/40 border border-[#EDECE4]/45 opacity-70 hover:opacity-100 hover:bg-white"
+                      ? "border-[#f1e8df] bg-white opacity-75 hover:opacity-100"
                       : isPrimary
-                        ? "bg-white border border-[#EBE6D7] shadow-[0_4px_20px_rgba(0,0,0,0.02)] scale-[1.01]"
+                        ? "border-[#e5d6c9] bg-[#fbf7f2]"
                         : isSelected
-                          ? "bg-[#FAF9F5] border border-neutral-300"
-                          : "bg-white/70 border border-[#EDECE4]/50 hover:bg-white hover:border-neutral-300 hover:shadow-sm",
+                          ? "border-[#e5d6c9] bg-white"
+                          : "border-[#f1e8df] bg-white hover:bg-[#fbf7f2]",
                   )}
                 >
                   <button
-                    className="min-w-0 text-left"
+                    className="min-w-0 rounded-full text-left"
                     onClick={() => onOpenReading(entry)}
                     type="button"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[9px] font-bold text-neutral-400 tracking-wider">
+                      <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
                         DAY {entry.dayNumber}
                       </span>
-                      <span className="text-neutral-300 font-mono text-[9px]">•</span>
-                      <p className={cn("font-serif text-base font-bold text-neutral-900", entry.status === "completed" && "text-neutral-400 line-through decoration-neutral-300")}>
+                      <span className="text-[9px] text-[#e5d6c9]">•</span>
+                      <p
+                        className={cn(
+                          "font-serif text-[16px] font-semibold text-[#25140b]",
+                          entry.status === "completed" &&
+                            "text-[#9b8878] line-through decoration-[#e5d6c9]",
+                        )}
+                      >
                         {entry.passageLabel}
                       </p>
                       {isPrimary ? (
-                        <span className="rounded-full bg-[#FAF9F5] border border-[#EBE6D7] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#EA7C5A]">
+                        <span className="rounded-full border border-[#e5d6c9] bg-white px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] text-[#f6823c]">
                           Up Next
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
-                      {chapterRangeLabel(entry)} · {formatLongDate(entry.dueDate)}
+                    <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-[#9b8878]">
+                      {chapterRangeLabel(entry)} ·{" "}
+                      {formatLongDate(entry.dueDate)}
                     </p>
                     {entry.reflection?.trim() ? (
-                      <div className="mt-3 border-l border-[#E5D6C9] pl-3 italic text-xs text-neutral-500 leading-relaxed">
+                      <div className="mt-3 border-l border-[#e5d6c9] pl-3 text-[12px] italic leading-relaxed text-[#7a6758]">
                         &quot;{entry.reflection}&quot;
                       </div>
                     ) : null}
                   </button>
 
-                  <div className="flex items-center gap-2 self-center shrink-0">
+                  <div className="flex shrink-0 items-center gap-2 self-center">
                     <button
-                      className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-800 hover:bg-[#FAF9F5]"
+                      className="rounded-full border border-[#f1e8df] bg-white px-2 py-1.5 text-[12px] font-semibold text-[#25140b] hover:bg-[#fbf7f2]"
                       onClick={() => onOpenReading(entry)}
                       type="button"
                     >
@@ -960,8 +1336,8 @@ function HubTab({
                       className={cn(
                         "flex h-8 w-8 items-center justify-center rounded-full border transition-all",
                         entry.status === "completed"
-                          ? "border-[#EA7C5A] bg-[#EA7C5A] text-white"
-                          : "border-neutral-200 bg-transparent text-neutral-300 hover:border-[#EA7C5A] hover:text-[#EA7C5A]",
+                          ? "border-[#f6823c] bg-[#f6823c] text-white"
+                          : "border-[#f1e8df] bg-white text-[#9b8878] hover:border-[#f6823c] hover:text-[#f6823c]",
                       )}
                       onClick={async () => {
                         await onToggleEntry(entry._id);
@@ -989,28 +1365,30 @@ function JournalTab({
   onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
 }) {
   return (
-    <div className="space-y-8 max-w-3xl mx-auto w-full">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
       <div className="space-y-1">
-        <h2 className="font-serif text-2xl font-bold tracking-tight text-neutral-900">
+        <h2 className="font-serif text-[22px] font-semibold tracking-tight text-[#25140b]">
           Reflections Library
         </h2>
-        <p className="text-xs text-neutral-500">
-          Your recorded memories, prayers, and lessons saved during each reading day.
+        <p className="text-[13px] text-[#7a6758]">
+          Your recorded memories, prayers, and lessons saved during each reading
+          day.
         </p>
       </div>
 
       {currentPlan.journalEntries.length === 0 ? (
-        <div className="mx-auto max-w-xl rounded-3xl border border-[#EDECE4]/60 bg-[#FAF9F5]/30 py-16 px-6 text-center">
-          <FileText className="mx-auto mb-4 h-10 w-10 text-neutral-300" />
-          <h3 className="font-serif text-lg font-bold text-neutral-800">
+        <div className="mx-auto max-w-xl rounded-2xl border border-[#f1e8df] bg-white px-6 py-12 text-center">
+          <FileText className="mx-auto mb-4 h-8 w-8 text-[#9b8878]" />
+          <h3 className="font-serif text-[18px] font-semibold text-[#25140b]">
             Your journal is waiting
           </h3>
-          <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-neutral-500">
-            Write down contemplative reflections inside reading mode or complete specific daily readings to catalog your journey.
+          <p className="mx-auto mt-2 max-w-xs text-[12px] leading-relaxed text-[#7a6758]">
+            Write down contemplative reflections inside reading mode or complete
+            specific daily readings to catalog your journey.
           </p>
           {currentPlan.primaryEntry ? (
             <button
-              className="mt-6 rounded-xl bg-[#3a2218] px-5 py-3 text-xs font-bold text-[#FDFCF9] shadow-sm hover:bg-[#2A1810]"
+              className="mt-6 rounded-full bg-[#3a2218] px-2 py-1.5 text-[12px] font-semibold text-white hover:bg-[#2A1810]"
               onClick={() => onOpenReading(currentPlan.primaryEntry!)}
               type="button"
             >
@@ -1019,40 +1397,48 @@ function JournalTab({
           ) : null}
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {currentPlan.journalEntries.map((entry) => (
             <div
-              className="group relative flex flex-col justify-between rounded-2xl border border-[#EDECE4]/50 bg-white p-6 shadow-[0_4px_20px_rgba(0,0,0,0.015)] transition-all duration-300 hover:scale-[1.005] hover:shadow-[0_8px_30px_rgba(0,0,0,0.035)]"
+              className="group relative flex flex-col justify-between rounded-2xl border border-[#f1e8df] bg-white p-5 transition-colors hover:bg-[#fbf7f2]"
               key={entry._id}
             >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-neutral-400">
-                  <span>{entry.completedAt ? new Date(entry.completedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : formatDateLabel(entry.dueDate)}</span>
-                  <span className="rounded-full bg-[#FAF9F5] border border-[#EBE6D7] px-2.5 py-0.5 text-neutral-500">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
+                  <span>
+                    {entry.completedAt
+                      ? new Date(entry.completedAt).toLocaleDateString([], {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : formatDateLabel(entry.dueDate)}
+                  </span>
+                  <span className="rounded-full border border-[#e5d6c9] bg-white px-2.5 py-0.5 text-[#7a6758]">
                     Day {entry.dayNumber}
                   </span>
                 </div>
 
                 <div className="space-y-1">
-                  <h3 className="font-serif text-lg font-bold text-neutral-900 group-hover:text-[#EA7C5A] transition-colors">
+                  <h3 className="font-serif text-[18px] font-semibold text-[#25140b] group-hover:text-[#f6823c]">
                     {entry.passageLabel}
                   </h3>
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#EA7C5A]">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#f6823c]">
                     Saved note
                   </p>
                 </div>
 
-                <p className="line-clamp-5 select-text text-sm italic leading-relaxed text-neutral-600">
+                <p className="line-clamp-5 select-text text-[13px] italic leading-relaxed text-[#7a6758]">
                   &quot;{entry.reflection}&quot;
                 </p>
               </div>
 
-              <div className="mt-6 flex items-center justify-between border-t border-neutral-100 pt-4">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+              <div className="mt-5 flex items-center justify-between border-t border-[#f1e8df] pt-4">
+                <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
                   Reading Plan Devotion
                 </span>
                 <button
-                  className="flex cursor-pointer items-center gap-1 text-xs font-bold text-[#EA7C5A] hover:text-[#D76949]"
+                  className="flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 text-[12px] font-semibold text-[#f6823c] hover:text-[#dd6f2f]"
                   onClick={() => onOpenReading(entry)}
                   type="button"
                 >
@@ -1076,7 +1462,9 @@ function FocusTab({
   onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
 }) {
   const entry = currentPlan.primaryEntry ?? currentPlan.currentEntry;
-  const [breathPhase, setBreathPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
+  const [breathPhase, setBreathPhase] = useState<"Inhale" | "Hold" | "Exhale">(
+    "Inhale",
+  );
   const [cycleCount, setCycleCount] = useState(0);
 
   useEffect(() => {
@@ -1092,55 +1480,78 @@ function FocusTab({
   }, []);
 
   return (
-    <div className="space-y-10 text-center max-w-md mx-auto w-full">
-      <div className="space-y-2 max-w-md mx-auto">
-        <h2 className="font-serif text-3xl font-bold tracking-tight text-neutral-900">
+    <div className="mx-auto w-full max-w-md space-y-6 text-center">
+      <div className="mx-auto max-w-md space-y-2">
+        <h2 className="font-serif text-[22px] font-semibold tracking-tight text-[#25140b]">
           Pause & Anchor
         </h2>
-        <p className="text-xs leading-relaxed text-neutral-500">
-          Clear away digital noise and quiet your thoughts for a moment before looking upon the sacred scripture. Quiet the outer self.
+        <p className="text-[13px] leading-relaxed text-[#7a6758]">
+          Clear away digital noise and quiet your thoughts for a moment before
+          looking upon the sacred scripture. Quiet the outer self.
         </p>
       </div>
 
-      <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#2E2822] via-[#1F1A15] to-[#14100C] p-8 text-center shadow-lg md:p-12 border border-white/5">
-        <div className="relative z-10 space-y-10 py-4">
-          <div className="relative flex h-64 w-64 items-center justify-center mx-auto">
+      <div className="relative overflow-hidden rounded-2xl border border-[#f1e8df] bg-white p-6 text-center">
+        <div className="space-y-8 py-4">
+          <div className="relative mx-auto flex h-56 w-56 items-center justify-center">
             <motion.div
               animate={{
-                scale: breathPhase === "Inhale" ? 1.35 : breathPhase === "Hold" ? 1.35 : 0.95,
-                opacity: breathPhase === "Inhale" ? 0.9 : breathPhase === "Hold" ? 0.9 : 0.5,
+                scale:
+                  breathPhase === "Inhale"
+                    ? 1.35
+                    : breathPhase === "Hold"
+                      ? 1.35
+                      : 0.95,
+                opacity:
+                  breathPhase === "Inhale"
+                    ? 0.9
+                    : breathPhase === "Hold"
+                      ? 0.9
+                      : 0.5,
               }}
-              className="absolute inset-0 rounded-full border border-[#EA7C5A]/20 bg-[#EA7C5A]/5 shadow-[0_0_50px_rgba(234,124,90,0.08)]"
+              className="absolute inset-0 rounded-full border border-[#f6823c]/25 bg-[#fbf7f2]"
               transition={{ duration: 3.8, ease: "easeInOut" }}
             />
             <motion.div
               animate={{
-                scale: breathPhase === "Inhale" ? 1.15 : breathPhase === "Hold" ? 1.15 : 0.85,
+                scale:
+                  breathPhase === "Inhale"
+                    ? 1.15
+                    : breathPhase === "Hold"
+                      ? 1.15
+                      : 0.85,
               }}
-              className="relative z-20 flex h-36 w-36 flex-col items-center justify-center rounded-full bg-gradient-to-br from-[#EA7C5A] to-[#B05338] text-white shadow-xl shadow-[#EA7C5A]/15"
+              className="relative z-20 flex h-32 w-32 flex-col items-center justify-center rounded-full bg-[#f6823c] text-white"
               transition={{ duration: 3.8, ease: "easeInOut" }}
             >
-              <span className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-amber-200/90">
-                {breathPhase === "Inhale" ? "breathe in" : breathPhase === "Hold" ? "hold" : "breathe out"}
+              <span className="mb-1 block text-[8px] font-semibold uppercase tracking-[0.14em] text-white/80">
+                {breathPhase === "Inhale"
+                  ? "breathe in"
+                  : breathPhase === "Hold"
+                    ? "hold"
+                    : "breathe out"}
               </span>
-              <span className="text-2xl font-serif font-bold tracking-tight">
+              <span className="font-serif text-[22px] font-semibold tracking-tight">
                 {breathPhase}
               </span>
             </motion.div>
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="font-serif text-base font-bold text-white">
+            <h3 className="font-serif text-[16px] font-semibold text-[#25140b]">
               Fill your lungs with gratitude.
             </h3>
-            <p className="font-mono text-[9px] uppercase tracking-wider text-neutral-400">
-              Completed cycles: <span className="text-[#EA7C5A] font-bold font-sans text-xs">{cycleCount}</span>
+            <p className="text-[9px] uppercase tracking-[0.14em] text-[#9b8878]">
+              Completed cycles:{" "}
+              <span className="text-[12px] font-semibold text-[#f6823c]">
+                {cycleCount}
+              </span>
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-neutral-300 hover:bg-white/10 transition-colors"
+              className="rounded-full border border-[#f1e8df] bg-white px-2 py-1.5 text-[12px] font-semibold text-[#7a6758] transition-colors hover:bg-[#fbf7f2] hover:text-[#25140b]"
               onClick={() => {
                 setCycleCount(0);
                 setBreathPhase("Inhale");
@@ -1151,7 +1562,7 @@ function FocusTab({
             </button>
             {entry ? (
               <button
-                className="rounded-xl bg-[#EA7C5A] px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-[#D76949] transition-all"
+                className="rounded-full bg-[#f6823c] px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
                 onClick={() => onOpenReading(entry)}
                 type="button"
               >
@@ -1162,9 +1573,11 @@ function FocusTab({
         </div>
       </div>
 
-      <div className="mx-auto inline-flex items-center gap-2.5 rounded-2xl border border-[#EDECE4]/60 bg-[#FAF9F5] p-4 text-xs text-neutral-600 shadow-sm">
-        <Sparkles className="h-4 w-4 text-[#EA7C5A]" />
-        <span className="font-serif italic">"Be still, and know that I am God." — Psalm 46:10</span>
+      <div className="mx-auto inline-flex items-center gap-2.5 rounded-2xl border border-[#f1e8df] bg-[#fbf7f2] p-4 text-[12px] text-[#7a6758]">
+        <Sparkles className="h-4 w-4 text-[#f6823c]" />
+        <span className="font-serif italic">
+          "Be still, and know that I am God." Psalm 46:10
+        </span>
       </div>
     </div>
   );
@@ -1237,48 +1650,133 @@ function ReaderPanel({
     .map((query) => query.data)
     .filter((value): value is NonNullable<typeof value> => Boolean(value));
   const versionLabel =
-    versions.find((version) => version.id === readerVersionId)?.abbreviation ?? "";
+    versions.find((version) => version.id === readerVersionId)?.abbreviation ??
+    "";
+  const audioText = useMemo(
+    () =>
+      chapterData
+        .flatMap((chapter) =>
+          chapter.verses.map(
+            (verse) =>
+              `${chapter.book} ${chapter.chapter}:${verse.number}. ${verse.text}`,
+          ),
+        )
+        .join(" "),
+    [chapterData],
+  );
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [audioSupported, setAudioSupported] = useState(false);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioPaused, setAudioPaused] = useState(false);
+
+  useEffect(() => {
+    setAudioSupported(
+      typeof window !== "undefined" && "speechSynthesis" in window,
+    );
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [selectedEntry?._id, readerVersionId]);
+
+  const toggleAudioCompanion = () => {
+    if (!audioText.trim()) {
+      toast.error("Scripture audio is still loading.");
+      return;
+    }
+    if (
+      !audioSupported ||
+      typeof window === "undefined" ||
+      !("speechSynthesis" in window)
+    ) {
+      toast.error("Audio companion is not supported in this browser.");
+      return;
+    }
+
+    try {
+      if (audioPlaying && !audioPaused) {
+        window.speechSynthesis.pause();
+        setAudioPaused(true);
+        return;
+      }
+
+      if (audioPlaying && audioPaused) {
+        window.speechSynthesis.resume();
+        setAudioPaused(false);
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(audioText);
+      utterance.rate = 0.92;
+      utterance.pitch = 0.95;
+      utterance.onend = () => {
+        setAudioPlaying(false);
+        setAudioPaused(false);
+        utteranceRef.current = null;
+      };
+      utterance.onerror = (event) => {
+        console.error("Audio companion playback failed:", event.error);
+        setAudioPlaying(false);
+        setAudioPaused(false);
+        utteranceRef.current = null;
+        toast.error("Audio companion stopped unexpectedly.");
+      };
+      utteranceRef.current = utterance;
+      setAudioPlaying(true);
+      setAudioPaused(false);
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error("Failed to control audio companion:", error);
+      toast.error("Failed to start audio companion.");
+    }
+  };
 
   return (
     <>
       {!selectedEntry ? (
-        <div className="flex flex-1 items-center justify-center p-8 text-center bg-[#FDFCF9]">
-          <div className="space-y-3 max-w-sm">
-            <BookOpen className="mx-auto h-8 w-8 text-neutral-300" />
-            <h3 className="font-serif text-2xl font-bold text-neutral-800">
+        <div className="flex flex-1 items-center justify-center bg-white p-8 text-center">
+          <div className="max-w-sm space-y-3">
+            <BookOpen className="mx-auto h-8 w-8 text-[#9b8878]" />
+            <h3 className="font-serif text-[22px] font-semibold text-[#25140b]">
               Open a reading day
             </h3>
-            <p className="text-xs leading-relaxed text-neutral-500">
-              Select a chapter from your path. The text will open inside this calm, dedicated environment to protect your focus.
+            <p className="text-[12px] leading-relaxed text-[#7a6758]">
+              Select a chapter from your path. The text will open inside this
+              calm, dedicated environment to protect your focus.
             </p>
           </div>
         </div>
       ) : (
         <>
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#FDFCF9] p-6 text-neutral-800 transition-colors duration-500 md:p-10">
-            <div className="mb-8 flex items-center justify-between border-b border-neutral-100 pb-5">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white p-5 text-[#25140b] md:p-8">
+            <div className="mb-6 flex items-center justify-between border-b border-[#f1e8df] pb-4">
               <div className="flex items-center gap-3">
                 <button
-                  className="rounded-full p-1.5 hover:bg-neutral-100 text-neutral-500 transition-colors"
+                  aria-label="Back"
+                  className="rounded-full p-1.5 text-[#7a6758] transition-colors hover:bg-[#fbf7f2] hover:text-[#25140b]"
                   onClick={onClose}
                   type="button"
-                  aria-label="Back"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </button>
                 <div>
-                  <span className="block text-[8px] font-bold uppercase tracking-widest text-neutral-400">
+                  <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
                     {currentPlan?.plan.title ?? "Reading Plan"}
                   </span>
-                  <span className="mt-0.5 block font-serif text-sm font-bold text-neutral-800">
+                  <span className="mt-0.5 block font-serif text-[15px] font-semibold text-[#25140b]">
                     {selectedEntry.passageLabel}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-[#FAF9F5]/80 p-1">
+              <div className="flex items-center gap-2 rounded-xl border border-[#f1e8df] bg-white p-1">
                 <select
-                  className="h-7 rounded-lg bg-transparent px-2 text-xs font-bold text-neutral-600 outline-none"
+                  className="h-7 rounded-lg bg-transparent px-2 text-[12px] font-semibold text-[#7a6758] outline-none"
                   onChange={(event) => setReaderVersionId(event.target.value)}
                   value={readerVersionId}
                 >
@@ -1291,37 +1789,63 @@ function ReaderPanel({
               </div>
             </div>
 
-            <div className="mb-8 flex items-center justify-between gap-5 rounded-2xl border border-[#EDECE4] bg-[#FAF9F5] p-4">
+            <div className="mb-7 flex items-center justify-between gap-5 rounded-2xl border border-[#f1e8df] bg-[#fbf7f2] p-4">
               <div className="flex items-center gap-3">
                 <button
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#3a2218] text-white transition-all hover:bg-[#2A1810]"
+                  aria-label={
+                    audioPlaying && !audioPaused
+                      ? "Pause audio companion"
+                      : "Play audio companion"
+                  }
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3a2218] text-white transition-colors hover:bg-[#2A1810]"
+                  onClick={toggleAudioCompanion}
                   type="button"
                 >
-                  <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
+                  {audioPlaying && !audioPaused ? (
+                    <Pause className="h-3.5 w-3.5 fill-current" />
+                  ) : (
+                    <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
+                  )}
                 </button>
                 <div>
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-[#EA7C5A]">
-                    Audio Companion
+                  <span className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#f6823c]">
+                    <Volume2 className="h-3 w-3" />
+                    {!audioSupported
+                      ? "Audio Unavailable"
+                      : audioPlaying
+                        ? audioPaused
+                          ? "Audio Paused"
+                          : "Audio Playing"
+                        : "Audio Companion"}
                   </span>
-                  <h4 className="font-serif text-[11px] font-bold text-neutral-800">
-                    {selectedEntry.passageLabel} ambient guide
+                  <h4 className="font-serif text-[12px] font-semibold text-[#25140b]">
+                    {selectedEntry.passageLabel} read aloud
                   </h4>
                 </div>
               </div>
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-neutral-200">
-                <div className="h-full w-1/3 bg-[#EA7C5A]" />
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-[#f1e8df]">
+                <div
+                  className="h-full rounded-full bg-[#f6823c] transition-all"
+                  style={{
+                    width: audioPlaying
+                      ? audioPaused
+                        ? "50%"
+                        : "100%"
+                      : "18%",
+                  }}
+                />
               </div>
             </div>
 
-            <div className="mx-auto max-w-xl flex-1 space-y-10 selection:bg-amber-100">
-              <div className="border-b border-neutral-100 pb-5 text-center">
-                <span className="mb-1 block text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+            <div className="mx-auto max-w-2xl flex-1 space-y-8 selection:bg-[#fde6d8]">
+              <div className="border-b border-[#f1e8df] pb-5 text-center">
+                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
                   Today&apos;s Scripture
                 </span>
-                <h2 className="font-serif text-3xl font-bold tracking-tight text-neutral-900">
+                <h2 className="font-serif text-[26px] font-semibold tracking-tight text-[#25140b]">
                   {selectedEntry.passageLabel}
                 </h2>
-                <p className="mt-1 text-xs italic text-neutral-500">
+                <p className="mt-1 text-[12px] italic text-[#7a6758]">
                   &quot;{chapterRangeLabel(selectedEntry)}&quot;
                 </p>
               </div>
@@ -1334,18 +1858,21 @@ function ReaderPanel({
                   <div className="h-4 w-[93%] animate-pulse rounded bg-neutral-200/50" />
                 </div>
               ) : hasError ? (
-                <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4 text-xs leading-relaxed text-red-600">
+                <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4 text-[12px] leading-relaxed text-red-600">
                   Scripture text could not be loaded for this reading.
                 </div>
               ) : (
                 <div className="space-y-8">
                   {chapterData.map((chapter) => (
-                    <article key={`${chapter.book}-${chapter.chapter}`} className="space-y-4">
-                      <div className="mb-4 border-b border-neutral-100 pb-2">
-                        <p className="font-serif text-xl font-bold text-neutral-800">
+                    <article
+                      key={`${chapter.book}-${chapter.chapter}`}
+                      className="space-y-4"
+                    >
+                      <div className="mb-4 border-b border-[#f1e8df] pb-2">
+                        <p className="font-serif text-[20px] font-semibold text-[#25140b]">
                           {chapter.book} {chapter.chapter}
                         </p>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
                           {versionLabel}
                         </p>
                       </div>
@@ -1354,7 +1881,8 @@ function ReaderPanel({
                           <VerseRow
                             chapter={chapter.chapter}
                             highlighted={
-                              chapter.chapter === selectedEntry.passageChapter &&
+                              chapter.chapter ===
+                                selectedEntry.passageChapter &&
                               verse.number === selectedEntry.passageVerse
                             }
                             key={`${chapter.chapter}-${verse.number}`}
@@ -1369,40 +1897,44 @@ function ReaderPanel({
             </div>
           </div>
 
-          <div className="flex h-full w-full flex-col justify-between border-l border-[#EDECE4]/80 bg-[#FAF9F5] p-6 md:w-[360px] md:p-8">
+          <div className="flex h-full w-full flex-col justify-between border-l border-[#f1e8df] bg-[#fbf7f2] p-5 md:w-[430px] md:p-6">
             <div className="space-y-6">
               <div>
-                <div className="flex items-center gap-1.5 text-[#EA7C5A]">
+                <div className="flex items-center gap-1.5 text-[#f6823c]">
                   <Edit3 className="h-4 w-4" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest">
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.16em]">
                     Personal Journal
                   </span>
                 </div>
-                <h3 className="mt-1.5 font-serif text-lg font-bold text-neutral-900">
+                <h3 className="mt-1.5 font-serif text-[18px] font-semibold text-[#25140b]">
                   Devotional Reflection
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">
-                  Record what you hear in the quiet, and keep it in your reflection library.
+                <p className="mt-0.5 text-[12px] leading-relaxed text-[#7a6758]">
+                  Record what you hear in the quiet, and keep it in your
+                  reflection library.
                 </p>
               </div>
 
-              <div className="rounded-xl border border-[#EDECE4]/60 bg-white p-4 text-xs shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-                <span className="mb-1 block font-bold text-[#EA7C5A] uppercase tracking-wider text-[9px]">
+              <div className="rounded-xl border border-[#f1e8df] bg-white p-4 text-[12px]">
+                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#f6823c]">
                   Reflection Prompt
                 </span>
-                <p className="italic leading-relaxed text-neutral-500">
-                  &quot;How did today&apos;s reading comfort or convict you?&quot;
+                <p className="italic leading-relaxed text-[#7a6758]">
+                  &quot;How did today&apos;s reading comfort or convict
+                  you?&quot;
                 </p>
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-[10px] font-bold uppercase text-neutral-400">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase text-[#9b8878]">
                   <span>Write Note</span>
-                  <span className="font-mono tabular-nums">{reflectionDraft.length} chars</span>
+                  <span className="tabular-nums">
+                    {reflectionDraft.length} chars
+                  </span>
                 </div>
 
                 <textarea
-                  className="h-56 w-full resize-none rounded-2xl border border-neutral-200 bg-white p-4 text-xs leading-relaxed text-neutral-700 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] outline-none focus:border-[#EA7C5A] focus:ring-1 focus:ring-[#EA7C5A] transition-all"
+                  className="h-64 w-full resize-none rounded-2xl border border-[#f1e8df] bg-white p-4 text-[13px] leading-relaxed text-[#25140b] outline-none transition-colors placeholder:text-[#9b8878] focus:border-[#f6823c] focus:ring-1 focus:ring-[#f6823c]"
                   onChange={(event) => setReflectionDraft(event.target.value)}
                   placeholder="Type your notes, prayers, or lessons from this reading..."
                   value={reflectionDraft}
@@ -1410,9 +1942,9 @@ function ReaderPanel({
               </div>
             </div>
 
-            <div className="mt-6 space-y-2 border-t border-neutral-200/80 pt-6">
+            <div className="mt-6 space-y-2 border-t border-[#e5d6c9] pt-6">
               <button
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#EA7C5A] py-3.5 text-xs font-bold text-white shadow-md hover:bg-[#D76949] transition-all"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#f6823c] py-2 text-[12px] font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
                 onClick={async () => {
                   await onSaveReflection();
                   if (selectedEntry.status !== "completed") {
@@ -1427,7 +1959,7 @@ function ReaderPanel({
               </button>
 
               <button
-                className="w-full rounded-xl border border-transparent bg-transparent py-2.5 text-xs font-semibold text-neutral-400 hover:text-neutral-600 transition-colors"
+                className="w-full rounded-full border border-transparent bg-transparent py-1.5 text-[12px] font-semibold text-[#7a6758] transition-colors hover:bg-white hover:text-[#25140b]"
                 onClick={onClose}
                 type="button"
               >
@@ -1453,39 +1985,15 @@ function VerseRow({
   return (
     <div
       className={cn(
-        "grid grid-cols-[40px_minmax(0,1fr)] gap-3 rounded-xl px-3 py-2.5 transition-all duration-300",
-        highlighted ? "bg-[#EA7C5A]/5 border-l-2 border-[#EA7C5A]" : "border-l-2 border-transparent",
+        "grid grid-cols-[40px_minmax(0,1fr)] gap-3 rounded-xl px-2 py-1.5 transition-colors",
+        highlighted ? "bg-[#fde6d8]/45" : "bg-transparent",
       )}
     >
-      <span className="pt-0.5 text-[10px] font-bold text-neutral-400 font-mono">
+      <span className="pt-0.5 text-[10px] font-semibold text-[#9b8878]">
         {chapter}:{verse.number}
       </span>
-      <p className="font-serif text-base md:text-[17px] leading-relaxed text-neutral-800">
+      <p className="font-serif text-[15px] leading-relaxed text-[#25140b] md:text-[16px]">
         {verse.text}
-      </p>
-    </div>
-  );
-}
-
-function MetricTile({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-[1px] p-4">
-      <div className="flex items-center gap-2 text-neutral-300">
-        {icon}
-        <span className="text-[9px] font-bold uppercase tracking-widest opacity-80">
-          {label}
-        </span>
-      </div>
-      <p className="mt-2 font-serif text-2xl font-bold text-white tabular-nums">
-        {value}
       </p>
     </div>
   );
