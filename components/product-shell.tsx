@@ -98,7 +98,6 @@ function ProductTopNav({
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const auth = useConvexAuth();
   const identity = useQuery(api.auth.getUserIdentity);
-  const adminState = useQuery(api.auth.getAdminState);
   const userName = identity?.fullName ?? identity?.email ?? "Anonymous";
   const userId = identity?.userId;
   const isSignedIn = auth.isAuthenticated || !!userId;
@@ -259,17 +258,6 @@ function ProductTopNav({
                   >
                     Settings
                   </button>
-                  {adminState?.isAdmin && (
-                    <button
-                      className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
-                      onClick={() => {
-                        onProfileOpen();
-                        router.push("/admin");
-                      }}
-                    >
-                      Translations
-                    </button>
-                  )}
                   <button
                     className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
                     onClick={() => {

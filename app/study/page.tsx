@@ -487,6 +487,7 @@ export default function BibleApp() {
     <ProductShell
       onOpenSettings={() => {
         setSheetView("settings");
+        setBookmarksOpen(true);
       }}
       onOpenBookmarks={() => {
         setSheetView("bookmarks");
@@ -494,6 +495,7 @@ export default function BibleApp() {
       }}
       onOpenProfile={() => {
         setSheetView("profile");
+        setBookmarksOpen(true);
       }}
       onOpenSignIn={() => {
         setSheetView("login");
@@ -5166,32 +5168,16 @@ function AudioNotesPanel({
         setPendingUploads((prev) => [optimisticNote, ...prev]);
 
         try {
-          const presignRes = await fetch("/api/upload", {
+          const formData = new FormData();
+          formData.append("file", blob, "audio-note.webm");
+          const uploadRes = await fetch("/api/upload", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              filename: "audio-note.webm",
-              contentType: "audio/webm",
-            }),
-          });
-          if (!presignRes.ok) {
-            throw new Error(`Upload presign failed: ${presignRes.status}`);
-          }
-          const { uploadUrl, publicUrl, key } = await presignRes.json();
-
-          setPendingUploads((prev) =>
-            prev.map((p) =>
-              p._id === tempId ? { ...p, transcript: "Saving to R2..." } : p,
-            ),
-          );
-          const uploadRes = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: { "Content-Type": "audio/webm" },
-            body: blob,
+            body: formData,
           });
           if (!uploadRes.ok) {
             throw new Error(`Audio upload failed: ${uploadRes.status}`);
           }
+          const { publicUrl, key } = await uploadRes.json();
 
           setPendingUploads((prev) =>
             prev.map((p) =>

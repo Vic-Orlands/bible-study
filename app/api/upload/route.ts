@@ -1,5 +1,4 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -33,27 +32,31 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const { filename, contentType } = await req.json();
+    const formData = await req.formData();
+    const file = formData.get("file");
 
-    if (!filename || !contentType) {
-      return NextResponse.json({ error: "Missing filename or contentType" }, { status: 400 });
+    if (!(file instanceof File) || !file.type) {
+      return NextResponse.json(
+        { error: "An audio file with a content type is required." },
+        { status: 400 },
+      );
     }
 
-    // Generate a unique key for the file
-    const key = `audio-notes/${Date.now()}-${filename}`;
+    const key = `audio-notes/${Date.now()}-${file.name}`;
 
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
-      ContentType: contentType,
+      Body: file,
+      ContentType: file.type,
     });
 
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    await s3Client.send(command);
     const publicUrl = `${publicBaseUrl}/${key}`;
 
-    return NextResponse.json({ uploadUrl, publicUrl, key });
+    return NextResponse.json({ publicUrl, key });
   } catch (err) {
-    console.error("R2 presign error:", err);
-    return NextResponse.json({ error: "Failed to generate upload URL" }, { status: 500 });
+    console.error("R2 upload error:", err);
+    return NextResponse.json({ error: "Failed to upload audio" }, { status: 500 });
   }
 }

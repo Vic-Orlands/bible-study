@@ -1574,7 +1574,7 @@ function FocusTab({
 
       <div className="relative overflow-hidden">
         <div className="space-y-8 py-4">
-          <section className="p-4">
+          <section className="p-4 pl-7">
             <div className="relative flex h-40 w-40 items-center justify-center">
               <motion.div
                 animate={{

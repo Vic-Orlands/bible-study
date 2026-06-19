@@ -1,6 +1,6 @@
 # Bible Study App
 
-A Next.js app for reading, studying, and discussing Scripture.
+Read, discuss, reflect, and study the bible either privately or with a community.
 
 ## Features
 
