@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { CANON } from "@/lib/reading-plan-templates";
 
 type ReadingTab = "hub" | "journal" | "focus";
+type ArchiveScope = "selected" | "all";
 
 type TemplateCard = {
   cadenceLabel: string;
@@ -106,6 +107,16 @@ type ReadingPlanCurrent = {
   upcomingEntries: ReadingPlanEntry[];
   allEntries: ReadingPlanEntry[];
   journalEntries: ReadingPlanEntry[];
+};
+
+type ActivePlanSummary = {
+  _id: Id<"userPlans">;
+  completedEntries: number;
+  currentDayNumber: number;
+  description: string;
+  progressPercent: number;
+  title: string;
+  totalEntries: number;
 };
 
 const dailyInsights = [
@@ -200,12 +211,19 @@ export default function ReadingPlanPage() {
   const [readerOpenMobile, setReaderOpenMobile] = useState(false);
   const [plansSheetOpen, setPlansSheetOpen] = useState(false);
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  const [archiveScope, setArchiveScope] = useState<ArchiveScope>("selected");
   const [reflectionDraft, setReflectionDraft] = useState("");
   const [readerVersionId, setReaderVersionId] = useState("");
+  const [selectedPlanId, setSelectedPlanId] =
+    useState<Id<"userPlans"> | null>(null);
 
   const templates = useQuery(api.readingPlans.templates) ?? [];
+  const activePlans = useQuery(api.readingPlans.active, {
+    ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
+  }) as ActivePlanSummary[] | undefined;
   const currentPlan = useQuery(api.readingPlans.current, {
     ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
+    ...(selectedPlanId ? { planId: selectedPlanId } : {}),
   }) as ReadingPlanCurrent | null | undefined;
   const createPlan = useMutation(api.readingPlans.create);
   const createCustomPlan = useMutation(api.readingPlans.createCustom);
@@ -213,6 +231,7 @@ export default function ReadingPlanPage() {
   const toggleEntry = useMutation(api.readingPlans.toggleEntry);
   const saveReflection = useMutation(api.readingPlans.saveReflection);
   const archiveCurrent = useMutation(api.readingPlans.archiveCurrent);
+  const archiveAll = useMutation(api.readingPlans.archiveAll);
   const { data: bibleVersions = [] } = useBibleVersions();
 
   useEffect(() => {
@@ -297,6 +316,12 @@ export default function ReadingPlanPage() {
   }, [bibleVersions, readerVersionId]);
 
   useEffect(() => {
+    if (!activePlans) return;
+    if (activePlans.some((plan) => plan._id === selectedPlanId)) return;
+    setSelectedPlanId(activePlans[0]?._id ?? null);
+  }, [activePlans, selectedPlanId]);
+
+  useEffect(() => {
     if (!currentPlan) {
       setSelectedEntryId(null);
       return;
@@ -337,11 +362,12 @@ export default function ReadingPlanPage() {
 
   const startPlan = async (templateId: string, title: string) => {
     try {
-      await createPlan({
+      const planId = await createPlan({
         ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
         startDate: todayString(),
         templateId,
       });
+      setSelectedPlanId(planId);
       setActiveTab("hub");
       setPlansSheetOpen(false);
       toast.success(`Started ${title}`);
@@ -353,7 +379,7 @@ export default function ReadingPlanPage() {
 
   const startCustomPlan = async (draft: CustomPlanDraft) => {
     try {
-      await createCustomPlan({
+      const result = await createCustomPlan({
         ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
         startDate: todayString(),
         title: draft.title,
@@ -362,6 +388,7 @@ export default function ReadingPlanPage() {
         endChapter: draft.endChapter,
         durationDays: draft.durationDays,
       });
+      setSelectedPlanId(result.planId);
       setActiveTab("hub");
       setPlansSheetOpen(false);
       toast.success(`Started ${draft.title}`);
@@ -413,15 +440,30 @@ export default function ReadingPlanPage() {
   };
 
   const handleArchiveCurrent = async () => {
+    if (!currentPlan) return;
     try {
       await archiveCurrent({
         ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
+        planId: currentPlan.plan._id,
       });
       setArchiveConfirmOpen(false);
       toast.success("Current plan archived.");
     } catch (error) {
       console.error("Failed to archive current plan:", error);
       toast.error("Failed to archive current plan.");
+    }
+  };
+
+  const handleArchiveAll = async () => {
+    try {
+      await archiveAll({
+        ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
+      });
+      setArchiveConfirmOpen(false);
+      toast.success("All active plans archived.");
+    } catch (error) {
+      console.error("Failed to archive all reading plans:", error);
+      toast.error("Failed to archive all active plans.");
     }
   };
 
@@ -439,9 +481,23 @@ export default function ReadingPlanPage() {
     <ProductShell>
       <div className="reading-plan-page flex min-h-0 flex-1 overflow-hidden bg-white">
         <ReadingPlanRail
+          activePlans={activePlans ?? []}
           currentPlan={currentPlan}
-          onArchiveCurrent={() => setArchiveConfirmOpen(true)}
+          onArchiveAll={() => {
+            setArchiveScope("all");
+            setArchiveConfirmOpen(true);
+          }}
+          onArchiveCurrent={() => {
+            setArchiveScope("selected");
+            setArchiveConfirmOpen(true);
+          }}
           onOpenPlans={() => setPlansSheetOpen(true)}
+          onSelectPlan={(planId) => {
+            setSelectedPlanId(planId);
+            setSelectedEntryId(null);
+            setActiveTab("hub");
+          }}
+          selectedPlanId={selectedPlanId}
         />
 
         <main className="bible-app-scroll min-w-0 flex-1 overflow-y-auto bg-white px-4 py-5 md:px-7 xl:px-10">
@@ -484,9 +540,13 @@ export default function ReadingPlanPage() {
       <AnimatePresence>
         {archiveConfirmOpen ? (
           <ArchiveConfirmDialog
+            activePlanCount={activePlans?.length ?? 0}
+            archiveScope={archiveScope}
             currentPlan={currentPlan}
             onCancel={() => setArchiveConfirmOpen(false)}
-            onConfirm={handleArchiveCurrent}
+            onConfirm={
+              archiveScope === "all" ? handleArchiveAll : handleArchiveCurrent
+            }
           />
         ) : null}
       </AnimatePresence>
@@ -624,106 +684,126 @@ function PageHeader({
 }
 
 function ReadingPlanRail({
+  activePlans,
   currentPlan,
+  onArchiveAll,
   onArchiveCurrent,
   onOpenPlans,
+  onSelectPlan,
+  selectedPlanId,
 }: {
+  activePlans: ActivePlanSummary[];
   currentPlan: ReadingPlanCurrent | null | undefined;
+  onArchiveAll: () => void;
   onArchiveCurrent: () => void;
   onOpenPlans: () => void;
+  onSelectPlan: (planId: Id<"userPlans">) => void;
+  selectedPlanId: Id<"userPlans"> | null;
 }) {
   const insight = dailyInsight();
 
   return (
     <aside className="hidden min-h-0 w-[300px] shrink-0 overflow-y-auto border-r border-[#f1e8df] bg-white lg:block">
       <div className="bible-app-scroll flex h-full flex-col justify-between p-5">
-        <div className="space-y-5">
-          {currentPlan ? (
-            <section>
-              <h2 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
-                Active Plan
+        <div>
+          <section>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
+                Your Paths
               </h2>
+              <span className="text-[10px] tabular-nums text-[#9b8878]">
+                {activePlans.length}
+              </span>
+            </div>
 
-              <div className="relative overflow-hidden border border-[#f1e8df] bg-[#fbf7f2] p-4">
-                <div>
-                  <h2 className="font-serif text-[17px] font-semibold leading-snug text-[#25140b]">
-                    {currentPlan.plan.title}
-                  </h2>
-                  <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#9b8878]">
-                    {currentPlan.templateMeta?.category ?? "Plan"}
-                  </p>
-
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[#7a6758]">Completion</span>
-                      <span className="font-semibold text-[#25140b]">
-                        {currentPlan.progressPercent}%
-                      </span>
-                    </div>
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-[#f1e8df]">
-                      <div
-                        className="h-full rounded-full bg-[#f6823c] transition-all duration-500"
-                        style={{ width: `${currentPlan.progressPercent}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-                        Streak
-                      </p>
-                      <p className="mt-1 text-[13px] font-semibold text-[#25140b] tabular-nums">
-                        {currentPlan.streak} days
-                      </p>
-                    </div>
-                    <div className="ml-auto text-right">
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-                        Day
-                      </p>
-                      <p className="mt-1 text-[13px] font-semibold text-[#25140b] tabular-nums">
-                        {currentPlan.plan.currentDayNumber}-
-                        {currentPlan.plan.totalEntries}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    className="mt-4 w-full rounded-sm border border-[#e5d6c9] bg-white px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7a6758] transition-colors hover:border-[#f6823c] hover:text-[#25140b]"
-                    onClick={onArchiveCurrent}
-                    type="button"
-                  >
-                    Archive Plan
-                  </button>
-                </div>
+            {activePlans.length ? (
+              <div className="space-y-1">
+                {activePlans.map((plan) => {
+                  const isSelected = plan._id === selectedPlanId;
+                  return (
+                    <button
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "group w-full px-3 py-2.5 text-left transition-colors",
+                        isSelected
+                          ? "bg-[#fbf7f2]"
+                          : "hover:bg-[#fbf7f2]/70",
+                      )}
+                      key={plan._id}
+                      onClick={() => onSelectPlan(plan._id)}
+                      type="button"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-[12px] font-semibold text-[#25140b]">
+                            {plan.title}
+                          </p>
+                          <p className="mt-0.5 truncate text-[10px] text-[#9b8878]">
+                            Day {plan.currentDayNumber} of {plan.totalEntries}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "mt-0.5 shrink-0 text-[10px] font-semibold tabular-nums",
+                            isSelected ? "text-[#f6823c]" : "text-[#9b8878]",
+                          )}
+                        >
+                          {plan.progressPercent}%
+                        </span>
+                      </div>
+                      <div className="mt-2 h-px w-full bg-[#f1e8df]">
+                        <div
+                          className={cn(
+                            "h-full transition-[width] duration-500",
+                            isSelected ? "bg-[#f6823c]" : "bg-[#d8c5b6]",
+                          )}
+                          style={{ width: `${plan.progressPercent}%` }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            </section>
-          ) : (
-            <section>
-              <h2 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
-                Active Plan
-              </h2>
-              <div className="border border-[#f1e8df] bg-[#fbf7f2] p-4">
-                <span className="inline-block rounded-full bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
-                  No Plan Yet
-                </span>
-                <h2 className="mt-3 font-serif text-[17px] font-semibold leading-snug text-[#25140b]">
-                  Choose a path to begin
-                </h2>
-                <p className="mt-2 text-[12px] leading-relaxed text-[#7a6758]">
-                  Open the plan library and start with a guided reading rhythm.
+            ) : (
+              <div className="bg-[#fbf7f2] px-3 py-4">
+                <p className="font-serif text-[16px] font-semibold text-[#25140b]">
+                  Find a path to begin
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-[#7a6758]">
+                  Your active reading plans will live here.
                 </p>
               </div>
-            </section>
-          )}
+            )}
+
+            {currentPlan?.plan.status === "active" ? (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <button
+                  className="rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a6758] transition-colors hover:bg-[#fbf7f2] hover:text-[#25140b]"
+                  onClick={onArchiveCurrent}
+                  type="button"
+                >
+                  Archive selected
+                </button>
+                {activePlans.length > 1 ? (
+                  <button
+                    className="rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#a8502d] transition-colors hover:bg-[#fff1ea] hover:text-[#7f3319]"
+                    onClick={onArchiveAll}
+                    type="button"
+                  >
+                    Archive all
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </section>
 
           <button
-            className="flex w-full items-center justify-between rounded-lg border border-[#e5d6c9] bg-white px-2 py-1.5 text-left text-[12px] font-semibold text-[#25140b] transition-colors hover:border-[#f6823c] hover:bg-[#fbf7f2]"
+            className="mt-5 flex w-full items-center justify-between rounded-full bg-[#3a2218] px-3 py-2 text-left text-[11px] font-semibold text-white transition-colors hover:bg-[#1f1209]"
             onClick={onOpenPlans}
             type="button"
           >
-            <span>See all plans</span>
-            <ArrowRight className="h-4 w-4 text-[#f6823c]" />
+            <span>Browse all plans</span>
+            <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
 
@@ -1078,10 +1158,14 @@ function PlansSheet({
 }
 
 function ArchiveConfirmDialog({
+  activePlanCount,
+  archiveScope,
   currentPlan,
   onCancel,
   onConfirm,
 }: {
+  activePlanCount: number;
+  archiveScope: ArchiveScope;
   currentPlan: ReadingPlanCurrent | null | undefined;
   onCancel: () => void;
   onConfirm: () => Promise<void>;
@@ -1101,14 +1185,17 @@ function ArchiveConfirmDialog({
         transition={{ duration: 0.16, ease: [0.215, 0.61, 0.355, 1] }}
       >
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f6823c]">
-          Archive Plan
+          {archiveScope === "all" ? "Archive All Plans" : "Archive Plan"}
         </p>
         <h2 className="mt-2 font-serif text-[22px] font-semibold leading-tight text-[#25140b]">
-          Archive {currentPlan?.plan.title ?? "this plan"}?
+          {archiveScope === "all"
+            ? `Archive all ${activePlanCount} active plans?`
+            : `Archive ${currentPlan?.plan.title ?? "this plan"}?`}
         </h2>
         <p className="mt-3 text-[13px] leading-relaxed text-[#7a6758]">
-          This removes it from your active workspace. You can start another plan
-          from the plan library afterward.
+          {archiveScope === "all"
+            ? "This clears every active path from your workspace. Their reading progress remains available in your archive."
+            : "This removes only this path from your active workspace. Its reading progress remains available in your archive."}
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button
@@ -1123,7 +1210,7 @@ function ArchiveConfirmDialog({
             onClick={onConfirm}
             type="button"
           >
-            Archive
+            {archiveScope === "all" ? "Archive all" : "Archive plan"}
           </button>
         </div>
       </motion.div>

@@ -138,7 +138,10 @@ function ProductTopNav({
 
   return (
     <header className="z-10 flex h-14 shrink-0 items-center gap-2 border-b border-[#f1e8df] bg-white px-3 md:gap-4 md:px-5">
-      <Link className="flex shrink-0 items-center gap-2 md:w-[220px]" href="/study">
+      <Link
+        className="flex shrink-0 items-center gap-2 md:w-[220px]"
+        href="/study"
+      >
         <BibleLogo className="h-8 w-8" />
         <span className="hidden font-serif text-[15px] font-semibold tracking-tight text-[#25140b] sm:block">
           Bible Study
@@ -156,8 +159,8 @@ function ProductTopNav({
                 "relative flex h-14 min-w-10 items-center justify-center gap-1.5 px-2 text-[13px] font-medium text-[#7a6758] hover:text-[#3a2218] md:min-w-0 md:px-1 md:text-sm",
                 active && "font-semibold text-[#25140b]",
               )}
-              href={href}
               key={href}
+              href={href}
             >
               <Icon className="h-4 w-4" />
               <span className="hidden lg:inline">{label}</span>

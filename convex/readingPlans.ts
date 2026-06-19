@@ -85,17 +85,24 @@ export const templates = query({
 export const current = query({
   args: {
     identityId: v.optional(v.id("identities")),
+    planId: v.optional(v.id("userPlans")),
   },
   handler: async (ctx, args) => {
     const viewer = await getViewer(ctx, args.identityId);
     if (!viewer) return null;
 
-    const activePlan = await ctx.db
+    const activePlans = await ctx.db
       .query("userPlans")
       .withIndex("by_owner_and_status", (q) =>
         q.eq("ownerKey", viewer.ownerKey).eq("status", "active"),
       )
-      .first();
+      .collect();
+
+    const activePlan = [...activePlans].sort(
+      (left, right) =>
+        (right.lastOpenedAt ?? right.startedAt ?? right._creationTime) -
+        (left.lastOpenedAt ?? left.startedAt ?? left._creationTime),
+    )[0];
 
     const completedPlans = activePlan
       ? []
@@ -106,8 +113,13 @@ export const current = query({
           )
           .collect();
 
+    const requestedPlan = args.planId ? await ctx.db.get(args.planId) : null;
     const plan =
-      activePlan ??
+      requestedPlan &&
+      requestedPlan.ownerKey === viewer.ownerKey &&
+      requestedPlan.status !== "archived"
+        ? requestedPlan
+        : activePlan ??
       [...completedPlans].sort(
         (left, right) =>
           (right.lastCompletedAt ?? right._creationTime) -
@@ -185,6 +197,42 @@ export const current = query({
   },
 });
 
+export const active = query({
+  args: {
+    identityId: v.optional(v.id("identities")),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await getViewer(ctx, args.identityId);
+    if (!viewer) return [];
+
+    const activePlans = await ctx.db
+      .query("userPlans")
+      .withIndex("by_owner_and_status", (q) =>
+        q.eq("ownerKey", viewer.ownerKey).eq("status", "active"),
+      )
+      .collect();
+
+    return activePlans
+      .sort(
+        (left, right) =>
+          (right.lastOpenedAt ?? right.startedAt ?? right._creationTime) -
+          (left.lastOpenedAt ?? left.startedAt ?? left._creationTime),
+      )
+      .map((plan) => ({
+        _id: plan._id,
+        completedEntries: plan.completedEntries,
+        currentDayNumber: plan.currentDayNumber,
+        description: plan.description,
+        progressPercent:
+          plan.totalEntries === 0
+            ? 0
+            : Math.round((plan.completedEntries / plan.totalEntries) * 100),
+        title: plan.title,
+        totalEntries: plan.totalEntries,
+      }));
+  },
+});
+
 export const create = mutation({
   args: {
     identityId: v.optional(v.id("identities")),
@@ -196,17 +244,6 @@ export const create = mutation({
     const template = getReadingPlanTemplate(args.templateId);
     if (!template) {
       throw new Error("Reading plan template not found");
-    }
-
-    const activePlans = await ctx.db
-      .query("userPlans")
-      .withIndex("by_owner_and_status", (q) =>
-        q.eq("ownerKey", viewer.ownerKey).eq("status", "active"),
-      )
-      .collect();
-
-    for (const activePlan of activePlans) {
-      await ctx.db.patch(activePlan._id, { status: "archived" });
     }
 
     const planId = await ctx.db.insert("userPlans", {
@@ -279,17 +316,6 @@ export const createCustom = mutation({
       (_, index) => ({ book: book.book, chapter: startChapter + index }),
     );
     const groups = partitionCustomChapters(chapters, durationDays);
-
-    const activePlans = await ctx.db
-      .query("userPlans")
-      .withIndex("by_owner_and_status", (q) =>
-        q.eq("ownerKey", viewer.ownerKey).eq("status", "active"),
-      )
-      .collect();
-
-    for (const activePlan of activePlans) {
-      await ctx.db.patch(activePlan._id, { status: "archived" });
-    }
 
     const planId = await ctx.db.insert("userPlans", {
       ownerKey: viewer.ownerKey,
@@ -440,6 +466,22 @@ export const saveReflection = mutation({
 export const archiveCurrent = mutation({
   args: {
     identityId: v.optional(v.id("identities")),
+    planId: v.id("userPlans"),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await requireViewer(ctx, args.identityId);
+    const plan = await ctx.db.get(args.planId);
+    if (!plan || plan.ownerKey !== viewer.ownerKey || plan.status !== "active") {
+      throw new Error("Active reading plan not found");
+    }
+
+    await ctx.db.patch(plan._id, { status: "archived" });
+  },
+});
+
+export const archiveAll = mutation({
+  args: {
+    identityId: v.optional(v.id("identities")),
   },
   handler: async (ctx, args) => {
     const viewer = await requireViewer(ctx, args.identityId);
@@ -450,8 +492,8 @@ export const archiveCurrent = mutation({
       )
       .collect();
 
-    for (const activePlan of activePlans) {
-      await ctx.db.patch(activePlan._id, { status: "archived" });
+    for (const plan of activePlans) {
+      await ctx.db.patch(plan._id, { status: "archived" });
     }
   },
 });
