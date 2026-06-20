@@ -27,3 +27,9 @@ test("finishing a plan opens a celebratory share card with PNG and completed-pla
   assert.match(source, /canvas\.toBlob/);
   assert.match(source, /View completed plans/);
 });
+
+test("completed plan cards reopen the share card", () => {
+  assert.match(source, /onSharePlan: \(plan: CompletedPlanSummary\) => void/);
+  assert.match(source, /onClick=\{\(\) => onSharePlan\(plan\)\}/);
+  assert.match(source, />\s*Share\s*</);
+});

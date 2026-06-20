@@ -641,6 +641,15 @@ export default function ReadingPlanPage() {
                 setSelectedEntryId(null);
                 setActiveTab("hub");
               }}
+              onSharePlan={(plan) =>
+                setCompletionCelebration({
+                  completedAt: plan.completedAt,
+                  completedEntries: plan.completedEntries,
+                  durationDays: plan.durationDays,
+                  title: plan.title,
+                  totalEntries: plan.totalEntries,
+                })
+              }
             />
           ) : !currentPlan ? (
             <BrowseState onOpenPlans={() => setPlansSheetOpen(true)} />
@@ -1373,9 +1382,11 @@ function ArchiveConfirmDialog({
 function CompletedPlansTab({
   completedPlans,
   onReviewPlan,
+  onSharePlan,
 }: {
   completedPlans: CompletedPlanSummary[];
   onReviewPlan: (planId: Id<"userPlans">) => void;
+  onSharePlan: (plan: CompletedPlanSummary) => void;
 }) {
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -1437,14 +1448,24 @@ function CompletedPlansTab({
                 <span className="text-[11px] font-semibold text-[#7a6758]">
                   {plan.completedEntries}/{plan.totalEntries} readings · {formatDuration(plan.durationDays)}
                 </span>
-                <button
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#f6823c] transition-colors hover:text-[#c95f25]"
-                  onClick={() => onReviewPlan(plan._id)}
-                  type="button"
-                >
-                  Review plan
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#7a6758] transition-colors hover:text-[#25140b]"
+                    onClick={() => onSharePlan(plan)}
+                    type="button"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                    Share
+                  </button>
+                  <button
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#f6823c] transition-colors hover:text-[#c95f25]"
+                    onClick={() => onReviewPlan(plan._id)}
+                    type="button"
+                  >
+                    Review plan
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             </article>
           ))}
