@@ -11,11 +11,14 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
+  Download,
   Edit3,
   FileText,
   Pause,
   Play,
+  Share2,
   Sparkles,
+  Trophy,
   Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -34,7 +37,7 @@ import { useStudyStore } from "@/lib/study-store";
 import { cn } from "@/lib/utils";
 import { CANON } from "@/lib/reading-plan-templates";
 
-type ReadingTab = "hub" | "journal" | "focus";
+type ReadingTab = "hub" | "journal" | "focus" | "completed";
 type ArchiveScope = "selected" | "all";
 
 type TemplateCard = {
@@ -118,6 +121,21 @@ type ActivePlanSummary = {
   title: string;
   totalEntries: number;
 };
+
+type CompletedPlanSummary = {
+  _id: Id<"userPlans">;
+  completedAt: number;
+  completedEntries: number;
+  description: string;
+  durationDays: number;
+  title: string;
+  totalEntries: number;
+};
+
+type CompletionCelebration = Pick<
+  CompletedPlanSummary,
+  "completedAt" | "completedEntries" | "durationDays" | "title" | "totalEntries"
+>;
 
 const dailyInsights = [
   {
@@ -216,11 +234,16 @@ export default function ReadingPlanPage() {
   const [readerVersionId, setReaderVersionId] = useState("");
   const [selectedPlanId, setSelectedPlanId] =
     useState<Id<"userPlans"> | null>(null);
+  const [completionCelebration, setCompletionCelebration] =
+    useState<CompletionCelebration | null>(null);
 
   const templates = useQuery(api.readingPlans.templates) ?? [];
   const activePlans = useQuery(api.readingPlans.active, {
     ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
   }) as ActivePlanSummary[] | undefined;
+  const completedPlans = (useQuery(api.readingPlans.completed, {
+    ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
+  }) ?? []) as CompletedPlanSummary[];
   const currentPlan = useQuery(api.readingPlans.current, {
     ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
     ...(selectedPlanId ? { planId: selectedPlanId } : {}),
@@ -317,9 +340,10 @@ export default function ReadingPlanPage() {
 
   useEffect(() => {
     if (!activePlans) return;
-    if (activePlans.some((plan) => plan._id === selectedPlanId)) return;
-    setSelectedPlanId(activePlans[0]?._id ?? null);
-  }, [activePlans, selectedPlanId]);
+    const visiblePlans = [...activePlans, ...completedPlans];
+    if (visiblePlans.some((plan) => plan._id === selectedPlanId)) return;
+    setSelectedPlanId(activePlans[0]?._id ?? completedPlans[0]?._id ?? null);
+  }, [activePlans, completedPlans, selectedPlanId]);
 
   useEffect(() => {
     if (!currentPlan) {
@@ -414,10 +438,19 @@ export default function ReadingPlanPage() {
 
   const handleToggleEntry = async (entryId: Id<"userPlanEntries">) => {
     try {
-      await toggleEntry({
+      const result = await toggleEntry({
         entryId,
         ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
       });
+      if (result.completedNow && currentPlan) {
+        setCompletionCelebration({
+          completedAt: result.completedAt ?? Date.now(),
+          completedEntries: currentPlan.plan.totalEntries,
+          durationDays: currentPlan.templateMeta?.durationDays ?? currentPlan.plan.totalEntries,
+          title: currentPlan.plan.title,
+          totalEntries: currentPlan.plan.totalEntries,
+        });
+      }
     } catch (error) {
       console.error("Failed to toggle reading plan entry:", error);
       toast.error("Failed to update reading progress.");
@@ -467,6 +500,97 @@ export default function ReadingPlanPage() {
     }
   };
 
+  const handleShareCompletion = async () => {
+    if (!completionCelebration) return;
+    const shareText = `I completed the ${completionCelebration.title} reading plan on Bible Study.`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Reading plan complete",
+          text: shareText,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(shareText);
+      toast.success("Achievement copied to your clipboard.");
+    } catch (error) {
+      console.error("Failed to share reading plan completion:", error);
+      try {
+        await navigator.clipboard.writeText(shareText);
+        toast.success("Achievement copied to your clipboard.");
+      } catch (clipboardError) {
+        console.error("Failed to copy reading plan completion:", clipboardError);
+        toast.error("Could not share your achievement.");
+      }
+    }
+  };
+
+  const handleSaveCompletionPng = async () => {
+    if (!completionCelebration) return;
+
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1600;
+      canvas.height = 1000;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvas is not supported");
+
+      const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, "#fff8ed");
+      gradient.addColorStop(0.55, "#fbe6c8");
+      gradient.addColorStop(1, "#f6b96c");
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#f6823c";
+      context.beginPath();
+      context.arc(1330, 170, 250, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = "#3a2218";
+      context.font = "600 38px Georgia";
+      context.fillText("BIBLE STUDY", 120, 140);
+      context.font = "600 84px Georgia";
+      context.fillText("Plan complete.", 120, 330);
+      context.font = "500 54px Georgia";
+      const title = completionCelebration.title.slice(0, 42);
+      context.fillText(title, 120, 420);
+      context.font = "500 34px Arial";
+      context.fillStyle = "#7a6758";
+      context.fillText(
+        `${completionCelebration.completedEntries} readings · ${formatDuration(completionCelebration.durationDays)}`,
+        120,
+        510,
+      );
+      context.font = "italic 38px Georgia";
+      context.fillStyle = "#3a2218";
+      context.fillText("One faithful step at a time.", 120, 780);
+      context.font = "500 28px Arial";
+      context.fillStyle = "#7a6758";
+      context.fillText(
+        `Completed ${new Date(completionCelebration.completedAt).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}`,
+        120,
+        850,
+      );
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((png) => {
+          if (png) resolve(png);
+          else reject(new Error("Could not create achievement image"));
+        }, "image/png");
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${completionCelebration.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-complete.png`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Achievement saved as a PNG.");
+    } catch (error) {
+      console.error("Failed to save reading plan completion PNG:", error);
+      toast.error("Could not save your achievement image.");
+    }
+  };
+
   if (!storeReady) {
     return (
       <ProductShell>
@@ -503,12 +627,22 @@ export default function ReadingPlanPage() {
         <main className="bible-app-scroll min-w-0 flex-1 overflow-y-auto bg-white px-4 py-5 md:px-7 xl:px-10">
           <PageHeader
             activeTab={activeTab}
+            completedCount={completedPlans.length}
             currentPlan={currentPlan}
             journalCount={currentPlan?.journalEntries.length ?? 0}
             onChangeTab={setActiveTab}
           />
 
-          {!currentPlan ? (
+          {activeTab === "completed" ? (
+            <CompletedPlansTab
+              completedPlans={completedPlans}
+              onReviewPlan={(planId) => {
+                setSelectedPlanId(planId);
+                setSelectedEntryId(null);
+                setActiveTab("hub");
+              }}
+            />
+          ) : !currentPlan ? (
             <BrowseState onOpenPlans={() => setPlansSheetOpen(true)} />
           ) : activeTab === "hub" ? (
             <HubTab
@@ -547,6 +681,21 @@ export default function ReadingPlanPage() {
             onConfirm={
               archiveScope === "all" ? handleArchiveAll : handleArchiveCurrent
             }
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {completionCelebration ? (
+          <CompletionCelebrationDialog
+            completion={completionCelebration}
+            onClose={() => setCompletionCelebration(null)}
+            onSavePng={handleSaveCompletionPng}
+            onShare={handleShareCompletion}
+            onViewCompleted={() => {
+              setCompletionCelebration(null);
+              setActiveTab("completed");
+            }}
           />
         ) : null}
       </AnimatePresence>
@@ -594,11 +743,13 @@ export default function ReadingPlanPage() {
 
 function PageHeader({
   activeTab,
+  completedCount,
   currentPlan,
   journalCount,
   onChangeTab,
 }: {
   activeTab: ReadingTab;
+  completedCount: number;
   currentPlan: ReadingPlanCurrent | null | undefined;
   journalCount: number;
   onChangeTab: (tab: ReadingTab) => void;
@@ -656,6 +807,7 @@ function PageHeader({
           { id: "hub", label: "Reading Hub" },
           { id: "journal", label: "My Journal", count: journalCount },
           { id: "focus", label: "Breath & Focus" },
+          { id: "completed", label: "Completed", count: completedCount },
         ].map((tab) => (
           <button
             className={cn(
@@ -1214,6 +1366,181 @@ function ArchiveConfirmDialog({
           </button>
         </div>
       </motion.div>
+    </motion.div>
+  );
+}
+
+function CompletedPlansTab({
+  completedPlans,
+  onReviewPlan,
+}: {
+  completedPlans: CompletedPlanSummary[];
+  onReviewPlan: (planId: Id<"userPlans">) => void;
+}) {
+  return (
+    <div className="mx-auto w-full max-w-5xl">
+      <section className="overflow-hidden rounded-3xl border border-[#eedfcf] bg-[#fffaf4] p-5 md:p-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff1de] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#bc5f25]">
+              <Trophy className="h-3.5 w-3.5" />
+              Your library of finished paths
+            </span>
+            <h2 className="mt-4 font-serif text-3xl font-semibold text-[#25140b]">
+              Completed plans
+            </h2>
+            <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-[#7a6758]">
+              Every finished reading journey is here whenever you want to revisit its passages and reflections.
+            </p>
+          </div>
+          <span className="font-serif text-4xl font-semibold text-[#f6823c] tabular-nums">
+            {completedPlans.length}
+          </span>
+        </div>
+      </section>
+
+      {completedPlans.length === 0 ? (
+        <section className="mt-5 border border-dashed border-[#e5d6c9] bg-white px-6 py-12 text-center">
+          <Trophy className="mx-auto h-7 w-7 text-[#d8c5b6]" />
+          <h3 className="mt-4 font-serif text-xl font-semibold text-[#25140b]">
+            Your finished paths will appear here
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#7a6758]">
+            Complete a reading plan to preserve its progress, passages, and journal entries in this library.
+          </p>
+        </section>
+      ) : (
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {completedPlans.map((plan) => (
+            <article
+              className="group border border-[#f1e8df] bg-white p-5 transition-shadow hover:shadow-[0_16px_36px_rgba(81,48,28,0.08)]"
+              key={plan._id}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#bc5f25]">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Completed {new Date(plan.completedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                  <h3 className="mt-3 font-serif text-xl font-semibold text-[#25140b]">
+                    {plan.title}
+                  </h3>
+                </div>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fff1de] text-[#f6823c]">
+                  <Trophy className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="mt-3 line-clamp-2 text-[12px] leading-relaxed text-[#7a6758]">
+                {plan.description}
+              </p>
+              <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#f1e8df] pt-4">
+                <span className="text-[11px] font-semibold text-[#7a6758]">
+                  {plan.completedEntries}/{plan.totalEntries} readings · {formatDuration(plan.durationDays)}
+                </span>
+                <button
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#f6823c] transition-colors hover:text-[#c95f25]"
+                  onClick={() => onReviewPlan(plan._id)}
+                  type="button"
+                >
+                  Review plan
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompletionCelebrationDialog({
+  completion,
+  onClose,
+  onSavePng,
+  onShare,
+  onViewCompleted,
+}: {
+  completion: CompletionCelebration;
+  onClose: () => void;
+  onSavePng: () => Promise<void>;
+  onShare: () => Promise<void>;
+  onViewCompleted: () => void;
+}) {
+  return (
+    <motion.div
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#25140b]/55 px-4 backdrop-blur-[3px]"
+      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }}
+    >
+      <button
+        aria-label="Close celebration"
+        className="absolute inset-0"
+        onClick={onClose}
+        type="button"
+      />
+      <motion.section
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        aria-labelledby="completion-title"
+        className="reading-plan-page relative w-full max-w-md overflow-hidden rounded-[28px] border border-[#f6cf9d] bg-[#fffaf4] p-5 shadow-2xl sm:p-7"
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+      >
+        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#f6823c]/20 blur-2xl" />
+        <div className="absolute -bottom-20 -left-10 h-36 w-36 rounded-full bg-[#f6c57b]/30 blur-2xl" />
+        <div className="relative">
+          <div className="flex items-center justify-between">
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f6823c] text-white shadow-lg shadow-[#f6823c]/25">
+              <Trophy className="h-6 w-6" />
+            </span>
+            <Sparkles className="h-6 w-6 text-[#e8a044]" />
+          </div>
+          <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.17em] text-[#bc5f25]">
+            A faithful finish
+          </p>
+          <h2 className="mt-2 font-serif text-3xl font-semibold leading-tight text-[#25140b]" id="completion-title">
+            Congratulations — you completed a plan.
+          </h2>
+          <div className="mt-5 border border-[#efddcb] bg-white/80 p-4">
+            <p className="font-serif text-xl font-semibold text-[#25140b]">
+              {completion.title}
+            </p>
+            <p className="mt-1 text-[12px] text-[#7a6758]">
+              {completion.completedEntries}/{completion.totalEntries} readings · {formatDuration(completion.durationDays)}
+            </p>
+            <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#bc5f25]">
+              Completed {new Date(completion.completedAt).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#3a2218] px-3 py-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#1f1209]"
+              onClick={onShare}
+              type="button"
+            >
+              <Share2 className="h-4 w-4" />
+              Share
+            </button>
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-[#e5d6c9] bg-white px-3 py-2.5 text-[12px] font-semibold text-[#3a2218] transition-colors hover:bg-[#fbf7f2]"
+              onClick={onSavePng}
+              type="button"
+            >
+              <Download className="h-4 w-4" />
+              Save PNG
+            </button>
+          </div>
+          <button
+            className="mt-4 w-full text-center text-[12px] font-semibold text-[#f6823c] transition-colors hover:text-[#c95f25]"
+            onClick={onViewCompleted}
+            type="button"
+          >
+            View completed plans
+          </button>
+        </div>
+      </motion.section>
     </motion.div>
   );
 }
