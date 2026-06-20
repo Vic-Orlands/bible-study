@@ -233,6 +233,39 @@ export const active = query({
   },
 });
 
+export const completed = query({
+  args: {
+    identityId: v.optional(v.id("identities")),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await getViewer(ctx, args.identityId);
+    if (!viewer) return [];
+
+    const completedPlans = await ctx.db
+      .query("userPlans")
+      .withIndex("by_owner_and_status", (q) =>
+        q.eq("ownerKey", viewer.ownerKey).eq("status", "completed"),
+      )
+      .collect();
+
+    return completedPlans
+      .sort(
+        (left, right) =>
+          (right.lastCompletedAt ?? right._creationTime) -
+          (left.lastCompletedAt ?? left._creationTime),
+      )
+      .map((plan) => ({
+        _id: plan._id,
+        completedEntries: plan.completedEntries,
+        completedAt: plan.lastCompletedAt ?? plan._creationTime,
+        description: plan.description,
+        durationDays: plan.durationDays,
+        title: plan.title,
+        totalEntries: plan.totalEntries,
+      }));
+  },
+});
+
 export const create = mutation({
   args: {
     identityId: v.optional(v.id("identities")),
@@ -378,6 +411,11 @@ export const toggleEntry = mutation({
       throw new Error("Reading plan entry not found");
     }
 
+    const plan = await ctx.db.get(entry.planId);
+    if (!plan || plan.ownerKey !== viewer.ownerKey) {
+      throw new Error("Reading plan not found");
+    }
+
     const nextStatus = entry.status === "completed" ? "pending" : "completed";
     const completedAt = nextStatus === "completed" ? Date.now() : undefined;
 
@@ -400,6 +438,8 @@ export const toggleEntry = mutation({
       .find((item) =>
         item._id === args.entryId ? nextStatus === "pending" : item.status === "pending",
       );
+    const completedNow =
+      plan.status !== "completed" && completedEntries === planEntries.length;
 
     await ctx.db.patch(entry.planId, {
       completedEntries,
@@ -409,6 +449,12 @@ export const toggleEntry = mutation({
       lastCompletedAt: nextStatus === "completed" ? completedAt : undefined,
       status: completedEntries === planEntries.length ? "completed" : "active",
     });
+
+    return {
+      completedAt: completedNow ? completedAt : null,
+      completedNow,
+      planId: entry.planId,
+    };
   },
 });
 
