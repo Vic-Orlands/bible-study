@@ -21,6 +21,7 @@ import type * as migrate_guest_id from "../migrate_guest_id.js";
 import type * as notes from "../notes.js";
 import type * as notifications from "../notifications.js";
 import type * as ownership from "../ownership.js";
+import type * as push from "../push.js";
 import type * as readingPlans from "../readingPlans.js";
 
 import type {
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   notes: typeof notes;
   notifications: typeof notifications;
   ownership: typeof ownership;
+  push: typeof push;
   readingPlans: typeof readingPlans;
 }>;
 
