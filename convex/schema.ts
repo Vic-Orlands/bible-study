@@ -171,6 +171,28 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_read", ["userId", "read"]),
 
+  pushSubscriptions: defineTable({
+    ownerKey: v.string(),
+    token: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerKey"])
+    .index("by_token", ["token"]),
+
+  notificationPreferences: defineTable({
+    ownerKey: v.string(),
+    dailyReminder: v.boolean(),
+    verseOfDay: v.boolean(),
+    comments: v.boolean(),
+    replies: v.boolean(),
+    likes: v.boolean(),
+    mentions: v.boolean(),
+    planMilestones: v.boolean(),
+    reminderHour: v.number(),
+    updatedAt: v.number(),
+  }).index("by_owner", ["ownerKey"]),
+
   customTranslations: defineTable({
     name: v.string(),
     abbreviation: v.string(),

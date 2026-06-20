@@ -2,6 +2,49 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getViewer, requireViewer } from "./ownership";
 
+const preferenceDefaults = {
+  comments: true,
+  dailyReminder: true,
+  likes: true,
+  mentions: true,
+  planMilestones: true,
+  reminderHour: 8,
+  replies: true,
+  verseOfDay: true,
+};
+
+export const preferences = query({
+  args: { identityId: v.optional(v.id("identities")) },
+  handler: async (ctx, args) => {
+    const viewer = await getViewer(ctx, args.identityId);
+    if (!viewer) return null;
+    return (await ctx.db.query("notificationPreferences").withIndex("by_owner", (q) => q.eq("ownerKey", viewer.ownerKey)).unique()) ?? preferenceDefaults;
+  },
+});
+
+export const savePreferences = mutation({
+  args: {
+    identityId: v.optional(v.id("identities")),
+    comments: v.boolean(), dailyReminder: v.boolean(), likes: v.boolean(), mentions: v.boolean(), planMilestones: v.boolean(), reminderHour: v.number(), replies: v.boolean(), verseOfDay: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await requireViewer(ctx, args.identityId);
+    const current = await ctx.db.query("notificationPreferences").withIndex("by_owner", (q) => q.eq("ownerKey", viewer.ownerKey)).unique();
+    const value = { comments: args.comments, dailyReminder: args.dailyReminder, likes: args.likes, mentions: args.mentions, planMilestones: args.planMilestones, reminderHour: args.reminderHour, replies: args.replies, verseOfDay: args.verseOfDay, updatedAt: Date.now() };
+    if (current) await ctx.db.patch(current._id, value); else await ctx.db.insert("notificationPreferences", { ownerKey: viewer.ownerKey, ...value });
+  },
+});
+
+export const registerPushToken = mutation({
+  args: { identityId: v.optional(v.id("identities")), token: v.string() },
+  handler: async (ctx, args) => {
+    const viewer = await requireViewer(ctx, args.identityId);
+    const current = await ctx.db.query("pushSubscriptions").withIndex("by_token", (q) => q.eq("token", args.token)).unique();
+    const now = Date.now();
+    if (current) await ctx.db.patch(current._id, { ownerKey: viewer.ownerKey, updatedAt: now }); else await ctx.db.insert("pushSubscriptions", { ownerKey: viewer.ownerKey, token: args.token, createdAt: now, updatedAt: now });
+  },
+});
+
 export const list = query({
   args: {
     identityId: v.optional(v.id("identities")),

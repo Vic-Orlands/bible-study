@@ -64,6 +64,7 @@ import { MagnifyingGlassIcon } from "@/components/ui/magnifying-glass";
 import { RichScriptureText } from "@/components/rich-scripture-text";
 import { authClient, signInWithGoogle } from "@/lib/auth-client";
 import { fetchCommentaryChapter, fetchCrossRefChapter } from "@/lib/study-data";
+import { requestPushToken } from "@/lib/firebase-messaging";
 
 function getDisplayName(
   userId: string | undefined,
@@ -1086,6 +1087,26 @@ function MobileIndexPanel({
 function SettingsSheet() {
   const [darkMode, setDarkMode] = useState(false);
   const [fontSize, setFontSize] = useState(14);
+  const identityId = useStudyStore((s) => s.identityId);
+  const registerPushToken = useMutation(api.notifications.registerPushToken);
+
+  const enablePushNotifications = async () => {
+    try {
+      const token = await requestPushToken();
+      if (!token) {
+        toast.error("Notification permission was not granted.");
+        return;
+      }
+      await registerPushToken({
+        ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
+        token,
+      });
+      toast.success("Push notifications enabled.");
+    } catch (error) {
+      console.error("Failed to enable push notifications:", error);
+      toast.error("Unable to enable push notifications.");
+    }
+  };
 
   useEffect(() => {
     if (darkMode) {
@@ -1145,6 +1166,13 @@ function SettingsSheet() {
             <span className="text-xs font-bold">+</span>
           </button>
         </div>
+      </div>
+      <div className="flex items-center justify-between gap-4 p-3 border border-[#f1e8df] bg-white">
+        <div>
+          <span className="text-sm font-medium">Push Notifications</span>
+          <p className="mt-1 text-xs text-[#7a6758]">Daily reminders, verses, and discussion updates.</p>
+        </div>
+        <button className="rounded-full bg-[#3a2218] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1f1209]" onClick={enablePushNotifications} type="button">Enable</button>
       </div>
     </div>
   );
