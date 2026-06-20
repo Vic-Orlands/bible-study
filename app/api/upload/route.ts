@@ -1,6 +1,8 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 export async function POST(req: NextRequest) {
   try {
     const accountId = process.env.R2_ACCOUNT_ID;
@@ -43,11 +45,12 @@ export async function POST(req: NextRequest) {
     }
 
     const key = `audio-notes/${Date.now()}-${file.name}`;
+    const body = Buffer.from(await file.arrayBuffer());
 
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
-      Body: file,
+      Body: body,
       ContentType: file.type,
     });
 

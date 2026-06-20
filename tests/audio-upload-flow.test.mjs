@@ -13,7 +13,8 @@ const studyPage = await readFile(
 
 test("the upload route accepts the audio file and sends it to R2 server-side", () => {
   assert.match(uploadRoute, /await req\.formData\(\)/);
-  assert.match(uploadRoute, /Body:\s*file/);
+  assert.match(uploadRoute, /const body = Buffer\.from\(await file\.arrayBuffer\(\)\)/);
+  assert.match(uploadRoute, /Body:\s*body/);
   assert.doesNotMatch(uploadRoute, /getSignedUrl/);
 });
 
