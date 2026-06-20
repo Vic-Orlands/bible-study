@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 import { requireViewer, getViewer } from "./ownership";
+import { api } from "./_generated/api";
 import { CANON, getReadingPlanTemplate, READING_PLAN_TEMPLATES } from "../lib/reading-plan-templates";
 
 function addDays(date: string, amount: number) {
@@ -449,6 +450,10 @@ export const toggleEntry = mutation({
       lastCompletedAt: nextStatus === "completed" ? completedAt : undefined,
       status: completedEntries === planEntries.length ? "completed" : "active",
     });
+
+    if (completedNow) {
+      await ctx.scheduler.runAfter(0, api.push.notify, { body: `You completed ${plan.title}. Wonderful work!`, ownerKey: viewer.ownerKey, title: "Reading plan complete", type: "planMilestones", url: "/reading-plan" });
+    }
 
     return {
       completedAt: completedNow ? completedAt : null,

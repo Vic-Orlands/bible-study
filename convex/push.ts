@@ -39,3 +39,14 @@ export const notify = action({
     return null;
   },
 });
+
+export const sendDaily = action({
+  args: { body: v.string(), title: v.string(), type: v.union(v.literal("dailyReminder"), v.literal("verseOfDay")), url: v.string() },
+  handler: async (ctx, args) => {
+    const subscriptions: { token: string }[] = await ctx.runQuery(internal.notifications.dailyPushDelivery, { type: args.type });
+    for (const subscription of subscriptions) {
+      try { await messaging().send({ token: subscription.token, notification: { title: args.title, body: args.body }, webpush: { fcmOptions: { link: args.url } } }); } catch (error) { console.error("Failed to deliver daily FCM push notification:", error); }
+    }
+    return null;
+  },
+});

@@ -48,6 +48,26 @@ export const create = mutation({
       likes: [],
     });
 
+    if (!args.parentId) {
+      const participants = await ctx.db
+        .query("comments")
+        .withIndex("by_passage", (q) => q.eq("passageBook", args.passageBook).eq("passageChapter", args.passageChapter))
+        .take(100);
+      const recipients = new Set(participants.map((item) => item.userId).filter((userId): userId is string => Boolean(userId && userId !== viewer.ownerKey)));
+      for (const userId of recipients) {
+        await ctx.scheduler.runAfter(0, api.push.notify, { body: `${viewer.displayName} added a comment to ${args.passageBook} ${args.passageChapter}.`, ownerKey: userId, title: "New comment", type: "comments", url: "/study" });
+      }
+    }
+
+    for (const mention of args.content.matchAll(/@([\p{L}\p{N} ._-]{2,40})/gu)) {
+      const name = mention[1]?.trim();
+      if (!name) continue;
+      const identity = await ctx.db.query("identities").withIndex("by_displayName", (q) => q.eq("displayName", name)).unique();
+      if (identity?.userId && identity.userId !== viewer.ownerKey) {
+        await ctx.scheduler.runAfter(0, api.push.notify, { body: `${viewer.displayName} mentioned you: ${args.content.slice(0, 100)}`, ownerKey: identity.userId, title: "New mention", type: "mentions", url: "/study" });
+      }
+    }
+
     if (args.parentId) {
       const parent = await ctx.db.get(args.parentId);
       if (parent && parent.userId) {

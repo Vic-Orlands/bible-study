@@ -12,6 +12,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_ipHash", ["ipHash"])
+    .index("by_displayName", ["displayName"])
     .index("by_userId", ["userId"])
     .index("by_isAnonymous", ["isAnonymous"]),
 

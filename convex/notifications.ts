@@ -23,6 +23,20 @@ export const pushDelivery = internalQuery({
   },
 });
 
+export const dailyPushDelivery = internalQuery({
+  args: { type: v.union(v.literal("dailyReminder"), v.literal("verseOfDay")) },
+  handler: async (ctx, args) => {
+    const preferences = await ctx.db.query("notificationPreferences").take(500);
+    const recipients = preferences.filter((preference) => preference[args.type]);
+    const deliveries = [];
+    for (const recipient of recipients) {
+      const subscriptions = await ctx.db.query("pushSubscriptions").withIndex("by_owner", (q) => q.eq("ownerKey", recipient.ownerKey)).collect();
+      deliveries.push(...subscriptions.map((subscription) => ({ token: subscription.token })));
+    }
+    return deliveries;
+  },
+});
+
 export const preferences = query({
   args: { identityId: v.optional(v.id("identities")) },
   handler: async (ctx, args) => {

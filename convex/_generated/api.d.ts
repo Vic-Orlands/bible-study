@@ -14,6 +14,7 @@ import type * as audioNotes from "../audioNotes.js";
 import type * as auth from "../auth.js";
 import type * as bookmarks from "../bookmarks.js";
 import type * as comments from "../comments.js";
+import type * as crons from "../crons.js";
 import type * as customTranslations from "../customTranslations.js";
 import type * as http from "../http.js";
 import type * as identity from "../identity.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   bookmarks: typeof bookmarks;
   comments: typeof comments;
+  crons: typeof crons;
   customTranslations: typeof customTranslations;
   http: typeof http;
   identity: typeof identity;
