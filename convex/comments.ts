@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireViewer } from "./ownership";
+import { api } from "./_generated/api";
 
 export const list = query({
   args: {
@@ -63,6 +64,7 @@ export const create = mutation({
           preview: args.content.slice(0, 100),
           createdAt: Date.now(),
         });
+        await ctx.scheduler.runAfter(0, api.push.notify, { body: `${viewer.displayName} replied: ${args.content.slice(0, 100)}`, ownerKey: parent.userId, title: "New reply", type: "replies", url: "/study" });
       }
     }
 
@@ -102,6 +104,7 @@ export const toggleLike = mutation({
         preview: comment.content.slice(0, 100),
         createdAt: Date.now(),
       });
+      await ctx.scheduler.runAfter(0, api.push.notify, { body: `${viewer.displayName} liked your comment.`, ownerKey: comment.userId, title: "New like", type: "likes", url: "/study" });
     }
   },
 });

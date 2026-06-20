@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getViewer, requireViewer } from "./ownership";
 
@@ -12,6 +12,16 @@ const preferenceDefaults = {
   replies: true,
   verseOfDay: true,
 };
+
+export const pushDelivery = internalQuery({
+  args: { ownerKey: v.string(), type: v.string() },
+  handler: async (ctx, args) => {
+    const preferences = await ctx.db.query("notificationPreferences").withIndex("by_owner", (q) => q.eq("ownerKey", args.ownerKey)).unique();
+    const enabled = Boolean(preferences?.[args.type as keyof typeof preferenceDefaults] ?? preferenceDefaults[args.type as keyof typeof preferenceDefaults] ?? true);
+    if (!enabled) return [];
+    return await ctx.db.query("pushSubscriptions").withIndex("by_owner", (q) => q.eq("ownerKey", args.ownerKey)).collect();
+  },
+});
 
 export const preferences = query({
   args: { identityId: v.optional(v.id("identities")) },
