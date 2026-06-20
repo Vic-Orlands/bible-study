@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   BookOpen,
   Check,
+  CheckCircle,
   CheckCircle2,
   ChevronRight,
   Download,
@@ -232,8 +233,9 @@ export default function ReadingPlanPage() {
   const [archiveScope, setArchiveScope] = useState<ArchiveScope>("selected");
   const [reflectionDraft, setReflectionDraft] = useState("");
   const [readerVersionId, setReaderVersionId] = useState("");
-  const [selectedPlanId, setSelectedPlanId] =
-    useState<Id<"userPlans"> | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<Id<"userPlans"> | null>(
+    null,
+  );
   const [completionCelebration, setCompletionCelebration] =
     useState<CompletionCelebration | null>(null);
 
@@ -446,7 +448,9 @@ export default function ReadingPlanPage() {
         setCompletionCelebration({
           completedAt: result.completedAt ?? Date.now(),
           completedEntries: currentPlan.plan.totalEntries,
-          durationDays: currentPlan.templateMeta?.durationDays ?? currentPlan.plan.totalEntries,
+          durationDays:
+            currentPlan.templateMeta?.durationDays ??
+            currentPlan.plan.totalEntries,
           title: currentPlan.plan.title,
           totalEntries: currentPlan.plan.totalEntries,
         });
@@ -520,7 +524,10 @@ export default function ReadingPlanPage() {
         await navigator.clipboard.writeText(shareText);
         toast.success("Achievement copied to your clipboard.");
       } catch (clipboardError) {
-        console.error("Failed to copy reading plan completion:", clipboardError);
+        console.error(
+          "Failed to copy reading plan completion:",
+          clipboardError,
+        );
         toast.error("Could not share your achievement.");
       }
     }
@@ -536,7 +543,12 @@ export default function ReadingPlanPage() {
       const context = canvas.getContext("2d");
       if (!context) throw new Error("Canvas is not supported");
 
-      const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+      const gradient = context.createLinearGradient(
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
       gradient.addColorStop(0, "#fff8ed");
       gradient.addColorStop(0.55, "#fbe6c8");
       gradient.addColorStop(1, "#f6b96c");
@@ -886,9 +898,7 @@ function ReadingPlanRail({
                       aria-pressed={isSelected}
                       className={cn(
                         "group w-full px-3 py-2.5 text-left transition-colors",
-                        isSelected
-                          ? "bg-[#fbf7f2]"
-                          : "hover:bg-[#fbf7f2]/70",
+                        isSelected ? "bg-[#fbf7f2]" : "hover:bg-[#fbf7f2]/70",
                       )}
                       key={plan._id}
                       onClick={() => onSelectPlan(plan._id)}
@@ -1401,7 +1411,8 @@ function CompletedPlansTab({
               Completed plans
             </h2>
             <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-[#7a6758]">
-              Every finished reading journey is here whenever you want to revisit its passages and reflections.
+              Every finished reading journey is here whenever you want to
+              revisit its passages and reflections.
             </p>
           </div>
           <span className="font-serif text-4xl font-semibold text-[#f6823c] tabular-nums">
@@ -1417,7 +1428,8 @@ function CompletedPlansTab({
             Your finished paths will appear here
           </h3>
           <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#7a6758]">
-            Complete a reading plan to preserve its progress, passages, and journal entries in this library.
+            Complete a reading plan to preserve its progress, passages, and
+            journal entries in this library.
           </p>
         </section>
       ) : (
@@ -1431,7 +1443,12 @@ function CompletedPlansTab({
                 <div className="min-w-0">
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#bc5f25]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Completed {new Date(plan.completedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                    Completed{" "}
+                    {new Date(plan.completedAt).toLocaleDateString([], {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </span>
                   <h3 className="mt-3 font-serif text-xl font-semibold text-[#25140b]">
                     {plan.title}
@@ -1446,7 +1463,8 @@ function CompletedPlansTab({
               </p>
               <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#f1e8df] pt-4">
                 <span className="text-[11px] font-semibold text-[#7a6758]">
-                  {plan.completedEntries}/{plan.totalEntries} readings · {formatDuration(plan.durationDays)}
+                  {plan.completedEntries}/{plan.totalEntries} readings ·{" "}
+                  {formatDuration(plan.durationDays)}
                 </span>
                 <div className="flex items-center gap-3">
                   <button
@@ -1521,7 +1539,10 @@ function CompletionCelebrationDialog({
           <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.17em] text-[#bc5f25]">
             A faithful finish
           </p>
-          <h2 className="mt-2 font-serif text-3xl font-semibold leading-tight text-[#25140b]" id="completion-title">
+          <h2
+            className="mt-2 font-serif text-3xl font-semibold leading-tight text-[#25140b]"
+            id="completion-title"
+          >
             Congratulations — you completed a plan.
           </h2>
           <div className="mt-5 border border-[#efddcb] bg-white/80 p-4">
@@ -1529,10 +1550,16 @@ function CompletionCelebrationDialog({
               {completion.title}
             </p>
             <p className="mt-1 text-[12px] text-[#7a6758]">
-              {completion.completedEntries}/{completion.totalEntries} readings · {formatDuration(completion.durationDays)}
+              {completion.completedEntries}/{completion.totalEntries} readings ·{" "}
+              {formatDuration(completion.durationDays)}
             </p>
             <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#bc5f25]">
-              Completed {new Date(completion.completedAt).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}
+              Completed{" "}
+              {new Date(completion.completedAt).toLocaleDateString([], {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
             </p>
           </div>
           <div className="mt-5 grid grid-cols-2 gap-2">
@@ -1682,95 +1709,82 @@ function HubTab({
           {currentPlan.allEntries.map((entry) => {
             const isSelected = selectedEntryId === entry._id;
             const isPrimary = currentPlan.primaryEntry?._id === entry._id;
+            const isDone = entry.status === "completed";
+            const isNext = isPrimary;
             return (
-              <div
-                key={entry._id}
-                className="group relative pb-5 pl-10 last:pb-0"
-              >
-                <div className="absolute bottom-0 left-[11px] top-3 w-px bg-[#f1e8df] group-last:hidden" />
-                <div className="absolute left-0 top-1 flex h-6 w-6 items-center justify-center">
-                  {entry.status === "completed" ? (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f6823c] text-white">
-                      <Check className="h-3.5 w-3.5" />
-                    </div>
-                  ) : isPrimary ? (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#f6823c] bg-white">
-                      <div className="h-2 w-2 rounded-full bg-[#f6823c]" />
-                    </div>
-                  ) : (
-                    <div className="h-4 w-4 rounded-full border border-[#e5d6c9] bg-white" />
-                  )}
-                </div>
-
+              <div key={entry._id}>
                 <div
-                  className={cn(
-                    "grid items-center gap-4 rounded-2xl border p-4 transition-colors md:grid-cols-[1fr_auto]",
-                    entry.status === "completed"
-                      ? "border-[#f1e8df] bg-white opacity-75 hover:opacity-100"
-                      : isPrimary
-                        ? "border-[#e5d6c9] bg-[#fbf7f2]"
-                        : isSelected
-                          ? "border-[#e5d6c9] bg-white"
-                          : "border-[#f1e8df] bg-white hover:bg-[#fbf7f2]",
-                  )}
+                  onClick={() => onOpenReading(entry)}
+                  className={`group p-4 rounded-2xl border flex items-center justify-between gap-4 cursor-pointer transition-all duration-300 ${
+                    isDone
+                      ? "bg-white/60 border-neutral-200/60 opacity-75 hover:opacity-100 hover:bg-white"
+                      : isNext
+                        ? "bg-white border-[#EA7C5A] shadow-md shadow-[#EA7C5A]/5 scale-[1.01]"
+                        : "bg-white border-[#EDECE4] hover:border-neutral-300 hover:shadow-xs"
+                  }`}
                 >
-                  <button
-                    className="min-w-0 rounded-full text-left"
-                    onClick={() => onOpenReading(entry)}
-                    type="button"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-                        DAY {entry.dayNumber}
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold tracking-tight shrink-0 transition-colors ${
+                        isDone
+                          ? "bg-[#EFECE6] text-neutral-500"
+                          : isNext
+                            ? "bg-[#EA7C5A] text-white shadow-sm"
+                            : "bg-[#F3EFE0] text-[#2E4A3F] group-hover:bg-[#EBE6D7]"
+                      }`}
+                    >
+                      <span className="text-[8px] uppercase font-mono tracking-wider opacity-70 leading-none">
+                        Day
                       </span>
-                      <span className="text-[9px] text-[#e5d6c9]">•</span>
-                      <p
-                        className={cn(
-                          "font-serif text-[16px] font-semibold text-[#25140b]",
-                          entry.status === "completed" &&
-                            "text-[#9b8878] line-through decoration-[#e5d6c9]",
-                        )}
+                      <span className="text-base font-serif leading-none mt-0.5">
+                        {entry.dayNumber}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h4
+                        className={`font-serif text-base font-bold tracking-tight transition-all ${
+                          isDone
+                            ? "text-neutral-500 line-through decoration-neutral-300"
+                            : "text-neutral-900 group-hover:text-[#2E4A3F]"
+                        }`}
                       >
                         {entry.passageLabel}
-                      </p>
-                      {isPrimary ? (
-                        <span className="rounded-full border border-[#e5d6c9] bg-white px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] text-[#f6823c]">
-                          Up Next
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-neutral-500">
+                          {chapterRangeLabel(entry)}
                         </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-[#9b8878]">
-                      {chapterRangeLabel(entry)} ·{" "}
-                      {formatLongDate(entry.dueDate)}
-                    </p>
-                    {entry.reflection?.trim() ? (
-                      <div className="mt-3 border-l border-[#e5d6c9] pl-3 text-[12px] italic leading-relaxed text-[#7a6758]">
-                        &quot;{entry.reflection}&quot;
+                        {currentPlan.templateMeta?.estimatedMinutes ? (
+                          <span className="text-[9px] text-[#2E4A3F] font-mono bg-[#EFECE6] px-1.5 rounded uppercase">
+                            ~{currentPlan.templateMeta.estimatedMinutes} min
+                          </span>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </button>
+                    </div>
+                  </div>
 
-                  <div className="flex shrink-0 items-center gap-2 self-center">
+                  <div className="flex items-center gap-3">
                     <button
-                      className="rounded-full border border-[#f1e8df] bg-white px-2 py-1.5 text-[12px] font-semibold text-[#25140b] hover:bg-[#fbf7f2]"
-                      onClick={() => onOpenReading(entry)}
-                      type="button"
-                    >
-                      {entry.startedAt ? "Resume" : "Read"}
-                    </button>
-                    <button
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-full border transition-all",
-                        entry.status === "completed"
-                          ? "border-[#f6823c] bg-[#f6823c] text-white"
-                          : "border-[#f1e8df] bg-white text-[#9b8878] hover:border-[#f6823c] hover:text-[#f6823c]",
-                      )}
-                      onClick={async () => {
-                        await onToggleEntry(entry._id);
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await onToggleEntry(entry._id);
+                        } catch (err) {
+                          console.error(err);
+                        }
                       }}
                       type="button"
+                      className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${
+                        isDone
+                          ? "bg-[#2E4A3F] border-[#2E4A3F] text-[#F3EFE0]"
+                          : "bg-transparent border-[#EDECE4] text-neutral-300 hover:border-[#2E4A3F] hover:text-[#2E4A3F]"
+                      }`}
                     >
-                      <Check className="h-4.5 w-4.5" />
+                      <CheckCircle
+                        className="w-4 h-4 fill-current outline-none"
+                        strokeWidth={2.5}
+                      />
                     </button>
                   </div>
                 </div>
