@@ -2,7 +2,7 @@
 
 Bible Study is a private and community study workspace for reading Scripture, comparing translations, capturing notes, discussing passages, and following reading plans without losing context.
 
-<img width="1800" height="1169" alt="Screenshot 2026-08-29 at 12 17 06 AM" src="https://github.com/user-attachments/assets/d08aae34-7e6a-4904-9215-37578d1da946" />
+<img width="1800" height="1169" alt="Screenshot 2026-08-29 at 12 26 52 AM" src="https://github.com/user-attachments/assets/1704494c-9599-4ac7-a49c-0f86f62d489d" />
 
 The product combines a three-region Bible reader with reference-aware writing. A passage mentioned naturally inside a note or discussion becomes part of the reading experience instead of remaining inert text.
 
