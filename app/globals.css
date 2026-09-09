@@ -137,7 +137,9 @@ a {
 .bible-app .reading-plan-page button:hover,
 .bible-app .reading-plan-page button:active,
 .bible-app .workspace-surface button:hover,
-.bible-app .workspace-surface button:active {
+.bible-app .workspace-surface button:active,
+.bible-app .chrome-bar button:hover,
+.bible-app .chrome-bar button:active {
   transform: none;
 }
 
