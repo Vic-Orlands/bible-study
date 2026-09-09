@@ -212,12 +212,16 @@ export default function CommunityPage() {
   );
   const [composerFocused, setComposerFocused] = useState(false);
   const [noticeVisible, setNoticeVisible] = useState(true);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
-  const group = groups.find((item) => item.id === groupId) ?? groups[0];
+  const groupCatalog = [...groups, ...suggestedGroups];
+  const group = groupCatalog.find((item) => item.id === groupId) ?? groups[0];
   const verse = johnVerses[verseIndex] ?? johnVerses[0];
   const joined = joinedIds.includes(group.id);
-  const myGroups = groups.filter((item) => joinedIds.includes(item.id));
+  const myGroups = groupCatalog.filter((item) => joinedIds.includes(item.id));
 
   const toggleJoin = () => {
     setJoinedIds((current) => {
@@ -255,7 +259,15 @@ export default function CommunityPage() {
       time: "Just now",
       verse: `John 1:${verse.number}`,
     };
-    setPosts((current) => [next, ...current]);
+    setPosts((current) => {
+      const withPost = [next, ...current];
+      if (!replyingTo) return withPost;
+      return withPost.map((item) =>
+        item.id === replyingTo.id
+          ? { ...item, replies: item.replies + 1 }
+          : item,
+      );
+    });
     setComposer("");
     setComposerFocused(false);
     setReplyingTo(null);
@@ -307,7 +319,9 @@ export default function CommunityPage() {
                     <p className="mt-1 border-t border-black/[0.05] px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[#8a8178]">
                       Discover
                     </p>
-                    {suggestedGroups.map((item) => (
+                    {suggestedGroups
+                      .filter((item) => !joinedIds.includes(item.id))
+                      .map((item) => (
                       <WorkspaceMenuItem
                         description={`${item.members.toLocaleString()} members`}
                         icon={<Plus className="h-4 w-4" />}
@@ -318,6 +332,7 @@ export default function CommunityPage() {
                               ? current
                               : [...current, item.id],
                           );
+                          setGroupId(item.id);
                           toast.success(`Joined ${item.name}`);
                           setGroupsOpen(false);
                         }}
@@ -494,12 +509,10 @@ export default function CommunityPage() {
                       <button
                         className="inline-flex min-h-8 items-center gap-1.5 text-[13px] font-medium text-[#8a8178] hover:text-[#171412]"
                         onClick={() => {
-                          setReplyingTo(post.name);
+                          setReplyingTo({ id: post.id, name: post.name });
                           setComposerMode("insight");
                           setComposerFocused(true);
-                          setComposer((value) =>
-                            value ? value : `Replying to ${post.name}: `,
-                          );
+                          setComposer("");
                         }}
                         type="button"
                       >
@@ -537,7 +550,7 @@ export default function CommunityPage() {
               </div>
               {replyingTo ? (
                 <div className="mb-2 flex items-center justify-between text-[12px] text-[#8a8178]">
-                  <span>Replying to {replyingTo}</span>
+                  <span>Replying to {replyingTo.name}</span>
                   <button
                     className="hover:text-[#171412]"
                     onClick={() => setReplyingTo(null)}
@@ -595,8 +608,11 @@ export default function CommunityPage() {
               </AnimatePresence>
             </section>
 
+            {suggestedGroups.some((item) => !joinedIds.includes(item.id)) ? (
             <WorkspaceSection label="Suggested">
-              {suggestedGroups.map((item) => (
+              {suggestedGroups
+                .filter((item) => !joinedIds.includes(item.id))
+                .map((item) => (
                 <WorkspaceRow
                   icon={<Users className="h-4 w-4" />}
                   key={item.id}
@@ -605,6 +621,7 @@ export default function CommunityPage() {
                     setJoinedIds((current) =>
                       current.includes(item.id) ? current : [...current, item.id],
                     );
+                    setGroupId(item.id);
                     toast.success(`Joined ${item.name}`);
                   }}
                   title={item.name}
@@ -616,6 +633,7 @@ export default function CommunityPage() {
                 />
               ))}
             </WorkspaceSection>
+            ) : null}
           </div>
         </WorkspaceCanvas>
       </WorkspaceSurface>

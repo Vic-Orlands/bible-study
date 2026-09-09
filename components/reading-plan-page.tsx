@@ -48,7 +48,7 @@ import {
 } from "@/lib/scripture";
 import { useStudyStore } from "@/lib/study-store";
 import { cn } from "@/lib/utils";
-import { CANON } from "@/lib/reading-plan-templates";
+import { CANON, READING_PLAN_TEMPLATES } from "@/lib/reading-plan-templates";
 
 type ReadingTab = "home" | "journal" | "completed";
 type ArchiveScope = "selected" | "all";
@@ -181,6 +181,28 @@ const dailyInsights = [
   },
 ];
 
+const PLAN_CATALOG: TemplateCard[] = READING_PLAN_TEMPLATES.map((template) => ({
+  cadenceLabel: template.cadenceLabel,
+  category: template.category,
+  durationDays: template.durationDays,
+  estimatedMinutes: template.estimatedMinutes,
+  featured: template.featured,
+  id: template.id,
+  scopeLabel: template.scopeLabel,
+  summary: template.summary,
+  title: template.title,
+}));
+
+const GROUPED_PLAN_CATALOG = (() => {
+  const groups = new Map<string, TemplateCard[]>();
+  for (const template of PLAN_CATALOG) {
+    const current = groups.get(template.category) ?? [];
+    current.push(template);
+    groups.set(template.category, current);
+  }
+  return Array.from(groups.entries());
+})();
+
 function todayString() {
   const today = new Date();
   const year = today.getFullYear();
@@ -274,7 +296,6 @@ export default function ReadingPlanPage() {
   const [completionCelebration, setCompletionCelebration] =
     useState<CompletionCelebration | null>(null);
 
-  const templates = useQuery(api.readingPlans.templates) ?? [];
   const activePlans = useQuery(api.readingPlans.active, {
     ...(identityId ? { identityId: identityId as Id<"identities"> } : {}),
   }) as ActivePlanSummary[] | undefined;
@@ -401,15 +422,7 @@ export default function ReadingPlanPage() {
     }
   }, [currentPlan, selectedEntryId]);
 
-  const groupedTemplates = useMemo(() => {
-    const groups = new Map<string, TemplateCard[]>();
-    for (const template of templates as TemplateCard[]) {
-      const current = groups.get(template.category) ?? [];
-      current.push(template);
-      groups.set(template.category, current);
-    }
-    return Array.from(groups.entries());
-  }, [templates]);
+  const groupedTemplates = GROUPED_PLAN_CATALOG;
 
   const selectedEntry =
     currentPlan?.allEntries.find((entry) => entry._id === selectedEntryId) ??
@@ -652,18 +665,18 @@ export default function ReadingPlanPage() {
     );
   }
 
-  const featuredTemplates = (templates as TemplateCard[])
-    .filter((template) => template.featured)
-    .slice(0, 4);
+  const featuredTemplates = PLAN_CATALOG.filter(
+    (template) => template.featured,
+  ).slice(0, 4);
   const suggestedTemplates =
     featuredTemplates.length > 0
       ? featuredTemplates
-      : (templates as TemplateCard[]).slice(0, 4);
+      : PLAN_CATALOG.slice(0, 4);
 
   return (
     <ProductShell>
       <WorkspaceSurface className="reading-plan-page">
-        <WorkspaceCanvas stacked={activeTab === "home"}>
+        <WorkspaceCanvas stacked={activeTab === "home" && Boolean(currentPlan)}>
           {activeTab === "completed" ? (
             <CompletedPlansTab
               completedPlans={completedPlans}
