@@ -9,22 +9,34 @@ import {
   ArrowLeft,
   BookOpen,
   Check,
-  CheckCircle,
   CheckCircle2,
-  ChevronRight,
+  ChevronDown,
   Download,
   Edit3,
   FileText,
   Pause,
   Play,
+  Plus,
   Share2,
   Sparkles,
   Trophy,
   Volume2,
+  Wind,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ProductShell } from "@/components/product-shell";
+import {
+  WorkspaceCanvas,
+  WorkspaceIconButton,
+  WorkspaceMenu,
+  WorkspaceMenuItem,
+  WorkspacePill,
+  WorkspaceRow,
+  WorkspaceSection,
+  WorkspaceSurface,
+} from "@/components/workspace";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import {
@@ -38,7 +50,7 @@ import { useStudyStore } from "@/lib/study-store";
 import { cn } from "@/lib/utils";
 import { CANON } from "@/lib/reading-plan-templates";
 
-type ReadingTab = "hub" | "journal" | "focus" | "completed";
+type ReadingTab = "home" | "journal" | "completed";
 type ArchiveScope = "selected" | "all";
 
 type TemplateCard = {
@@ -184,14 +196,6 @@ function formatDateLabel(date: string) {
   });
 }
 
-function formatLongDate(date: string) {
-  return new Date(`${date}T00:00:00`).toLocaleDateString([], {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 function formatDuration(days: number) {
   return `${days} day${days === 1 ? "" : "s"}`;
 }
@@ -204,9 +208,37 @@ function chapterRangeLabel(entry: ReadingPlanEntry) {
 }
 
 function relativeStartLabel(currentPlan: ReadingPlanCurrent) {
-  if (currentPlan.plan.completedEntries === 0) return "Start Reading";
-  if (currentPlan.primaryEntry) return "Continue Reading";
-  return "Plan Complete";
+  if (currentPlan.plan.completedEntries === 0) return "Start reading";
+  if (currentPlan.primaryEntry) return "Continue reading";
+  return "Plan complete";
+}
+
+function dueLabel(date: string) {
+  const today = todayString();
+  if (date === today) return "Today";
+  const diff = Math.round(
+    (new Date(`${date}T00:00:00`).getTime() -
+      new Date(`${today}T00:00:00`).getTime()) /
+      86400000,
+  );
+  if (diff === 1) return "Tomorrow";
+  if (diff === -1) return "Yesterday";
+  return formatDateLabel(date);
+}
+
+function openedMeta(entry: ReadingPlanEntry) {
+  if (!entry.lastOpenedAt) {
+    return entry.status === "completed"
+      ? `Completed · ${dueLabel(entry.dueDate)}`
+      : `Day ${entry.dayNumber} · ${dueLabel(entry.dueDate)}`;
+  }
+  const days = Math.max(
+    0,
+    Math.floor((Date.now() - entry.lastOpenedAt) / 86400000),
+  );
+  if (days === 0) return "Pick up where you left off · Today";
+  if (days === 1) return "Pick up where you left off · 1d ago";
+  return `Pick up where you left off · ${days}d ago`;
 }
 
 function dailyInsight() {
@@ -224,7 +256,10 @@ export default function ReadingPlanPage() {
   const setIdentity = useStudyStore((s) => s.setIdentity);
   const identityId = useStudyStore((s) => s.identityId);
   const [storeReady, setStoreReady] = useState(false);
-  const [activeTab, setActiveTab] = useState<ReadingTab>("hub");
+  const [activeTab, setActiveTab] = useState<ReadingTab>("home");
+  const [plansMenuOpen, setPlansMenuOpen] = useState(false);
+  const [focusOpen, setFocusOpen] = useState(false);
+  const [pathExpanded, setPathExpanded] = useState(false);
   const [selectedEntryId, setSelectedEntryId] =
     useState<Id<"userPlanEntries"> | null>(null);
   const [readerOpenMobile, setReaderOpenMobile] = useState(false);
@@ -394,7 +429,7 @@ export default function ReadingPlanPage() {
         templateId,
       });
       setSelectedPlanId(planId);
-      setActiveTab("hub");
+      setActiveTab("home");
       setPlansSheetOpen(false);
       toast.success(`Started ${title}`);
     } catch (error) {
@@ -415,7 +450,7 @@ export default function ReadingPlanPage() {
         durationDays: draft.durationDays,
       });
       setSelectedPlanId(result.planId);
-      setActiveTab("hub");
+      setActiveTab("home");
       setPlansSheetOpen(false);
       toast.success(`Started ${draft.title}`);
     } catch (error) {
@@ -606,52 +641,37 @@ export default function ReadingPlanPage() {
   if (!storeReady) {
     return (
       <ProductShell>
-        <div className="flex flex-1 items-center justify-center bg-white text-[13px] text-[#7a6758]">
-          Loading plans...
-        </div>
+        <WorkspaceSurface className="reading-plan-page">
+          <WorkspaceCanvas>
+            <div className="flex flex-1 items-center justify-center py-24 text-[13px] text-[#8a8178]">
+              Loading plans...
+            </div>
+          </WorkspaceCanvas>
+        </WorkspaceSurface>
       </ProductShell>
     );
   }
 
+  const featuredTemplates = (templates as TemplateCard[])
+    .filter((template) => template.featured)
+    .slice(0, 4);
+  const suggestedTemplates =
+    featuredTemplates.length > 0
+      ? featuredTemplates
+      : (templates as TemplateCard[]).slice(0, 4);
+
   return (
     <ProductShell>
-      <div className="reading-plan-page flex min-h-0 flex-1 overflow-hidden bg-white">
-        <ReadingPlanRail
-          activePlans={activePlans ?? []}
-          currentPlan={currentPlan}
-          onArchiveAll={() => {
-            setArchiveScope("all");
-            setArchiveConfirmOpen(true);
-          }}
-          onArchiveCurrent={() => {
-            setArchiveScope("selected");
-            setArchiveConfirmOpen(true);
-          }}
-          onOpenPlans={() => setPlansSheetOpen(true)}
-          onSelectPlan={(planId) => {
-            setSelectedPlanId(planId);
-            setSelectedEntryId(null);
-            setActiveTab("hub");
-          }}
-          selectedPlanId={selectedPlanId}
-        />
-
-        <main className="bible-app-scroll min-w-0 flex-1 overflow-y-auto bg-white px-4 py-5 md:px-7 xl:px-10">
-          <PageHeader
-            activeTab={activeTab}
-            completedCount={completedPlans.length}
-            currentPlan={currentPlan}
-            journalCount={currentPlan?.journalEntries.length ?? 0}
-            onChangeTab={setActiveTab}
-          />
-
+      <WorkspaceSurface className="reading-plan-page">
+        <WorkspaceCanvas stacked={activeTab === "home"}>
           {activeTab === "completed" ? (
             <CompletedPlansTab
               completedPlans={completedPlans}
+              onBack={() => setActiveTab("home")}
               onReviewPlan={(planId) => {
                 setSelectedPlanId(planId);
                 setSelectedEntryId(null);
-                setActiveTab("hub");
+                setActiveTab("home");
               }}
               onSharePlan={(plan) =>
                 setCompletionCelebration({
@@ -663,22 +683,61 @@ export default function ReadingPlanPage() {
                 })
               }
             />
-          ) : !currentPlan ? (
-            <BrowseState onOpenPlans={() => setPlansSheetOpen(true)} />
-          ) : activeTab === "hub" ? (
-            <HubTab
+          ) : activeTab === "journal" && currentPlan ? (
+            <JournalTab
               currentPlan={currentPlan}
+              onBack={() => setActiveTab("home")}
               onOpenReading={openReading}
-              onToggleEntry={handleToggleEntry}
-              selectedEntryId={selectedEntry?._id ?? null}
             />
-          ) : activeTab === "journal" ? (
-            <JournalTab currentPlan={currentPlan} onOpenReading={openReading} />
+          ) : !currentPlan ? (
+            <BrowseState
+              onOpenPlans={() => setPlansSheetOpen(true)}
+              onStartPlan={startPlan}
+              suggestedTemplates={suggestedTemplates}
+            />
           ) : (
-            <FocusTab currentPlan={currentPlan} onOpenReading={openReading} />
+            <PlanHome
+              activePlans={activePlans ?? []}
+              completedCount={completedPlans.length}
+              currentPlan={currentPlan}
+              onArchiveAll={() => {
+                setArchiveScope("all");
+                setArchiveConfirmOpen(true);
+                setPlansMenuOpen(false);
+              }}
+              onArchiveCurrent={() => {
+                setArchiveScope("selected");
+                setArchiveConfirmOpen(true);
+                setPlansMenuOpen(false);
+              }}
+              onOpenFocus={() => setFocusOpen(true)}
+              onOpenJournal={() => setActiveTab("journal")}
+              onOpenPlans={() => {
+                setPlansMenuOpen(false);
+                setPlansSheetOpen(true);
+              }}
+              onOpenReading={openReading}
+              onSelectPlan={(planId) => {
+                setSelectedPlanId(planId);
+                setSelectedEntryId(null);
+                setPlansMenuOpen(false);
+                setActiveTab("home");
+              }}
+              onToggleEntry={handleToggleEntry}
+              onViewCompleted={() => {
+                setPlansMenuOpen(false);
+                setActiveTab("completed");
+              }}
+              pathExpanded={pathExpanded}
+              plansMenuOpen={plansMenuOpen}
+              selectedEntryId={selectedEntry?._id ?? null}
+              selectedPlanId={selectedPlanId}
+              setPathExpanded={setPathExpanded}
+              setPlansMenuOpen={setPlansMenuOpen}
+            />
           )}
-        </main>
-      </div>
+        </WorkspaceCanvas>
+      </WorkspaceSurface>
 
       <AnimatePresence>
         {plansSheetOpen ? (
@@ -737,7 +796,7 @@ export default function ReadingPlanPage() {
             />
             <motion.div
               animate={{ x: 0 }}
-              className="reading-plan-page relative z-20 flex h-full w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl md:flex-row"
+              className="reading-plan-page relative z-20 flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-t-[28px] bg-white shadow-2xl md:flex-row md:rounded-[28px] md:my-4 md:mr-4"
               exit={{ x: "100%" }}
               initial={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 200 }}
@@ -758,265 +817,438 @@ export default function ReadingPlanPage() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {focusOpen && currentPlan ? (
+          <FocusSheet
+            currentPlan={currentPlan}
+            onClose={() => setFocusOpen(false)}
+            onOpenReading={async (entry) => {
+              setFocusOpen(false);
+              await openReading(entry);
+            }}
+          />
+        ) : null}
+      </AnimatePresence>
     </ProductShell>
   );
 }
 
-function PageHeader({
-  activeTab,
-  completedCount,
-  currentPlan,
-  journalCount,
-  onChangeTab,
-}: {
-  activeTab: ReadingTab;
-  completedCount: number;
-  currentPlan: ReadingPlanCurrent | null | undefined;
-  journalCount: number;
-  onChangeTab: (tab: ReadingTab) => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "mx-auto mb-5 flex w-full flex-col gap-4",
-        currentPlan ? "max-w-3xl" : "max-w-5xl",
-      )}
-    >
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f6823c]">
-            Reading Workspace
-          </p>
-          <h1 className="font-serif text-[22px] font-semibold leading-tight text-[#25140b] md:text-[24px]">
-            {currentPlan ? currentPlan.plan.title : "Reading Plans"}
-          </h1>
-          <p className="max-w-[660px] text-[13px] leading-relaxed text-[#7a6758]">
-            {currentPlan
-              ? (currentPlan.templateMeta?.summary ??
-                currentPlan.plan.description)
-              : "Choose a curated path, read inside this page, and keep your progress, reflections, and current passage together."}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {currentPlan?.templateMeta ? (
-            <div className="flex items-center gap-5 rounded-xl border border-[#f1e8df] bg-white px-2 py-1.5">
-              <div className="text-xs">
-                <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-                  Category
-                </span>
-                <span className="mt-0.5 block text-[12px] font-semibold text-[#25140b]">
-                  {currentPlan.templateMeta.category}
-                </span>
-              </div>
-              <div className="h-6 w-px bg-[#f1e8df]" />
-              <div className="text-xs">
-                <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-                  Pace
-                </span>
-                <span className="mt-0.5 block text-[12px] font-semibold text-[#25140b]">
-                  {currentPlan.templateMeta.cadenceLabel}
-                </span>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-1 rounded-full border border-[#f1e8df] bg-white p-1">
-        {[
-          { id: "hub", label: "Reading Hub" },
-          { id: "journal", label: "My Journal", count: journalCount },
-          { id: "focus", label: "Breath & Focus" },
-          { id: "completed", label: "Completed", count: completedCount },
-        ].map((tab) => (
-          <button
-            className={cn(
-              "relative rounded-full px-2 py-1.5 text-[11px] font-semibold transition-colors",
-              activeTab === tab.id
-                ? "bg-[#3a2218] text-white"
-                : "text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#25140b]",
-            )}
-            key={tab.id}
-            onClick={() => onChangeTab(tab.id as ReadingTab)}
-            type="button"
-          >
-            {tab.label}
-            {"count" in tab &&
-            typeof tab.count === "number" &&
-            tab.count > 0 ? (
-              <span className="absolute -right-0.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-white bg-[#f6823c] px-1 text-[8px] font-semibold text-white tabular-nums">
-                {tab.count}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ReadingPlanRail({
+function PlanHome({
   activePlans,
+  completedCount,
   currentPlan,
   onArchiveAll,
   onArchiveCurrent,
+  onOpenFocus,
+  onOpenJournal,
   onOpenPlans,
+  onOpenReading,
   onSelectPlan,
+  onToggleEntry,
+  onViewCompleted,
+  pathExpanded,
+  plansMenuOpen,
+  selectedEntryId,
   selectedPlanId,
+  setPathExpanded,
+  setPlansMenuOpen,
 }: {
   activePlans: ActivePlanSummary[];
-  currentPlan: ReadingPlanCurrent | null | undefined;
+  completedCount: number;
+  currentPlan: ReadingPlanCurrent;
   onArchiveAll: () => void;
   onArchiveCurrent: () => void;
+  onOpenFocus: () => void;
+  onOpenJournal: () => void;
   onOpenPlans: () => void;
+  onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
   onSelectPlan: (planId: Id<"userPlans">) => void;
+  onToggleEntry: (entryId: Id<"userPlanEntries">) => Promise<void>;
+  onViewCompleted: () => void;
+  pathExpanded: boolean;
+  plansMenuOpen: boolean;
+  selectedEntryId: Id<"userPlanEntries"> | null;
   selectedPlanId: Id<"userPlans"> | null;
+  setPathExpanded: (value: boolean) => void;
+  setPlansMenuOpen: (value: boolean) => void;
 }) {
   const insight = dailyInsight();
+  const heroEntry = currentPlan.primaryEntry ?? currentPlan.currentEntry;
+  const ctaLabel = relativeStartLabel(currentPlan);
+  const upcoming = currentPlan.upcomingEntries.filter(
+    (entry) => entry._id !== heroEntry?._id,
+  );
+  const recentJournal = currentPlan.journalEntries.slice(-2).reverse();
+  const recentCompleted = currentPlan.allEntries
+    .filter((entry) => entry.status === "completed")
+    .slice(-3)
+    .reverse();
+  const remainingPath = (
+    pathExpanded
+      ? currentPlan.allEntries.filter((entry) => entry._id !== heroEntry?._id)
+      : upcoming
+  ).slice(0, pathExpanded ? 40 : undefined);
+  const todayDate = new Date().toLocaleDateString([], {
+    month: "long",
+    day: "numeric",
+  });
 
   return (
-    <aside className="hidden min-h-0 w-[300px] shrink-0 overflow-y-auto border-r border-[#f1e8df] bg-white lg:block">
-      <div className="bible-app-scroll flex h-full flex-col justify-between p-5">
-        <div>
-          <section>
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
-                Your Paths
-              </h2>
-              <span className="text-[10px] tabular-nums text-[#9b8878]">
-                {activePlans.length}
-              </span>
-            </div>
+    <div className="space-y-8">
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#efe8dc] text-[#3a322c]">
+            <BookOpen className="h-5 w-5" />
+          </div>
+          <h1 className="mt-4 text-[28px] font-semibold tracking-[-0.035em] text-[#171412]">
+            {currentPlan.plan.title}
+          </h1>
+          <p className="mt-1 text-[14px] text-[#8a8178]">
+            {currentPlan.plan.status === "completed"
+              ? "Finished"
+              : `Going through this path · Day ${currentPlan.plan.currentDayNumber} of ${currentPlan.plan.totalEntries}`}
+            {currentPlan.templateMeta
+              ? ` · ${currentPlan.templateMeta.cadenceLabel}`
+              : ""}
+          </p>
+          <div className="mt-4 h-1 w-full max-w-[220px] overflow-hidden rounded-full bg-[#efece7]">
+            <div
+              className="h-full rounded-full bg-[#171412] transition-[width] duration-500"
+              style={{ width: `${currentPlan.progressPercent}%` }}
+            />
+          </div>
+        </div>
 
+        <div className="relative shrink-0" data-workspace-menu-root>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#f4f1ec] px-3 py-1.5 text-[13px] font-medium text-[#3a322c] transition-colors hover:bg-[#ece7df]"
+            onClick={() => setPlansMenuOpen(!plansMenuOpen)}
+            type="button"
+          >
+            Plans
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+          <WorkspaceMenu
+            onClose={() => setPlansMenuOpen(false)}
+            open={plansMenuOpen}
+          >
+            <p className="px-3 pb-1 pt-1 text-[11px] font-medium uppercase tracking-[0.08em] text-[#8a8178]">
+              Your paths
+            </p>
             {activePlans.length ? (
-              <div className="space-y-1">
-                {activePlans.map((plan) => {
-                  const isSelected = plan._id === selectedPlanId;
-                  return (
-                    <button
-                      aria-pressed={isSelected}
-                      className={cn(
-                        "group w-full px-3 py-2.5 text-left transition-colors",
-                        isSelected ? "bg-[#fbf7f2]" : "hover:bg-[#fbf7f2]/70",
-                      )}
-                      key={plan._id}
-                      onClick={() => onSelectPlan(plan._id)}
-                      type="button"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-[12px] font-semibold text-[#25140b]">
-                            {plan.title}
-                          </p>
-                          <p className="mt-0.5 truncate text-[10px] text-[#9b8878]">
-                            Day {plan.currentDayNumber} of {plan.totalEntries}
-                          </p>
-                        </div>
-                        <span
-                          className={cn(
-                            "mt-0.5 shrink-0 text-[10px] font-semibold tabular-nums",
-                            isSelected ? "text-[#f6823c]" : "text-[#9b8878]",
-                          )}
-                        >
-                          {plan.progressPercent}%
-                        </span>
-                      </div>
-                      <div className="mt-2 h-px w-full bg-[#f1e8df]">
-                        <div
-                          className={cn(
-                            "h-full transition-[width] duration-500",
-                            isSelected ? "bg-[#f6823c]" : "bg-[#d8c5b6]",
-                          )}
-                          style={{ width: `${plan.progressPercent}%` }}
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              activePlans.map((plan) => (
+                <WorkspaceMenuItem
+                  active={plan._id === selectedPlanId}
+                  description={`Day ${plan.currentDayNumber} of ${plan.totalEntries} · ${plan.progressPercent}%`}
+                  icon={<BookOpen className="h-4 w-4" />}
+                  key={plan._id}
+                  onClick={() => onSelectPlan(plan._id)}
+                  title={plan.title}
+                />
+              ))
             ) : (
-              <div className="bg-[#fbf7f2] px-3 py-4">
-                <p className="font-serif text-[16px] font-semibold text-[#25140b]">
-                  Find a path to begin
-                </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#7a6758]">
-                  Your active reading plans will live here.
-                </p>
-              </div>
+              <p className="px-3 py-2 text-[13px] text-[#8a8178]">
+                No active paths yet.
+              </p>
             )}
-
-            {currentPlan?.plan.status === "active" ? (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <WorkspaceMenuItem
+              description="Choose a curated or custom path"
+              icon={<Plus className="h-4 w-4" />}
+              onClick={onOpenPlans}
+              title="Browse library"
+            />
+            <WorkspaceMenuItem
+              description={
+                completedCount
+                  ? `${completedCount} finished`
+                  : "Nothing finished yet"
+              }
+              icon={<Trophy className="h-4 w-4" />}
+              onClick={onViewCompleted}
+              title="Completed"
+            />
+            {currentPlan.plan.status === "active" ? (
+              <div className="mt-1 border-t border-black/[0.05] pt-1">
                 <button
-                  className="rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a6758] transition-colors hover:bg-[#fbf7f2] hover:text-[#25140b]"
+                  className="w-full px-3 py-2 text-left text-[13px] text-[#8a8178] hover:bg-[#f7f5f2] hover:text-[#171412]"
                   onClick={onArchiveCurrent}
                   type="button"
                 >
-                  Archive selected
+                  Archive this plan
                 </button>
                 {activePlans.length > 1 ? (
                   <button
-                    className="rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#a8502d] transition-colors hover:bg-[#fff1ea] hover:text-[#7f3319]"
+                    className="w-full px-3 py-2 text-left text-[13px] text-[#a24723] hover:bg-[#f7f5f2]"
                     onClick={onArchiveAll}
                     type="button"
                   >
-                    Archive all
+                    Archive all active plans
                   </button>
                 ) : null}
               </div>
             ) : null}
-          </section>
+          </WorkspaceMenu>
+        </div>
+      </header>
 
+      <WorkspaceSection
+        action={
+          <span className="text-[13px] text-[#8a8178]">{todayDate}</span>
+        }
+        label="Today"
+      >
+        {heroEntry ? (
+          <WorkspaceRow
+            active={selectedEntryId === heroEntry._id}
+            icon={<BookOpen className="h-4 w-4" />}
+            meta={openedMeta(heroEntry)}
+            onClick={() => {
+              void onOpenReading(heroEntry);
+            }}
+            title={heroEntry.passageLabel}
+            trailing={
+              <span className="text-[12px] font-medium text-[#171412]">
+                {ctaLabel}
+              </span>
+            }
+          />
+        ) : (
+          <WorkspaceRow
+            icon={<Check className="h-4 w-4" />}
+            meta="Every scheduled reading is complete"
+            title="Plan complete"
+          />
+        )}
+      </WorkspaceSection>
+
+      {currentPlan.allEntries.length > 1 ? (
+        <WorkspaceSection
+          action={
+            currentPlan.allEntries.length > upcoming.length + 1 ? (
+              <button
+                className="text-[13px] font-medium text-[#8a8178] hover:text-[#171412]"
+                onClick={() => setPathExpanded(!pathExpanded)}
+                type="button"
+              >
+                {pathExpanded ? "Show less" : "All"}
+              </button>
+            ) : null
+          }
+          label={pathExpanded ? "Full path" : upcoming.length ? "Up next" : "Path"}
+        >
+          {remainingPath.length ? (
+            remainingPath.map((entry) => {
+            const isDone = entry.status === "completed";
+            return (
+              <WorkspaceRow
+                active={selectedEntryId === entry._id}
+                icon={
+                  isDone ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <span className="text-[11px] font-semibold tabular-nums">
+                      {entry.dayNumber}
+                    </span>
+                  )
+                }
+                key={entry._id}
+                meta={`${chapterRangeLabel(entry)} · ${dueLabel(entry.dueDate)}`}
+                onClick={() => {
+                  void onOpenReading(entry);
+                }}
+                title={entry.passageLabel}
+                trailing={
+                  <button
+                    aria-label={
+                      isDone ? "Mark as unread" : "Mark as complete"
+                    }
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-full border transition-colors",
+                      isDone
+                        ? "border-[#171412] bg-[#171412] text-white"
+                        : "border-[#e6e1da] text-[#c5bfb8] hover:border-[#171412] hover:text-[#171412]",
+                    )}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void onToggleEntry(entry._id);
+                    }}
+                    type="button"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                }
+              />
+            );
+          })
+          ) : (
+            <WorkspaceRow
+              icon={<BookOpen className="h-4 w-4" />}
+              meta={`${currentPlan.plan.totalEntries} days in this path`}
+              onClick={() => setPathExpanded(true)}
+              title="View the full path"
+            />
+          )}
+        </WorkspaceSection>
+      ) : null}
+
+      {recentJournal.length > 0 ? (
+        <WorkspaceSection
+          action={
+            currentPlan.journalEntries.length > 2 ? (
+              <button
+                className="text-[13px] font-medium text-[#8a8178] hover:text-[#171412]"
+                onClick={onOpenJournal}
+                type="button"
+              >
+                All
+              </button>
+            ) : null
+          }
+          label="Showing up in your notes"
+        >
+          {recentJournal.map((entry) => (
+            <WorkspaceRow
+              icon={<FileText className="h-4 w-4" />}
+              key={entry._id}
+              meta={entry.reflection}
+              onClick={() => {
+                void onOpenReading(entry);
+              }}
+              title={entry.passageLabel}
+            />
+          ))}
+        </WorkspaceSection>
+      ) : (
+        <WorkspaceSection label="Journal">
+          <WorkspaceRow
+            icon={<FileText className="h-4 w-4" />}
+            meta="Write from inside today’s reading"
+            onClick={
+              heroEntry
+                ? () => {
+                    void onOpenReading(heroEntry);
+                  }
+                : undefined
+            }
+            title="Nothing saved yet"
+          />
+        </WorkspaceSection>
+      )}
+
+      {recentCompleted.length > 0 ? (
+        <WorkspaceSection label="Recently finished">
+          {recentCompleted.map((entry) => (
+            <WorkspaceRow
+              icon={<Check className="h-4 w-4" />}
+              key={entry._id}
+              meta={
+                entry.completedAt
+                  ? new Date(entry.completedAt).toLocaleTimeString([], {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                  : dueLabel(entry.dueDate)
+              }
+              onClick={() => {
+                void onOpenReading(entry);
+              }}
+              title={entry.passageLabel}
+            />
+          ))}
+        </WorkspaceSection>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2 pt-2">
+        <button
+          className="inline-flex items-center gap-2 rounded-full bg-[#f4f1ec] px-3.5 py-2 text-[13px] font-medium text-[#3a322c] hover:bg-[#ece7df]"
+          onClick={onOpenFocus}
+          type="button"
+        >
+          <Wind className="h-3.5 w-3.5" />
+          Pause first
+        </button>
+        {currentPlan.journalEntries.length > 0 ? (
           <button
-            className="mt-5 flex w-full items-center justify-between rounded-full bg-[#3a2218] px-3 py-2 text-left text-[11px] font-semibold text-white transition-colors hover:bg-[#1f1209]"
-            onClick={onOpenPlans}
+            className="inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-medium text-[#8a8178] hover:bg-[#f7f5f2] hover:text-[#171412]"
+            onClick={onOpenJournal}
             type="button"
           >
-            <span>Browse all plans</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+            Open journal
           </button>
-        </div>
-
-        <div className="mt-8 border-l-2 border-[#e5d6c9] py-1 pl-4 text-[#7a6758]">
-          <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
-            Today&apos;s Insight
-          </span>
-          <p className="mt-1.5 font-serif text-[12px] italic leading-relaxed text-[#7a6758]">
-            &quot;{insight.text}&quot;
-          </p>
-          <span className="mt-1.5 block text-[9px] text-[#9b8878]">
-            {insight.reference}
-          </span>
-        </div>
+        ) : null}
       </div>
-    </aside>
+
+      <blockquote className="border-t border-black/[0.05] pt-6">
+        <p className="text-[14px] leading-relaxed text-[#5c564f]">
+          “{insight.text}”
+        </p>
+        <WorkspacePill className="mt-3">{insight.reference}</WorkspacePill>
+      </blockquote>
+    </div>
   );
 }
 
-function BrowseState({ onOpenPlans }: { onOpenPlans: () => void }) {
+function BrowseState({
+  onOpenPlans,
+  onStartPlan,
+  suggestedTemplates,
+}: {
+  onOpenPlans: () => void;
+  onStartPlan: (templateId: string, title: string) => Promise<void>;
+  suggestedTemplates: TemplateCard[];
+}) {
   return (
-    <div className="mx-auto flex mt-24 w-full max-w-5xl items-center">
-      <section className="w-full">
-        <span className="inline-block rounded-full bg-[#fbf7f2] px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
-          No active plan
-        </span>
-        <h2 className="mt-4 max-w-xl font-serif font-semibold text-[#25140b] text-xl">
-          Start with one reading path and keep the workspace quiet.
-        </h2>
-        <p className="mt-3 max-w-xl text-sm text-[#7a6758]">
-          The plan library now lives in a side sheet so this page stays focused
-          on your current reading rhythm.
+    <div className="space-y-8">
+      <header>
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#efe8dc] text-[#3a322c]">
+          <BookOpen className="h-5 w-5" />
+        </div>
+        <h1 className="mt-4 text-[28px] font-semibold tracking-[-0.035em] text-[#171412]">
+          Reading plans
+        </h1>
+        <p className="mt-1 max-w-md text-[14px] leading-relaxed text-[#8a8178]">
+          Start one quiet path. Progress, reflections, and today’s passage stay
+          together here.
         </p>
-        <button
-          className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#f6823c] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
-          onClick={onOpenPlans}
-          type="button"
-        >
-          See all plans
-          <ArrowRight className="h-4 w-4" />
-        </button>
-      </section>
+      </header>
+
+      <WorkspaceSection
+        action={
+          <button
+            className="text-[13px] font-medium text-[#8a8178] hover:text-[#171412]"
+            onClick={onOpenPlans}
+            type="button"
+          >
+            All
+          </button>
+        }
+        label="Suggested"
+      >
+        {suggestedTemplates.map((template) => (
+          <WorkspaceRow
+            icon={<BookOpen className="h-4 w-4" />}
+            key={template.id}
+            meta={`${formatDuration(template.durationDays)} · ${template.cadenceLabel}`}
+            onClick={() => {
+              void onStartPlan(template.id, template.title);
+            }}
+            title={template.title}
+            trailing={
+              <span className="text-[12px] font-medium text-[#171412]">Start</span>
+            }
+          />
+        ))}
+      </WorkspaceSection>
+
+      <button
+        className="inline-flex items-center gap-2 rounded-full bg-[#171412] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#2a221c]"
+        onClick={onOpenPlans}
+        type="button"
+      >
+        Browse the library
+        <ArrowRight className="h-4 w-4" />
+      </button>
     </div>
   );
 }
@@ -1111,34 +1343,27 @@ function PlansSheet({
         initial={{ x: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 240 }}
       >
-        <div className="px-5 py-5">
+        <div className="px-6 py-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f6823c]">
-                Plan Library
-              </p>
-              <h2 className="mt-1 font-serif text-[24px] font-semibold leading-tight text-[#25140b]">
-                Choose your next path
+              <h2 className="text-[22px] font-semibold tracking-[-0.03em] text-[#171412]">
+                Library
               </h2>
-              <p className="mt-2 text-[12px] leading-relaxed text-[#7a6758]">
-                Browse guided plans without crowding the reading workspace.
+              <p className="mt-1 text-[13px] leading-relaxed text-[#8a8178]">
+                Pick a guided path, or build a quiet one of your own.
               </p>
             </div>
-            <button
-              className="px-2 py-1.5 text-[11px] font-semibold text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#25140b]"
-              onClick={onClose}
-              type="button"
-            >
-              Close
-            </button>
+            <WorkspaceIconButton aria-label="Close library" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </WorkspaceIconButton>
           </div>
           <button
-            className="mt-4 flex w-full items-center rounded-lg justify-between bg-[#fbf7f2] px-3 py-2 text-left text-[12px] font-semibold text-[#25140b] transition-colors hover:bg-[#f5eee6]"
+            className="mt-5 flex w-full items-center justify-between rounded-2xl bg-[#f4f1ec] px-4 py-3 text-left text-[14px] font-semibold text-[#171412] transition-colors hover:bg-[#ece7df]"
             onClick={() => setCuratorOpen((open) => !open)}
             type="button"
           >
             <span>Curate your own plan</span>
-            <ArrowRight className="h-4 w-4 text-[#f6823c]" />
+            <Plus className="h-4 w-4 text-[#8a8178]" />
           </button>
         </div>
 
@@ -1268,57 +1493,32 @@ function PlansSheet({
             ) : null}
 
             {groupedTemplates.map(([category, items]) => (
-              <section className="space-y-3" key={category}>
-                <div className="flex items-baseline justify-between pb-1 border-b">
-                  <h3 className="font-serif text-[17px] font-semibold text-[#25140b]">
+              <section className="space-y-1" key={category}>
+                <div className="flex items-center justify-between px-1 pb-2">
+                  <h3 className="text-[13px] font-medium text-[#8a8178]">
                     {category}
                   </h3>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-                    {items.length} plans
+                  <span className="text-[12px] text-[#b4ada6]">
+                    {items.length}
                   </span>
                 </div>
-                <div className="space-y-5">
-                  {items.map((template) => (
-                    <div
-                      className={cn(
-                        "group grid items-start gap-3 py-2 transition-colors sm:grid-cols-[minmax(0,1fr)_auto]",
-                        selectedTemplateId === template.id
-                          ? "bg-[#fbf7f2]"
-                          : "bg-white hover:bg-[#fbf7f2]",
-                      )}
-                      key={template.id}
-                    >
-                      <div className="min-w-0">
-                        <h4 className="font-serif text-[16px] font-semibold leading-snug text-[#25140b] group-hover:text-[#f6823c]">
-                          {template.title}
-                        </h4>
-                        <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-[#7a6758]">
-                          {template.summary}
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          <span className="bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
-                            {formatDuration(template.durationDays)}
-                          </span>
-                          <span className="bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
-                            {template.cadenceLabel}
-                          </span>
-                          <span className="bg-[#fbf7f2] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[#7a6758]">
-                            ~{template.estimatedMinutes} min
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        className="px-3 py-1.5 text-[12px] font-semibold text-[#f6823c] transition-colors hover:bg-white hover:text-[#dd6f2f]"
-                        onClick={() => onStartPlan(template.id, template.title)}
-                        type="button"
-                      >
-                        {selectedTemplateId === template.id
-                          ? "Selected"
-                          : "Select"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                {items.map((template) => (
+                  <WorkspaceRow
+                    active={selectedTemplateId === template.id}
+                    icon={<BookOpen className="h-4 w-4" />}
+                    key={template.id}
+                    meta={`${formatDuration(template.durationDays)} · ${template.cadenceLabel} · ~${template.estimatedMinutes} min`}
+                    onClick={() => {
+                      void onStartPlan(template.id, template.title);
+                    }}
+                    title={template.title}
+                    trailing={
+                      <span className="text-[12px] font-medium text-[#171412]">
+                        {selectedTemplateId === template.id ? "Current" : "Start"}
+                      </span>
+                    }
+                  />
+                ))}
               </section>
             ))}
           </div>
@@ -1391,105 +1591,263 @@ function ArchiveConfirmDialog({
 
 function CompletedPlansTab({
   completedPlans,
+  onBack,
   onReviewPlan,
   onSharePlan,
 }: {
   completedPlans: CompletedPlanSummary[];
+  onBack: () => void;
   onReviewPlan: (planId: Id<"userPlans">) => void;
   onSharePlan: (plan: CompletedPlanSummary) => void;
 }) {
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <section className="overflow-hidden rounded-3xl border border-[#eedfcf] bg-[#fffaf4] p-5 md:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff1de] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#bc5f25]">
-              <Trophy className="h-3.5 w-3.5" />
-              Your library of finished paths
-            </span>
-            <h2 className="mt-4 font-serif text-3xl font-semibold text-[#25140b]">
-              Completed plans
-            </h2>
-            <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-[#7a6758]">
-              Every finished reading journey is here whenever you want to
-              revisit its passages and reflections.
-            </p>
-          </div>
-          <span className="font-serif text-4xl font-semibold text-[#f6823c] tabular-nums">
-            {completedPlans.length}
-          </span>
-        </div>
-      </section>
+    <div className="space-y-8">
+      <header>
+        <button
+          className="text-[13px] font-medium text-[#8a8178] hover:text-[#171412]"
+          onClick={onBack}
+          type="button"
+        >
+          Back
+        </button>
+        <h1 className="mt-4 text-[28px] font-semibold tracking-[-0.035em] text-[#171412]">
+          Completed
+        </h1>
+        <p className="mt-1 text-[14px] text-[#8a8178]">
+          {completedPlans.length
+            ? `${completedPlans.length} finished path${completedPlans.length === 1 ? "" : "s"}`
+            : "Finished paths will live here."}
+        </p>
+      </header>
 
       {completedPlans.length === 0 ? (
-        <section className="mt-5 border border-dashed border-[#e5d6c9] bg-white px-6 py-12 text-center">
-          <Trophy className="mx-auto h-7 w-7 text-[#d8c5b6]" />
-          <h3 className="mt-4 font-serif text-xl font-semibold text-[#25140b]">
-            Your finished paths will appear here
-          </h3>
-          <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#7a6758]">
-            Complete a reading plan to preserve its progress, passages, and
-            journal entries in this library.
-          </p>
-        </section>
+        <WorkspaceRow
+          icon={<Trophy className="h-4 w-4" />}
+          meta="Complete a plan to keep its passages and notes"
+          title="Nothing here yet"
+        />
       ) : (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div>
           {completedPlans.map((plan) => (
-            <article
-              className="group border border-[#f1e8df] bg-white p-5 transition-shadow hover:shadow-[0_16px_36px_rgba(81,48,28,0.08)]"
+            <WorkspaceRow
+              icon={<Trophy className="h-4 w-4" />}
               key={plan._id}
+              meta={`${plan.completedEntries}/${plan.totalEntries} readings · ${formatDuration(plan.durationDays)} · ${new Date(plan.completedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}`}
+              onClick={() => onReviewPlan(plan._id)}
+              title={plan.title}
+              trailing={
+                <button
+                  className="text-[12px] font-medium text-[#8a8178] hover:text-[#171412]"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSharePlan(plan);
+                  }}
+                  type="button"
+                >
+                  Share
+                </button>
+              }
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JournalTab({
+  currentPlan,
+  onBack,
+  onOpenReading,
+}: {
+  currentPlan: ReadingPlanCurrent;
+  onBack: () => void;
+  onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
+}) {
+  return (
+    <div className="space-y-8">
+      <header>
+        <button
+          className="text-[13px] font-medium text-[#8a8178] hover:text-[#171412]"
+          onClick={onBack}
+          type="button"
+        >
+          Back
+        </button>
+        <h1 className="mt-4 text-[28px] font-semibold tracking-[-0.035em] text-[#171412]">
+          Journal
+        </h1>
+        <p className="mt-1 text-[14px] text-[#8a8178]">
+          Notes saved with each reading day.
+        </p>
+      </header>
+
+      {currentPlan.journalEntries.length === 0 ? (
+        <div>
+          <WorkspaceRow
+            icon={<FileText className="h-4 w-4" />}
+            meta="Write from inside a reading to keep it here"
+            title="Your journal is waiting"
+          />
+          {currentPlan.primaryEntry ? (
+            <button
+              className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#171412] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#2a221c]"
+              onClick={() => {
+                void onOpenReading(currentPlan.primaryEntry!);
+              }}
+              type="button"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#bc5f25]">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Completed{" "}
-                    {new Date(plan.completedAt).toLocaleDateString([], {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
-                  <h3 className="mt-3 font-serif text-xl font-semibold text-[#25140b]">
-                    {plan.title}
-                  </h3>
-                </div>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fff1de] text-[#f6823c]">
-                  <Trophy className="h-4 w-4" />
-                </div>
-              </div>
-              <p className="mt-3 line-clamp-2 text-[12px] leading-relaxed text-[#7a6758]">
-                {plan.description}
-              </p>
-              <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#f1e8df] pt-4">
-                <span className="text-[11px] font-semibold text-[#7a6758]">
-                  {plan.completedEntries}/{plan.totalEntries} readings ·{" "}
-                  {formatDuration(plan.durationDays)}
+              Open today’s reading
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {currentPlan.journalEntries.map((entry) => (
+            <article key={entry._id}>
+              <div className="flex items-center justify-between gap-3">
+                <WorkspacePill>
+                  {entry.passageLabel}
+                </WorkspacePill>
+                <span className="text-[12px] text-[#8a8178]">
+                  Day {entry.dayNumber}
                 </span>
-                <div className="flex items-center gap-3">
-                  <button
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#7a6758] transition-colors hover:text-[#25140b]"
-                    onClick={() => onSharePlan(plan)}
-                    type="button"
-                  >
-                    <Share2 className="h-3.5 w-3.5" />
-                    Share
-                  </button>
-                  <button
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#f6823c] transition-colors hover:text-[#c95f25]"
-                    onClick={() => onReviewPlan(plan._id)}
-                    type="button"
-                  >
-                    Review plan
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
               </div>
+              <p className="mt-3 text-[16px] leading-7 text-[#171412]">
+                {entry.reflection}
+              </p>
+              <button
+                className="mt-3 text-[13px] font-medium text-[#8a8178] hover:text-[#171412]"
+                onClick={() => {
+                  void onOpenReading(entry);
+                }}
+                type="button"
+              >
+                Revisit scripture
+              </button>
             </article>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function FocusSheet({
+  currentPlan,
+  onClose,
+  onOpenReading,
+}: {
+  currentPlan: ReadingPlanCurrent;
+  onClose: () => void;
+  onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
+}) {
+  const entry = currentPlan.primaryEntry ?? currentPlan.currentEntry;
+  const [breathPhase, setBreathPhase] = useState<"Inhale" | "Hold" | "Exhale">(
+    "Inhale",
+  );
+  const [cycleCount, setCycleCount] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBreathPhase((prev) => {
+        if (prev === "Inhale") return "Hold";
+        if (prev === "Hold") return "Exhale";
+        return "Inhale";
+      });
+      setCycleCount((count) => count + 1);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <motion.div
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/35 px-3 py-3 backdrop-blur-[2px] sm:items-center"
+      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }}
+    >
+      <button
+        aria-label="Close pause"
+        className="absolute inset-0"
+        onClick={onClose}
+        type="button"
+      />
+      <motion.section
+        animate={{ opacity: 1, y: 0 }}
+        className="relative w-full max-w-md rounded-[28px] bg-white px-6 py-7 shadow-[0_24px_80px_rgba(37,20,11,0.16)]"
+        exit={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 16 }}
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-[22px] font-semibold tracking-[-0.03em] text-[#171412]">
+              Pause
+            </h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-[#8a8178]">
+              One quiet cycle before you open the passage.
+            </p>
+          </div>
+          <WorkspaceIconButton aria-label="Close" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </WorkspaceIconButton>
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <div className="relative flex h-36 w-36 items-center justify-center">
+            <motion.div
+              animate={{
+                scale:
+                  breathPhase === "Exhale" ? 0.82 : 1.18,
+                opacity: breathPhase === "Exhale" ? 0.45 : 0.9,
+              }}
+              className="absolute inset-0 rounded-full bg-[#efe8dc]"
+              transition={{ duration: 3.8, ease: "easeInOut" }}
+            />
+            <div className="relative z-10 text-center">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8a8178]">
+                {breathPhase === "Inhale"
+                  ? "breathe in"
+                  : breathPhase === "Hold"
+                    ? "hold"
+                    : "breathe out"}
+              </p>
+              <p className="mt-1 text-[22px] font-semibold tracking-[-0.03em] text-[#171412]">
+                {breathPhase}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-6 text-center text-[13px] text-[#8a8178]">
+          {Math.floor(cycleCount / 3)} cycles
+        </p>
+
+        <div className="mt-6 flex items-center gap-2">
+          <button
+            className="flex-1 rounded-full bg-[#f4f1ec] px-4 py-2.5 text-[13px] font-medium text-[#3a322c] hover:bg-[#ece7df]"
+            onClick={() => {
+              setCycleCount(0);
+              setBreathPhase("Inhale");
+            }}
+            type="button"
+          >
+            Reset
+          </button>
+          {entry ? (
+            <button
+              className="flex-1 rounded-full bg-[#171412] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#2a221c]"
+              onClick={() => {
+                void onOpenReading(entry);
+              }}
+              type="button"
+            >
+              {entry.startedAt ? "Resume reading" : "Begin reading"}
+            </button>
+          ) : null}
+        </div>
+      </motion.section>
+    </motion.div>
   );
 }
 
@@ -1590,438 +1948,6 @@ function CompletionCelebrationDialog({
         </div>
       </motion.section>
     </motion.div>
-  );
-}
-
-function HubTab({
-  currentPlan,
-  onOpenReading,
-  onToggleEntry,
-  selectedEntryId,
-}: {
-  currentPlan: ReadingPlanCurrent;
-  onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
-  onToggleEntry: (entryId: Id<"userPlanEntries">) => Promise<void>;
-  selectedEntryId: Id<"userPlanEntries"> | null;
-}) {
-  const heroEntry = currentPlan.primaryEntry ?? currentPlan.currentEntry;
-  const ctaLabel = relativeStartLabel(currentPlan);
-
-  return (
-    <div className="mx-auto w-full max-w-3xl space-y-7">
-      <section className="rounded-2xl border border-[#f1e8df] bg-white p-5">
-        <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-          <div>
-            <span className="inline-block rounded-full bg-[#fbf7f2] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7a6758]">
-              Today&apos;s recommended entry
-            </span>
-            <h2 className="mt-4 font-serif text-[24px] font-semibold leading-snug text-[#25140b] md:text-[26px]">
-              {heroEntry?.passageLabel ?? "Plan Complete"}
-            </h2>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#f6823c]">
-              {heroEntry
-                ? chapterRangeLabel(heroEntry)
-                : "You finished every reading"}
-            </p>
-            <p className="mt-3 text-[13px] leading-relaxed text-[#7a6758]">
-              {heroEntry
-                ? `Day ${heroEntry.dayNumber} of ${currentPlan.plan.totalEntries} · ${currentPlan.templateMeta?.cadenceLabel ?? "Daily reading"}`
-                : "You have finished every scheduled reading in this plan. Well done!"}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2.5 md:justify-end">
-            {heroEntry ? (
-              <button
-                className="flex items-center gap-2 rounded-full bg-[#f6823c] px-2 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
-                onClick={() => onOpenReading(heroEntry)}
-                type="button"
-              >
-                {ctaLabel}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            ) : null}
-            {currentPlan.currentEntry && currentPlan.hasStartedReading ? (
-              <button
-                className="rounded-full border border-[#f1e8df] bg-white px-2 py-1.5 text-[12px] font-semibold text-[#25140b] transition-colors hover:bg-[#fbf7f2]"
-                onClick={() => onOpenReading(currentPlan.currentEntry!)}
-                type="button"
-              >
-                Open Reader
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-3 rounded-2xl border border-[#f1e8df] bg-white">
-        <div className="text-center">
-          <div className="px-3 py-4">
-            <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-              Progress
-            </span>
-            <span className="mt-1 block font-serif text-[22px] font-semibold text-[#25140b]">
-              {currentPlan.progressPercent}%
-            </span>
-          </div>
-        </div>
-        <div className="border-x border-[#f1e8df] text-center">
-          <div className="px-3 py-4">
-            <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-              Streak
-            </span>
-            <span className="mt-1 block font-serif text-[22px] font-semibold text-[#25140b]">
-              {currentPlan.streak} days
-            </span>
-          </div>
-        </div>
-        <div className="text-center">
-          <div className="px-3 py-4">
-            <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-              Pace
-            </span>
-            <span className="mt-1 block font-serif text-[22px] font-semibold text-[#25140b]">
-              {currentPlan.templateMeta
-                ? `~${currentPlan.templateMeta.estimatedMinutes}m`
-                : "Daily"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-serif text-[18px] font-semibold text-[#25140b]">
-              Journey Path
-            </h3>
-            <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-[#9b8878]">
-              Select a day node to read or log completion
-            </p>
-          </div>
-          <span className="rounded-full bg-[#fbf7f2] px-3 py-1 text-[10px] font-semibold text-[#7a6758]">
-            {currentPlan.plan.completedEntries}/{currentPlan.plan.totalEntries}{" "}
-            Done
-          </span>
-        </div>
-
-        <div className="relative space-y-2 pl-2">
-          {currentPlan.allEntries.map((entry) => {
-            const isSelected = selectedEntryId === entry._id;
-            const isPrimary = currentPlan.primaryEntry?._id === entry._id;
-            const isDone = entry.status === "completed";
-            const isNext = isPrimary;
-            return (
-              <div key={entry._id}>
-                <div
-                  onClick={() => onOpenReading(entry)}
-                  className={`group p-4 rounded-2xl border flex items-center justify-between gap-4 cursor-pointer transition-all duration-300 ${
-                    isDone
-                      ? "bg-white/60 border-neutral-200/60 opacity-75 hover:opacity-100 hover:bg-white"
-                      : isNext
-                        ? "bg-white border-[#EA7C5A] shadow-md shadow-[#EA7C5A]/5 scale-[1.01]"
-                        : "bg-white border-[#EDECE4] hover:border-neutral-300 hover:shadow-xs"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold tracking-tight shrink-0 transition-colors ${
-                        isDone
-                          ? "bg-[#EFECE6] text-neutral-500"
-                          : isNext
-                            ? "bg-[#EA7C5A] text-white shadow-sm"
-                            : "bg-[#F3EFE0] text-[#2E4A3F] group-hover:bg-[#EBE6D7]"
-                      }`}
-                    >
-                      <span className="text-[8px] uppercase font-mono tracking-wider opacity-70 leading-none">
-                        Day
-                      </span>
-                      <span className="text-base font-serif leading-none mt-0.5">
-                        {entry.dayNumber}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <h4
-                        className={`font-serif text-base font-bold tracking-tight transition-all ${
-                          isDone
-                            ? "text-neutral-500 line-through decoration-neutral-300"
-                            : "text-neutral-900 group-hover:text-[#2E4A3F]"
-                        }`}
-                      >
-                        {entry.passageLabel}
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-neutral-500">
-                          {chapterRangeLabel(entry)}
-                        </span>
-                        {currentPlan.templateMeta?.estimatedMinutes ? (
-                          <span className="text-[9px] text-[#2E4A3F] font-mono bg-[#EFECE6] px-1.5 rounded uppercase">
-                            ~{currentPlan.templateMeta.estimatedMinutes} min
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          await onToggleEntry(entry._id);
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
-                      type="button"
-                      className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${
-                        isDone
-                          ? "bg-[#2E4A3F] border-[#2E4A3F] text-[#F3EFE0]"
-                          : "bg-transparent border-[#EDECE4] text-neutral-300 hover:border-[#2E4A3F] hover:text-[#2E4A3F]"
-                      }`}
-                    >
-                      <CheckCircle
-                        className="w-4 h-4 fill-current outline-none"
-                        strokeWidth={2.5}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function JournalTab({
-  currentPlan,
-  onOpenReading,
-}: {
-  currentPlan: ReadingPlanCurrent;
-  onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
-}) {
-  return (
-    <div className="mx-auto w-full max-w-3xl space-y-6">
-      <div className="space-y-1 mb-16">
-        <h2 className="font-serif text-[22px] font-semibold tracking-tight text-[#25140b]">
-          Reflections Library
-        </h2>
-        <p className="text-[13px] text-[#7a6758]">
-          Your recorded memories, prayers, and lessons saved during each reading
-          day.
-        </p>
-      </div>
-
-      {currentPlan.journalEntries.length === 0 ? (
-        <div>
-          <FileText
-            className="mb-6 h-10 w-10 text-[#9b8878]"
-            strokeWidth={1.4}
-          />
-          <h3 className="font-serif text-xl font-semibold text-[#25140b]">
-            Your journal is waiting
-          </h3>
-          <p className="mt-2 max-w-xl text-sm text-[#7a6758]">
-            Write down contemplative reflections inside reading mode or complete
-            specific daily readings to catalog your journey.
-          </p>
-          {currentPlan.primaryEntry ? (
-            <button
-              className="mt-6 rounded-lg bg-[#3a2218] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2A1810]"
-              onClick={() => onOpenReading(currentPlan.primaryEntry!)}
-              type="button"
-            >
-              Browse Readings
-            </button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {currentPlan.journalEntries.map((entry) => (
-            <div
-              className="group relative flex flex-col justify-between rounded-lg border border-[#f1e8df] bg-white p-5 transition-colors hover:bg-[#fbf7f2]"
-              key={entry._id}
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-                  <span>
-                    {entry.completedAt
-                      ? new Date(entry.completedAt).toLocaleDateString([], {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                      : formatDateLabel(entry.dueDate)}
-                  </span>
-                  <span className="rounded-full border border-[#e5d6c9] bg-white px-2.5 py-0.5 text-[#7a6758]">
-                    Day {entry.dayNumber}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <h3 className="font-serif text-[18px] font-semibold text-[#25140b] group-hover:text-[#f6823c]">
-                    {entry.passageLabel}
-                  </h3>
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#f6823c]">
-                    Saved note
-                  </p>
-                </div>
-
-                <p className="line-clamp-5 select-text text-[13px] italic leading-relaxed text-[#7a6758]">
-                  &quot;{entry.reflection}&quot;
-                </p>
-              </div>
-
-              <div className="mt-5 flex items-center justify-between border-t border-[#f1e8df] pt-4">
-                <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#9b8878]">
-                  Reading Plan Devotion
-                </span>
-                <button
-                  className="flex cursor-pointer items-center gap-1 rounded-lg px-4 py-2 text-xs font-semibold text-[#f6823c] hover:text-[#dd6f2f]"
-                  onClick={() => onOpenReading(entry)}
-                  type="button"
-                >
-                  <span>Revisit Scripture</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FocusTab({
-  currentPlan,
-  onOpenReading,
-}: {
-  currentPlan: ReadingPlanCurrent;
-  onOpenReading: (entry: ReadingPlanEntry) => Promise<void>;
-}) {
-  const entry = currentPlan.primaryEntry ?? currentPlan.currentEntry;
-  const [breathPhase, setBreathPhase] = useState<"Inhale" | "Hold" | "Exhale">(
-    "Inhale",
-  );
-  const [cycleCount, setCycleCount] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBreathPhase((prev) => {
-        if (prev === "Inhale") return "Hold";
-        if (prev === "Hold") return "Exhale";
-        return "Inhale";
-      });
-      setCycleCount((c) => c + 1);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="max-w-3xl mx-auto mt-24 space-y-6">
-      <div className="space-y-2 mb-8">
-        <h2 className="font-serif text-[22px] font-semibold tracking-tight text-[#25140b]">
-          Pause & Anchor
-        </h2>
-        <p className="text-sm text-[#7a6758] max-w-md">
-          Clear away digital noise and quiet your thoughts for a moment before
-          looking upon the sacred scripture. Quiet the outer self.
-        </p>
-      </div>
-
-      <div className="relative overflow-hidden">
-        <div className="space-y-8 py-4">
-          <section className="p-4 pl-7">
-            <div className="relative flex h-40 w-40 items-center justify-center">
-              <motion.div
-                animate={{
-                  scale:
-                    breathPhase === "Inhale"
-                      ? 1.3
-                      : breathPhase === "Hold"
-                        ? 1.3
-                        : 0.8,
-                  opacity:
-                    breathPhase === "Inhale"
-                      ? 0.9
-                      : breathPhase === "Hold"
-                        ? 0.9
-                        : 0.5,
-                }}
-                className="absolute inset-0 rounded-full border border-[#f6823c]/25 bg-[#fbf7f2]"
-                transition={{ duration: 3.8, ease: "easeInOut" }}
-              />
-              <motion.div
-                animate={{
-                  scale:
-                    breathPhase === "Inhale"
-                      ? 1.15
-                      : breathPhase === "Hold"
-                        ? 1.15
-                        : 0.85,
-                }}
-                className="relative z-20 flex h-32 w-32 flex-col items-center justify-center rounded-full bg-[#f6823c] text-white"
-                transition={{ duration: 3.8, ease: "easeInOut" }}
-              >
-                <span className="mb-1 block text-[8px] font-semibold uppercase tracking-[0.14em] text-white/80">
-                  {breathPhase === "Inhale"
-                    ? "breathe in"
-                    : breathPhase === "Hold"
-                      ? "hold"
-                      : "breathe out"}
-                </span>
-                <span className="font-serif text-[22px] font-semibold tracking-tight">
-                  {breathPhase}
-                </span>
-              </motion.div>
-            </div>
-          </section>
-
-          <div className="space-y-1.5 pt-4">
-            <p className="text-[9px] uppercase tracking-[0.14em] text-[#9b8878]">
-              Breath cycles completed:{" "}
-              <span className="text-[12px] font-semibold text-[#f6823c]">
-                {Math.floor(cycleCount / 3)}
-              </span>
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              className="rounded-full border border-[#f1e8df] bg-white px-4 py-2 text-xs font-semibold text-[#7a6758] transition-colors hover:bg-[#fbf7f2] hover:text-[#25140b]"
-              onClick={() => {
-                setCycleCount(0);
-                setBreathPhase("Inhale");
-              }}
-              type="button"
-            >
-              Reset Counter
-            </button>
-            {entry ? (
-              <button
-                className="rounded-full bg-[#f6823c] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#dd6f2f]"
-                onClick={() => onOpenReading(entry)}
-                type="button"
-              >
-                {entry.startedAt ? "Resume Reading" : "Proceed to Reading"}
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto inline-flex items-center gap-2.5 rounded-2xl border border-[#f1e8df] bg-[#fbf7f2] p-4 text-[12px] text-[#7a6758]">
-        <Sparkles className="h-4 w-4 text-[#f6823c]" />
-        <span className="font-serif italic">
-          "Be still, and know that I am God." Psalm 46:10
-        </span>
-      </div>
-    </div>
   );
 }
 
@@ -2196,21 +2122,16 @@ function ReaderPanel({
       ) : (
         <>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white p-5 text-[#25140b] md:p-8">
-            <div className="mb-6 flex items-center justify-between border-b border-[#f1e8df] pb-4">
+            <div className="mb-6 flex items-center justify-between pb-1">
               <div className="flex items-center gap-3">
-                <button
-                  aria-label="Back"
-                  className="rounded-full p-1.5 text-[#7a6758] transition-colors hover:bg-[#fbf7f2] hover:text-[#25140b]"
-                  onClick={onClose}
-                  type="button"
-                >
+                <WorkspaceIconButton aria-label="Back" onClick={onClose}>
                   <ArrowLeft className="h-5 w-5" />
-                </button>
+                </WorkspaceIconButton>
                 <div>
-                  <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9b8878]">
-                    {currentPlan?.plan.title ?? "Reading Plan"}
+                  <span className="block text-[12px] text-[#8a8178]">
+                    {currentPlan?.plan.title ?? "Reading plan"}
                   </span>
-                  <span className="mt-0.5 block font-serif text-[15px] font-semibold text-[#25140b]">
+                  <span className="mt-0.5 block text-[18px] font-semibold tracking-[-0.02em] text-[#171412]">
                     {selectedEntry.passageLabel}
                   </span>
                 </div>
