@@ -519,21 +519,6 @@ export default function BibleApp() {
       <div className="flex flex-1 overflow-hidden bg-white">
         {!storeReady ? (
           <div className="min-w-0 flex-1 bg-white" />
-        ) : scriptureProviderError ? (
-          <div className="flex min-w-0 flex-1 items-center justify-center px-6">
-            <div className="max-w-[520px] border border-[#eadccf] bg-[#fffaf5] p-6 text-center">
-              <h2 className="text-lg font-semibold text-[#25140b]">
-                Unable to load Bible provider data
-              </h2>
-              <p className="mt-2 text-[13px] leading-6 text-[#7a6758]">
-                {bibleVersionsError ?? bibleBooksError}
-              </p>
-              <p className="mt-3 text-[12px] leading-5 text-[#9b8878]">
-                Check the server logs for the failing provider request and
-                confirm the required API.Bible environment variables are set.
-              </p>
-            </div>
-          </div>
         ) : scriptureProviderEmpty ? (
           <div className="flex min-w-0 flex-1 items-center justify-center px-6">
             <div className="max-w-[520px] border border-[#eadccf] bg-[#fffaf5] p-6 text-center">
