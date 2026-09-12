@@ -13,6 +13,7 @@ import {
   ChevronsRight,
   CheckCircle,
   Heart,
+  Layers,
   Link2,
   List,
   MessageCircle,
@@ -40,7 +41,6 @@ import {
   useBibleChapters,
   useAllChapterVerses,
   useVerseCount,
-  formatPassage,
   formatReference,
   chapterKeyFor,
   getBookId,
@@ -519,21 +519,6 @@ export default function BibleApp() {
       <div className="flex flex-1 overflow-hidden bg-white">
         {!storeReady ? (
           <div className="min-w-0 flex-1 bg-white" />
-        ) : scriptureProviderError ? (
-          <div className="flex min-w-0 flex-1 items-center justify-center px-6">
-            <div className="max-w-[520px] border border-[#eadccf] bg-[#fffaf5] p-6 text-center">
-              <h2 className="text-lg font-semibold text-[#25140b]">
-                Unable to load Bible provider data
-              </h2>
-              <p className="mt-2 text-[13px] leading-6 text-[#7a6758]">
-                {bibleVersionsError ?? bibleBooksError}
-              </p>
-              <p className="mt-3 text-[12px] leading-5 text-[#9b8878]">
-                Check the server logs for the failing provider request and
-                confirm the required API.Bible environment variables are set.
-              </p>
-            </div>
-          </div>
         ) : scriptureProviderEmpty ? (
           <div className="flex min-w-0 flex-1 items-center justify-center px-6">
             <div className="max-w-[520px] border border-[#eadccf] bg-[#fffaf5] p-6 text-center">
@@ -2439,157 +2424,165 @@ function Reader({
     clearVerseSelection();
   }, [selectedPassage.book, selectedPassage.chapter, clearVerseSelection]);
 
+  const replaceTargetLabel = replaceTarget
+    ? (resolveBibleVersion(replaceTarget, bibleVersions)?.abbreviation ??
+      replaceTarget)
+    : null;
+
   return (
     <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white">
-      <div className="flex shrink-0 items-center gap-3 border-b border-[#f1e8df] bg-white px-5 py-2.5">
-        <NavButton
-          disabled={!booksReady || (atFirstBook && atFirstChapter)}
-          icon={<ChevronsLeft className="h-3.5 w-3.5" />}
-          onClick={goFirstChapter}
-        />
-        <NavButton
-          disabled={!booksReady || (atFirstBook && atFirstChapter)}
-          icon={<ChevronLeft className="h-3.5 w-3.5" />}
-          onClick={goPrevChapter}
-        />
-        <PassagePicker
-          bibleBooks={bibleBooks}
-          bibleBooksError={bibleBooksError}
-          bibleBooksLoading={bibleBooksLoading}
-          selectedPassage={selectedPassage}
-          onPassageChange={onPassageChange}
-        />
-        <NavButton
-          disabled={!booksReady || (atLastBook && atLastChapter)}
-          icon={<ChevronRight className="h-3.5 w-3.5" />}
-          onClick={goNextChapter}
-        />
-        <NavButton
-          disabled={!booksReady || (atLastBook && atLastChapter)}
-          icon={<ChevronsRight className="h-3.5 w-3.5" />}
-          onClick={goLastChapter}
-        />
+      <div className="chrome-bar relative flex h-14 shrink-0 items-center border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-xl md:h-[52px] md:px-6">
+        <div className="relative z-10 flex items-center">
+          <div className="flex items-center rounded-full bg-[#f4f1ec] p-0.5">
+            <NavButton
+              className="hidden md:flex"
+              disabled={!booksReady || (atFirstBook && atFirstChapter)}
+              icon={<ChevronsLeft className="h-4 w-4" />}
+              label="First chapter"
+              onClick={goFirstChapter}
+            />
+            <NavButton
+              disabled={!booksReady || (atFirstBook && atFirstChapter)}
+              icon={<ChevronLeft className="h-4 w-4" />}
+              label="Previous chapter"
+              onClick={goPrevChapter}
+            />
+            <NavButton
+              disabled={!booksReady || (atLastBook && atLastChapter)}
+              icon={<ChevronRight className="h-4 w-4" />}
+              label="Next chapter"
+              onClick={goNextChapter}
+            />
+            <NavButton
+              className="hidden md:flex"
+              disabled={!booksReady || (atLastBook && atLastChapter)}
+              icon={<ChevronsRight className="h-4 w-4" />}
+              label="Last chapter"
+              onClick={goLastChapter}
+            />
+          </div>
+        </div>
 
-        <div className="flex-1" />
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-24 sm:px-32 md:px-40">
+          <div className="pointer-events-auto max-w-full">
+            <PassagePicker
+              bibleBooks={bibleBooks}
+              bibleBooksError={bibleBooksError}
+              bibleBooksLoading={bibleBooksLoading}
+              selectedPassage={selectedPassage}
+              onPassageChange={onPassageChange}
+            />
+          </div>
+        </div>
 
-        <motion.div className="flex items-center gap-3" layout>
-          <AnimatePresence initial={false}>
-            {visibleVersions.map((version) => (
-              <motion.button
-                animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                  "text-[13px] font-semibold uppercase tracking-[0.04em] text-[#3a2218] transition-colors duration-150 ease-out hover:text-[#f6823c]",
-                  replaceTarget === version && "text-[#f6823c]",
-                )}
-                exit={{ opacity: 0, y: -4 }}
-                initial={{ opacity: 0, y: 4 }}
-                key={version}
-                layout
-                onClick={() => openVersionMenu(version)}
-                transition={{ duration: 0.15, ease: [0.215, 0.61, 0.355, 1] }}
-                type="button"
-              >
-                {resolveBibleVersion(version, bibleVersions)?.abbreviation ??
-                  version}
-              </motion.button>
-            ))}
-          </AnimatePresence>
-
-          <div className="relative" ref={versionMenuRef}>
+        <div className="relative z-10 ml-auto flex items-center">
+          <div className="flex items-center rounded-full bg-[#f4f1ec] p-0.5">
+            <div className="relative" ref={versionMenuRef}>
             <button
-              aria-label="Add Bible version"
-              className="flex w-40 items-center rounded-full justify-between gap-2 border border-[#e5d6c9] bg-white px-3 py-1.5 text-[13px] font-medium text-[#3a2218] outline-none transition-colors duration-150 ease-out hover:border-[#f6823c] focus:border-[#f6823c]"
+              aria-expanded={versionMenuOpen}
+              aria-haspopup="listbox"
+              aria-label={
+                replaceTargetLabel
+                  ? `Replace ${replaceTargetLabel}`
+                  : "Bible versions"
+              }
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-full text-[#3a322c] transition-colors hover:bg-white",
+                versionMenuOpen && "bg-white",
+              )}
               onClick={() => {
                 setReplaceTarget(null);
-                setVersionMenuOpen((o) => !o);
+                setVersionMenuOpen((open) => !open);
               }}
+              title={
+                replaceTargetLabel
+                  ? `Replace ${replaceTargetLabel}`
+                  : "Bible versions"
+              }
               type="button"
             >
-              {replaceTarget
-                ? `Change ${
-                    resolveBibleVersion(replaceTarget, bibleVersions)
-                      ?.abbreviation ?? replaceTarget
-                  }`
-                : visibleVersions.length >= 3
-                  ? "3 versions max"
-                  : "Add version"}
-              <ChevronDown className="ml-1 h-4 w-4 shrink-0 text-gray-400" />
+              <Layers className="h-4 w-4" />
             </button>
 
             <AnimatePresence>
               {versionMenuOpen && (
                 <motion.section
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 border border-[#e5d6c9] bg-white p-2 shadow-[0_14px_36px_rgba(31,18,9,0.10)]"
+                  className="absolute right-0 top-[calc(100%+10px)] z-30 w-72 overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-2 shadow-[0_18px_50px_rgba(37,20,11,0.12)]"
                   exit={{ opacity: 0, y: -4 }}
                   initial={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.16, ease: [0.215, 0.61, 0.355, 1] }}
                 >
-                  <div className="mb-1.5 flex items-center gap-2 border border-[#f1e8df] bg-[#fbf7f2] px-2 py-1.5">
-                    <Search className="h-3.5 w-3.5 text-[#9b8878]" />
+                  <p className="px-3 pb-2 pt-1 text-[12px] font-medium text-[#8a8178]">
+                    {replaceTargetLabel
+                      ? `Replace ${replaceTargetLabel}`
+                      : "Add a version"}
+                  </p>
+                  <div className="mb-1.5 flex items-center gap-2 rounded-xl bg-[#f4f1ec] px-3 py-2">
+                    <Search className="h-3.5 w-3.5 text-[#8a8178]" />
                     <input
                       autoFocus
-                      className="min-w-0 flex-1 bg-transparent text-[12px] text-[#25140b] outline-none placeholder:text-[#9b8878]"
+                      className="min-w-0 flex-1 bg-transparent text-[13px] text-[#171412] outline-none placeholder:text-[#8a8178]"
                       onChange={(e) => setVersionSearch(e.target.value)}
                       placeholder="Search translations"
                       value={versionSearch}
                     />
                   </div>
-                  <div className="max-h-64 overflow-y-auto bible-app-scroll">
+                  <div className="bible-app-scroll max-h-64 overflow-y-auto">
                     {availableTranslations.map(
                       ({ id, abbreviation, title, provider }) => {
                         const selected = visibleVersions.includes(id);
                         return (
                           <button
                             className={cn(
-                              "flex w-full flex-col px-3 py-2 text-left hover:bg-[#fbf7f2]",
+                              "flex w-full flex-col rounded-xl px-3 py-2.5 text-left hover:bg-[#f7f5f2]",
                               selected &&
-                                "cursor-default opacity-50 hover:bg-white",
+                                "cursor-default opacity-50 hover:bg-transparent",
                             )}
                             disabled={selected}
                             key={id}
                             onClick={() => handleVersionChoice(id)}
                             type="button"
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="text-[12px] font-bold text-[#3a2218]">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-[13px] font-semibold text-[#171412]">
                                 {abbreviation}
                               </span>
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-medium uppercase text-[#9b8878]">
+                                <span className="text-[11px] text-[#8a8178]">
                                   {provider === "custom"
                                     ? "Custom"
                                     : "API.Bible"}
                                 </span>
-                                {selected && (
-                                  <span className="text-[10px] font-medium text-[#f6823c]">
+                                {selected ? (
+                                  <span className="text-[11px] font-medium text-[#171412]">
                                     Active
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                             </div>
-                            <span className="text-[11px] text-[#7a6758] truncate">
+                            <span className="truncate text-[12px] text-[#8a8178]">
                               {title}
                             </span>
                           </button>
                         );
                       },
                     )}
-                    {bibleVersionsLoading && (
-                      <p className="px-3 py-2 text-[12px] font-medium text-[#9b8878]">
+                    {bibleVersionsLoading ? (
+                      <p className="px-3 py-2 text-[13px] text-[#8a8178]">
                         Loading translations...
                       </p>
-                    )}
-                    {bibleVersionsError && (
-                      <p className="px-3 py-2 text-[12px] font-medium text-[#a24723]">
+                    ) : null}
+                    {bibleVersionsError ? (
+                      <p className="px-3 py-2 text-[13px] text-[#a24723]">
                         {bibleVersionsError}
                       </p>
-                    )}
-                    {availableTranslations.length === 0 && (
-                      <p className="px-3 py-2 text-[12px] font-medium text-[#9b8878]">
+                    ) : null}
+                    {availableTranslations.length === 0 ? (
+                      <p className="px-3 py-2 text-[13px] text-[#8a8178]">
                         No translations found
                       </p>
-                    )}
+                    ) : null}
                   </div>
                 </motion.section>
               )}
@@ -2597,19 +2590,21 @@ function Reader({
           </div>
 
           <button
-            aria-label={`Bookmark ${formatPassage(selectedPassage)}`}
+            aria-label={`Bookmark ${formatReference(selectedPassage)}`}
             className={cn(
-              "icon-button flex h-8 w-8 items-center justify-center border border-[#e5d6c9] text-[#7a6758] hover:border-[#f6823c] hover:bg-[#fbf7f2] hover:text-[#3a2218]",
-              isBookmarked && "bg-[#fff3e8] border-[#f6823c] text-[#f6823c]",
+              "flex h-8 w-8 items-center justify-center rounded-full text-[#3a322c] transition-colors hover:bg-white",
+              isBookmarked && "text-[#f6823c]",
             )}
             onClick={onBookmark}
+            title="Bookmark this passage"
             type="button"
           >
             <Bookmark
               className={cn("h-4 w-4", isBookmarked && "fill-current")}
             />
           </button>
-        </motion.div>
+          </div>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -2785,19 +2780,19 @@ function PassagePicker({
   return (
     <div className="relative" ref={pickerRef}>
       <button
-        className="cta-button flex items-center gap-1 border border-[#e5d6c9] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#25140b] hover:border-[#f6823c]"
+        className="flex max-w-full items-center gap-1 rounded-full px-3 py-1 text-[17px] font-semibold tracking-[-0.022em] text-[#171412] transition-colors hover:bg-[#f4f1ec]"
         onClick={toggleOpen}
         type="button"
       >
-        {formatPassage(selectedPassage)}
-        <ChevronDown className="h-3 w-3 text-[#9b8878]" />
+        <span className="truncate">{formatReference(selectedPassage)}</span>
+        <ChevronDown className="h-4 w-4 text-[#8a8178]" />
       </button>
 
       <AnimatePresence>
         {open && (
           <motion.section
             animate={{ opacity: 1, y: 0 }}
-            className="absolute left-0 top-[calc(100%+6px)] z-40 grid h-[380px] w-[620px] grid-cols-[170px_150px_1fr] items-stretch overflow-hidden border border-[#e5d6c9] bg-white shadow-[0_18px_44px_rgba(31,18,9,0.12)]"
+            className="absolute left-1/2 top-[calc(100%+10px)] z-40 grid h-[380px] w-[min(620px,calc(100vw-24px))] -translate-x-1/2 grid-cols-[170px_150px_1fr] items-stretch overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_18px_50px_rgba(37,20,11,0.12)]"
             exit={{ opacity: 0, scale: 0.95, y: -8 }}
             initial={{ opacity: 0, scale: 0.97, y: -10 }}
             transition={elasticTransition}
@@ -2958,23 +2953,29 @@ function PassagePicker({
 }
 
 function NavButton({
+  className,
   disabled = false,
   icon,
+  label,
   onClick,
 }: {
+  className?: string;
   disabled?: boolean;
   icon: React.ReactNode;
+  label: string;
   onClick?: () => void;
 }) {
   return (
     <button
+      aria-label={label}
       className={cn(
-        "icon-button flex h-7 w-7 items-center justify-center border border-[#e5d6c9] text-[#7a6758] hover:border-[#f6823c] hover:bg-[#fbf7f2]",
-        disabled &&
-          "cursor-default opacity-35 hover:border-[#e5d6c9] hover:bg-white",
+        "flex h-8 w-8 items-center justify-center rounded-full text-[#3a322c] transition-colors hover:bg-white",
+        disabled && "cursor-default opacity-30 hover:bg-transparent",
+        className,
       )}
       disabled={disabled}
       onClick={onClick}
+      title={label}
       type="button"
     >
       {icon}
@@ -3023,31 +3024,31 @@ function TranslationHeader({
       initial={mp.initial}
       transition={{ type: "spring", bounce: 0, duration: 0.48 }}
     >
-      <div className="flex min-w-0 items-center justify-between border-b border-r border-[#f1e8df] bg-white px-5 py-3 last:border-r-0">
+      <div className="flex min-w-0 items-center justify-between gap-3 border-b border-r border-black/[0.05] bg-white px-5 py-2 last:border-r-0 md:px-6">
         <button
-          className="flex min-w-0 items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#3a2218] hover:text-[#f6823c]"
+          className="flex min-w-0 items-center gap-2 text-left text-[#171412] hover:text-[#3a322c]"
           onClick={onSwap}
           type="button"
         >
-          <div className="flex min-w-0 flex-col text-left">
-            <span className="text-[12px] font-bold">{label}</span>
-            <span className="truncate text-[11px] font-normal text-[#7a6758]">
-              {title}
-            </span>
-          </div>
-          <ChevronDown className="h-3 w-3 text-[#9b8878]" />
+          <span className="text-[13px] font-medium tracking-[-0.01em]">
+            {label}
+          </span>
+          <span className="hidden truncate text-[13px] text-[#8a8178] sm:inline">
+            {title}
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#b4ada6]" />
         </button>
         <button
           aria-label={`Close ${label}`}
           className={cn(
-            "icon-button flex h-[30px] w-[30px] items-center justify-center text-[#9b8878] hover:bg-[#fbf7f2]",
-            !canClose && "cursor-default opacity-35 hover:scale-100",
+            "flex h-8 w-8 items-center justify-center rounded-full text-[#8a8178] transition-colors hover:bg-[#f4f1ec] hover:text-[#171412]",
+            !canClose && "cursor-default opacity-30 hover:bg-transparent",
           )}
           disabled={!canClose}
           onClick={onClose}
           type="button"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
       </div>
     </motion.div>

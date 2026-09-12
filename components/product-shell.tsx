@@ -3,12 +3,10 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
-import { Bell, BookOpen, CalendarDays, ChevronDown, Users } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Bell, BookOpen, CalendarDays, Users } from "lucide-react";
 
 import BibleLogo from "@/components/logo";
-import { CheckCircleIcon } from "@/components/ui/check-circle";
-import { WifiIcon } from "@/components/ui/wifi";
 import { NotificationsSheet } from "@/components/notifications-sheet";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -19,9 +17,14 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/study", label: "Study", icon: BookOpen },
-  { href: "/reading-plan", label: "Reading Plan", icon: CalendarDays },
-  { href: "/community", label: "Community", icon: Users },
+  { href: "/study", label: "Study", shortLabel: "Study", icon: BookOpen },
+  {
+    href: "/reading-plan",
+    label: "Reading Plan",
+    shortLabel: "Plan",
+    icon: CalendarDays,
+  },
+  { href: "/community", label: "Community", shortLabel: "Community", icon: Users },
 ];
 
 export function ProductShell({
@@ -136,139 +139,134 @@ function ProductTopNav({
   }, [profileOpen, onProfileOpen]);
 
   return (
-    <header className="z-10 flex h-14 shrink-0 items-center gap-2 border-b border-[#f1e8df] bg-white px-3 md:gap-4 md:px-5">
+    <header className="chrome-bar relative z-10 flex h-14 shrink-0 items-center border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-xl md:h-[52px] md:px-6">
       <Link
-        className="flex shrink-0 items-center gap-2 md:w-[220px]"
+        className="relative z-10 flex min-w-0 shrink-0 items-center gap-2.5"
         href="/study"
       >
-        <BibleLogo className="h-8 w-8" />
-        <span className="hidden font-serif text-[15px] font-semibold tracking-tight text-[#25140b] sm:block">
+        <BibleLogo className="h-7 w-7" />
+        <span className="hidden text-[15px] font-semibold tracking-[-0.02em] text-[#171412] md:block">
           Bible Study
         </span>
       </Link>
 
-      <nav className="flex min-w-0 flex-1 items-center justify-center gap-1 md:absolute md:left-1/2 md:flex-none md:-translate-x-1/2 md:gap-8">
-        {navItems.map(({ href, icon: Icon, label }) => {
+      <nav
+        aria-label="Primary"
+        className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center rounded-full bg-[#f4f1ec] p-0.5"
+      >
+        {navItems.map(({ href, icon: Icon, label, shortLabel }) => {
           const active = pathname === href;
 
           return (
             <Link
+              aria-current={active ? "page" : undefined}
               aria-label={label}
               className={cn(
-                "relative flex h-14 min-w-10 items-center justify-center gap-1.5 px-2 text-[13px] font-medium text-[#7a6758] hover:text-[#3a2218] md:min-w-0 md:px-1 md:text-sm",
-                active && "font-semibold text-[#25140b]",
+                "relative flex h-8 items-center justify-center rounded-full px-3 text-[13px] font-medium transition-colors md:px-4",
+                active
+                  ? "bg-white text-[#171412] shadow-[0_1px_2px_rgba(37,20,11,0.08)]"
+                  : "text-[#8a8178] hover:text-[#171412]",
               )}
               key={href}
               href={href}
             >
-              <Icon className="h-4 w-4" />
-              <span className="hidden lg:inline">{label}</span>
-              {active && (
-                <motion.span
-                  className="absolute inset-x-0 bottom-0 h-0.5 bg-[#f6823c]"
-                  layoutId="top-nav-indicator"
-                  transition={{
-                    duration: 0.22,
-                    ease: [0.645, 0.045, 0.355, 1],
-                  }}
-                />
-              )}
+              <Icon className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">{shortLabel}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="ml-auto flex shrink-0 items-center gap-1.5 md:gap-3">
+      <div className="relative z-10 ml-auto flex shrink-0 items-center gap-0.5">
         <button
-          className={cn(
-            "cta-button hidden items-center gap-1.5 border border-[#f1e8df] bg-[#fbf7f2] px-3 py-1.5 text-[13px] font-semibold md:flex",
-            isOnline ? "text-[#2e6b3d]" : "text-[#a24723]",
-          )}
-          type="button"
-        >
-          {isOnline ? (
-            <CheckCircleIcon
-              animateOnParentHover
-              className="h-3.5 w-3.5"
-              size={14}
-            />
-          ) : (
-            <WifiIcon animateOnParentHover className="h-3.5 w-3.5" size={14} />
-          )}
-          {isOnline ? "Online" : "Offline"}
-        </button>
-        <button
-          className="icon-button flex h-[30px] w-[30px] items-center justify-center text-[#7a6758] hover:bg-[#fbf7f2] hover:text-[#3a2218]"
+          aria-label="Notifications"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-[#3a322c] transition-colors hover:bg-[#f4f1ec]"
+          title="Notifications"
           type="button"
           onClick={onOpenNotifications}
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-[18px] w-[18px]" />
         </button>
         <div className="relative" ref={profileMenuRef}>
-          <div
-            className="flex cursor-pointer items-center gap-1 rounded-full p-1 transition-colors duration-150 hover:bg-[#fbf7f2] md:gap-2 md:pr-2"
+          <button
+            aria-expanded={profileOpen}
+            aria-haspopup="menu"
+            aria-label="Account menu"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full"
             onClick={onProfileOpen}
+            type="button"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3a2218] text-[11px] font-semibold text-[#f6823c]">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3a2218] text-[11px] font-semibold text-[#f4eadc]">
               {userId ? userName.slice(0, 2).toUpperCase() : "AN"}
-            </div>
-            {mounted && (
-              <div className="hidden flex-col justify-center md:flex">
-                <span className="text-[12px] font-semibold leading-tight text-[#25140b]">
-                  {userName}
-                </span>
-                <span className="text-[10px] leading-tight text-[#7a6758]">
-                  {identity?.email ?? "guest@biblestudy.app"}
-                </span>
-              </div>
-            )}
-            <ChevronDown className="hidden h-3 w-3 text-[#7a6758] sm:block" />
-          </div>
+            </span>
+            <span
+              aria-hidden
+              className={cn(
+                "absolute bottom-0.5 right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white",
+                isOnline ? "bg-[#34c759]" : "bg-[#c7c7cc]",
+              )}
+            />
+          </button>
 
           <AnimatePresence>
             {profileOpen && (
               <motion.div
                 animate={{ opacity: 1, y: 0 }}
-                className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 border border-[#e5d6c9] bg-white shadow-[0_14px_36px_rgba(31,18,9,0.10)]"
+                className="absolute right-0 top-[calc(100%+10px)] z-30 w-60 overflow-hidden rounded-2xl border border-black/[0.06] bg-white py-1.5 shadow-[0_18px_50px_rgba(37,20,11,0.12)]"
                 exit={{ opacity: 0, y: -4 }}
                 initial={{ opacity: 0, y: -4 }}
+                role="menu"
                 transition={{ duration: 0.16, ease: [0.215, 0.61, 0.355, 1] }}
               >
-                <div className="px-4 py-2 border-b border-[#f1e8df]">
-                  <p className="text-[13px] font-semibold text-[#25140b]">
+                <div className="px-4 py-3">
+                  <p className="text-[15px] font-semibold tracking-[-0.02em] text-[#171412]">
                     {userName}
                   </p>
+                  {mounted ? (
+                    <p className="mt-0.5 text-[12px] text-[#8a8178]">
+                      {identity?.email ?? "guest@biblestudy.app"}
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-[12px] text-[#8a8178]">
+                    {isOnline ? "Online" : "Offline"}
+                  </p>
                 </div>
-                <div className="py-1 *:!transform-none hover:!transform-none">
+                <div className="border-t border-black/[0.05] py-1">
                   <button
-                    className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
+                    className="w-full px-4 py-2.5 text-left text-[14px] text-[#171412] hover:bg-[#f7f5f2]"
                     onClick={() => {
                       onProfileOpen();
                       onOpenBookmarks?.();
                     }}
+                    role="menuitem"
+                    type="button"
                   >
                     Bookmarks
                   </button>
                   <button
-                    className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
+                    className="w-full px-4 py-2.5 text-left text-[14px] text-[#171412] hover:bg-[#f7f5f2]"
                     onClick={() => {
                       onProfileOpen();
                       onOpenSettings?.();
                     }}
+                    role="menuitem"
+                    type="button"
                   >
                     Settings
                   </button>
                   <button
-                    className="w-full px-4 py-2 text-left text-[12px] font-medium text-[#3a2218] hover:bg-[#fbf7f2]"
+                    className="w-full px-4 py-2.5 text-left text-[14px] text-[#171412] hover:bg-[#f7f5f2]"
                     onClick={() => {
                       onProfileOpen();
                       onOpenProfile?.();
                     }}
+                    role="menuitem"
+                    type="button"
                   >
                     Profile
                   </button>
                   <button
-                    className="w-full px-4 py-2 text-left text-[12px] font-semibold text-[#f6823c] hover:bg-[#fbf7f2]"
+                    className="w-full px-4 py-2.5 text-left text-[14px] font-medium text-[#f6823c] hover:bg-[#f7f5f2]"
                     onClick={async () => {
                       onProfileOpen();
                       if (isSignedIn) {
@@ -282,6 +280,8 @@ function ProductTopNav({
                         router.push(loginHref);
                       }
                     }}
+                    role="menuitem"
+                    type="button"
                   >
                     {isSignedIn ? "Log Out" : "Sign In"}
                   </button>

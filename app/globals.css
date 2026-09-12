@@ -135,8 +135,20 @@ a {
 }
 
 .bible-app .reading-plan-page button:hover,
-.bible-app .reading-plan-page button:active {
+.bible-app .reading-plan-page button:active,
+.bible-app .workspace-surface button:hover,
+.bible-app .workspace-surface button:active,
+.bible-app .chrome-bar button:hover,
+.bible-app .chrome-bar button:active {
   transform: none;
+}
+
+.workspace-surface {
+  background:
+    radial-gradient(920px 520px at 12% -10%, rgba(186, 206, 176, 0.55), transparent 58%),
+    radial-gradient(820px 460px at 92% 0%, rgba(236, 214, 154, 0.48), transparent 52%),
+    radial-gradient(760px 620px at 55% 120%, rgba(176, 198, 222, 0.42), transparent 58%),
+    #efebe3;
 }
 
 .reading-plan-page .font-serif {
