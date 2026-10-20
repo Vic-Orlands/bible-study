@@ -10,7 +10,12 @@
   --text-lg: 18px;
   --text-xl: 22px;
   --scripture: 18px;
-  --paper: #f7f4ef;
+  --bg: #f7f6f2;
+  --acc: #2b45e8;
+  --faint: #c9c6be;
+  --band: #eeece6;
+  --card: #ffffff;
+  --paper: #f7f6f2;
   --sheet: #fffcf8;
   --ink: #161513;
   --mute: #8a8580;
@@ -28,47 +33,73 @@
 }
 
 [data-direction="canon"] {
-  --paper: #f7f4ef;
-  --sheet: #fffcf8;
-  --ink: #161513;
-  --mute: #8a8580;
-  --line: #e4dfd6;
-  --accent: #2f5dff;
+  --bg: #f7f6f2;
+  --ink: #0f0f0e;
+  --mute: #8e8b84;
+  --faint: #c9c6be;
+  --line: #e4e1d9;
+  --acc: #2b45e8;
+  --accS: rgba(43, 69, 232, 0.1);
+  --band: #eeece6;
+  --card: #ffffff;
+  --paper: var(--bg);
+  --sheet: var(--card);
+  --accent: var(--acc);
   --accent-ink: #ffffff;
-  --soft: #f3f0ea;
+  --soft: var(--band);
 }
 
 [data-direction="canon"][data-scheme="dark"] {
-  --paper: #0e0e10;
-  --sheet: #161618;
-  --ink: #f3f0ea;
-  --mute: #9a958f;
-  --line: #2a2a2e;
-  --accent: #8aa4ff;
-  --accent-ink: #0e0e10;
-  --soft: #1c1c20;
+  --bg: #0c0c0d;
+  --ink: #eeebe4;
+  --mute: #85827b;
+  --faint: #45433f;
+  --line: #222221;
+  --acc: #8193ff;
+  --accS: rgba(129, 147, 255, 0.16);
+  --band: #161618;
+  --card: #232326;
+  --paper: var(--bg);
+  --sheet: var(--card);
+  --accent: var(--acc);
+  --accent-ink: var(--bg);
+  --soft: var(--band);
 }
 
 [data-direction="thread"] {
-  --paper: #ede6dc;
-  --sheet: #fbf7f2;
-  --ink: #1c140e;
-  --mute: #8a8178;
-  --line: #e0d6c8;
-  --accent: #e8560c;
+  --bg: #eeede8;
+  --sheet: #faf9f5;
+  --ink: #141413;
+  --mute: #8a8984;
+  --faint: #bdbbb4;
+  --line: #d9d7d0;
+  --acc: #ff5a1f;
+  --accS: rgba(255, 90, 31, 0.11);
+  --dot: rgba(20, 20, 19, 0.13);
+  --band: #e7e6e1;
+  --card: var(--sheet);
+  --paper: var(--bg);
+  --accent: var(--acc);
   --accent-ink: #ffffff;
-  --soft: #f3ebe1;
+  --soft: var(--band);
 }
 
 [data-direction="thread"][data-scheme="dark"] {
-  --paper: #161311;
-  --sheet: #1e1a16;
-  --ink: #f6f1ea;
-  --mute: #a3988e;
-  --line: #342c26;
-  --accent: #e8560c;
+  --bg: #0e0e0e;
+  --sheet: #151515;
+  --ink: #eceae3;
+  --mute: #7c7a75;
+  --faint: #4a4946;
+  --line: #292927;
+  --acc: #ff6b35;
+  --accS: rgba(255, 107, 53, 0.17);
+  --dot: rgba(236, 234, 227, 0.09);
+  --band: #1a1a1a;
+  --card: var(--sheet);
+  --paper: var(--bg);
+  --accent: var(--acc);
   --accent-ink: #ffffff;
-  --soft: #241e19;
+  --soft: var(--band);
 }
 
 [data-scheme="dark"] {

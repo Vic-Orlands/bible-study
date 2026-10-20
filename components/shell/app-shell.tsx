@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "motion/react";
@@ -35,10 +35,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   const identityId = useStudyStore((state) => state.identityId);
   const setPassage = useStudyStore((state) => state.setPassage);
   const setFocusedCommentId = useStudyStore((state) => state.setFocusedCommentId);
+  const bare = pathname === "/study";
+
+  useEffect(() => {
+    const openSettings = () => setSettingsOpen(true);
+    const openSearch = () => setSearchOpen(true);
+    window.addEventListener("bible-settings", openSettings);
+    window.addEventListener("bible-search", openSearch);
+    return () => {
+      window.removeEventListener("bible-settings", openSettings);
+      window.removeEventListener("bible-search", openSearch);
+    };
+  }, []);
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-[var(--paper)] text-[var(--ink)]">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[var(--line)] bg-[var(--sheet)] px-3 md:px-5">
+    <div className="flex h-svh flex-col overflow-hidden bg-[var(--bg,var(--paper))] text-[var(--ink)]">
+      <header className={cn("flex h-14 shrink-0 items-center gap-3 border-b border-[var(--line)] bg-[var(--sheet)] px-3 md:px-5", bare && "hidden")}>
         <Link className="text-[length:var(--text-md)] font-medium tracking-tight" href="/study">
           Bible
         </Link>
@@ -95,7 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
-      <nav className="flex shrink-0 border-t border-[var(--line)] bg-[var(--sheet)] md:hidden">
+      <nav className={cn("flex shrink-0 border-t border-[var(--line)] bg-[var(--sheet)] md:hidden", bare && "hidden")}>
         {navItems.map((item) => {
           const active = isActive(pathname, item.href);
           return (
