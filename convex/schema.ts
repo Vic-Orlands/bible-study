@@ -194,6 +194,13 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_owner", ["ownerKey"]),
 
+  appearance: defineTable({
+    ownerKey: v.string(),
+    direction: v.union(v.literal("canon"), v.literal("thread")),
+    scheme: v.union(v.literal("light"), v.literal("dark")),
+    updatedAt: v.number(),
+  }).index("by_owner", ["ownerKey"]),
+
   customTranslations: defineTable({
     name: v.string(),
     abbreviation: v.string(),

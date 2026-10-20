@@ -9,6 +9,7 @@
  */
 
 import type * as activity from "../activity.js";
+import type * as appearance from "../appearance.js";
 import type * as admin from "../admin.js";
 import type * as audioNotes from "../audioNotes.js";
 import type * as auth from "../auth.js";
@@ -33,6 +34,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   activity: typeof activity;
+  appearance: typeof appearance;
   admin: typeof admin;
   audioNotes: typeof audioNotes;
   auth: typeof auth;

@@ -10,8 +10,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-accent text-accent-foreground hover:bg-accent/90',
-        outline: 'border border-border bg-transparent text-foreground hover:bg-white/5',
-        ghost: 'text-foreground hover:bg-white/5',
+        outline: 'border border-border bg-transparent text-foreground hover:bg-[var(--sheet)]/5',
+        ghost: 'text-foreground hover:bg-[var(--sheet)]/5',
       },
       size: {
         default: 'h-10 px-4 py-2',

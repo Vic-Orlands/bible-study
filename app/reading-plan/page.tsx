@@ -1,5 +1,5 @@
 "use client";
 
-import ReadingPlanPage from "@/components/reading-plan-page";
+import TodayPage from "@/components/today/today-page";
 
-export default ReadingPlanPage;
+export default TodayPage;

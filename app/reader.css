@@ -1,0 +1,1577 @@
+.reader-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-inter), sans-serif;
+}
+
+.canon-root .top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  padding: 0 36px;
+  z-index: 20;
+}
+.canon-root .book {
+  font: 400 22px/1 var(--font-inter), sans-serif;
+  letter-spacing: -0.005em;
+}
+.canon-root .meta {
+  font-size: 13px;
+  color: var(--mute);
+  margin-left: 12px;
+  letter-spacing: 0.01em;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.canon-root .meta b {
+  font-weight: 500;
+  color: var(--ink);
+}
+.canon-root .r {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.canon-root .btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 13px/1 var(--font-inter), sans-serif;
+  color: var(--ink);
+  background: transparent;
+  letter-spacing: 0.005em;
+}
+.canon-root .btn.o {
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.canon-root .btn.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+.canon-root .ib {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: transparent;
+}
+.canon-root .ib.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+.canon-root .kbd {
+  font: 500 11px/1 var(--font-inter), sans-serif;
+  color: var(--mute);
+  padding: 3px 5px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.canon-root .op {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  pointer-events: none;
+  background: var(--bg);
+}
+.canon-root .kick {
+  font: 500 12px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.canon-root .hero {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.canon-root .hero .book {
+  font-size: 22px;
+}
+.canon-root .chn {
+  font: italic 400 18px/1 var(--font-inter), sans-serif;
+  color: var(--acc);
+}
+.canon-root .first {
+  font: italic 400 20px/1.15 var(--font-inter), sans-serif;
+  color: var(--ink);
+  text-align: center;
+  padding: 0 40px;
+}
+.canon-root .facts {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  font-size: 13px;
+  color: var(--mute);
+}
+.canon-root .facts b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.canon-root .rd {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 68px;
+  bottom: 96px;
+  overflow: auto;
+  -webkit-mask-image: linear-gradient(transparent, #000 28px, #000 calc(100% - 70px), transparent);
+}
+.canon-root .col {
+  position: relative;
+  width: 700px;
+  margin: 28px auto 40px;
+  margin-left: calc(50% - 374px);
+}
+.canon-root .sec {
+  font: italic 400 22px/1.1 var(--font-inter), sans-serif;
+  margin: 40px 0 18px 64px;
+  letter-spacing: -0.005em;
+}
+.canon-root .sec:first-child {
+  margin-top: 0;
+}
+.canon-root .vr {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  border-radius: 12px;
+  margin: 0 -12px;
+  padding: 3px 12px;
+  background: transparent;
+  width: calc(100% + 24px);
+  text-align: left;
+  color: inherit;
+}
+.canon-root .vr .n {
+  font: 400 19px/1.75 var(--font-inter), sans-serif;
+  color: var(--mute);
+  text-align: right;
+  padding-right: 20px;
+  font-variant-numeric: lining-nums;
+}
+.canon-root .vr .t {
+  display: block;
+  font: 400 19px/1.75 var(--font-inter), sans-serif;
+  letter-spacing: -0.004em;
+  color: var(--ink);
+}
+.canon-root .vr.sel {
+  background: var(--band);
+}
+.canon-root .vr.sel .n {
+  color: var(--acc);
+}
+.canon-root .side {
+  position: absolute;
+  font-size: 12px;
+  color: var(--mute);
+  line-height: 1.6;
+  z-index: 2;
+}
+.canon-root .side b {
+  display: block;
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 13px;
+}
+.canon-root .prog {
+  width: 120px;
+  height: 2px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.canon-root .prog i {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+.canon-root .menu {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  border-radius: 12px;
+  background: #1c1c1e;
+  color: #fff;
+  font: 500 13.5px/1 var(--font-inter), sans-serif;
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2);
+  z-index: 30;
+  white-space: nowrap;
+}
+[data-scheme="dark"] .canon-root .menu {
+  background: #2c2c2e;
+}
+.canon-root .menu > button {
+  padding: 0 15px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #fff;
+  background: transparent;
+}
+.canon-root .menu > button + button {
+  box-shadow: -1px 0 0 rgba(255, 255, 255, 0.14);
+}
+.canon-root .swatches {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px;
+}
+.canon-root .sw {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 0;
+  padding: 0;
+}
+.canon-root .menu:after {
+  content: "";
+  position: absolute;
+  left: 70px;
+  top: -6px;
+  border: 7px solid transparent;
+  border-top: 0;
+  border-bottom-color: #1c1c1e;
+}
+[data-scheme="dark"] .canon-root .menu:after {
+  border-bottom-color: #2c2c2e;
+}
+.canon-root .rib {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 96px;
+  z-index: 25;
+  background: var(--bg);
+}
+.canon-root .rib canvas {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.canon-root .rl,
+.canon-root .rr {
+  position: absolute;
+  bottom: 14px;
+  font-size: 11.5px;
+  color: var(--mute);
+  pointer-events: none;
+}
+.canon-root .rl {
+  left: 40px;
+}
+.canon-root .rr {
+  right: 40px;
+}
+.canon-root .rl b,
+.canon-root .rr b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.canon-root .dim {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  z-index: 22;
+  pointer-events: none;
+}
+.canon-root .scr {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 96px;
+  z-index: 26;
+  pointer-events: none;
+}
+.canon-root .scr .nm {
+  position: absolute;
+  white-space: nowrap;
+  font: 400 22px/1 var(--font-inter), sans-serif;
+  letter-spacing: -0.02em;
+}
+.canon-root .scr .nm i {
+  font-style: italic;
+  color: var(--acc);
+  margin-left: 0.2em;
+}
+.canon-root .scr .inf {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--mute);
+  display: flex;
+  gap: 18px;
+}
+.canon-root .scr .inf b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.canon-root .scr .pv {
+  position: absolute;
+  white-space: nowrap;
+  font: italic 400 20px/1.2 var(--font-inter), sans-serif;
+  color: var(--ink);
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.canon-root .cmp {
+  width: min(1220px, calc(100% - 80px));
+  margin: 24px auto 48px;
+}
+.canon-root .ch {
+  display: grid;
+  grid-template-columns: 1fr 104px 1fr;
+  align-items: end;
+  padding: 0 0 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 0 var(--line);
+  position: relative;
+}
+.canon-root .vn {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.canon-root .vn .nm {
+  font: 400 22px/1 var(--font-inter), sans-serif;
+  letter-spacing: -0.005em;
+}
+.canon-root .vn .yr {
+  font-size: 12px;
+  color: var(--mute);
+}
+.canon-root .pick {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 12px 8px;
+  margin: -6px -12px -8px;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+}
+.canon-root .pick.open {
+  background: var(--band);
+}
+.canon-root .swp {
+  justify-self: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: var(--bg);
+}
+.canon-root .stat {
+  position: absolute;
+  right: 0;
+  bottom: 22px;
+  font-size: 12px;
+  color: var(--mute);
+}
+.canon-root .stat b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.canon-root .cr {
+  display: grid;
+  grid-template-columns: 1fr 104px 1fr;
+  padding: 5px 0;
+  border-radius: 12px;
+}
+.canon-root .cr .n {
+  text-align: center;
+  font: 400 19px/1.72 var(--font-inter), sans-serif;
+  color: var(--mute);
+}
+.canon-root .cr .t {
+  font: 400 17px/1.72 var(--font-inter), sans-serif;
+  letter-spacing: -0.004em;
+  color: var(--ink);
+}
+.canon-root .cr.hot {
+  background: var(--band);
+  margin: 0 -16px;
+  padding: 5px 16px;
+}
+.canon-root .cr.hot .n {
+  color: var(--acc);
+}
+.canon-root .w.d {
+  background-image: linear-gradient(color-mix(in srgb, var(--acc) 30%, transparent), color-mix(in srgb, var(--acc) 30%, transparent));
+  background-repeat: no-repeat;
+  background-position: 0 calc(100% - 1px);
+  background-size: 100% 1px;
+  padding-bottom: 1px;
+}
+.canon-root .cr.hot .w.d,
+.canon-root .vr.sel .w.d {
+  background-image: linear-gradient(var(--acc), var(--acc));
+  background-size: 100% 1.5px;
+}
+.canon-root .csec {
+  font: italic 400 20px/1 var(--font-inter), sans-serif;
+  margin: 30px 0 10px;
+  display: grid;
+  grid-template-columns: 1fr 104px 1fr;
+}
+.canon-root .vm {
+  position: absolute;
+  z-index: 45;
+  width: 330px;
+  background: var(--card);
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 0 0 1px var(--line), 0 24px 60px -20px rgba(0, 0, 0, 0.3);
+}
+.canon-root .vm .it {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  height: 46px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  width: 100%;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.canon-root .vm .it b {
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+.canon-root .vm .it em {
+  font-style: normal;
+  color: var(--mute);
+  font-size: 12px;
+}
+.canon-root .vm .it.on {
+  background: var(--band);
+}
+.canon-root .vm .ft {
+  padding: 10px 12px 6px;
+  font-size: 12px;
+  color: var(--mute);
+  box-shadow: 0 -1px 0 var(--line);
+  margin-top: 6px;
+}
+.canon-root .more {
+  position: absolute;
+  right: 28px;
+  top: 60px;
+  z-index: 40;
+  width: 220px;
+  background: var(--card);
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 0 0 1px var(--line), 0 24px 60px -20px rgba(0, 0, 0, 0.3);
+}
+.canon-root .more a,
+.canon-root .more button,
+.thread-root .more a,
+.thread-root .more button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.canon-root .note-card {
+  position: absolute;
+  z-index: 32;
+  width: 320px;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 0 0 1px var(--line), 0 18px 40px -16px rgba(0, 0, 0, 0.25);
+}
+.canon-root .note-card textarea {
+  width: 100%;
+  min-height: 72px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 400 15px/1.5 var(--font-inter), sans-serif;
+  resize: none;
+  outline: none;
+}
+.canon-root .note-card .save {
+  margin-top: 8px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.canon-root.mobile .top {
+  height: 52px;
+  padding: 0 18px;
+}
+.canon-root.mobile .rd {
+  top: 52px;
+  bottom: 92px;
+}
+.canon-root.mobile .col {
+  width: auto;
+  margin: 14px 0 24px;
+  padding: 0 22px 0 8px;
+}
+.canon-root.mobile .sec {
+  font-size: 20px;
+  margin: 28px 0 12px 40px;
+}
+.canon-root.mobile .vr {
+  grid-template-columns: 40px 1fr;
+  padding: 2px 10px;
+}
+.canon-root.mobile .vr .n,
+.canon-root.mobile .vr .t {
+  font-size: 17px;
+  line-height: 1.7;
+}
+.canon-root.mobile .vr .n {
+  padding-right: 12px;
+}
+.canon-root.mobile .rib {
+  height: 92px;
+}
+.canon-root.mobile .side,
+.canon-root.mobile .rl,
+.canon-root.mobile .rr,
+.canon-root.mobile .scr .pv {
+  display: none;
+}
+.canon-root.mobile .facts {
+  gap: 16px;
+  font-size: 12px;
+}
+.canon-root.mobile .cmp {
+  width: auto;
+  margin: 8px 12px 24px;
+}
+.canon-root.mobile .ch,
+.canon-root.mobile .cr {
+  grid-template-columns: 1fr;
+}
+.canon-root.mobile .ch .swp,
+.canon-root.mobile .cr .n,
+.canon-root.mobile .stat {
+  display: none;
+}
+.canon-root.mobile .seg {
+  position: absolute;
+  top: 58px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 21;
+}
+.canon-root.mobile .seg3 {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 34px;
+  border-radius: 999px;
+  background: var(--band);
+  padding: 3px;
+  width: 214px;
+  font: 500 13px/28px var(--font-inter), sans-serif;
+  text-align: center;
+}
+.canon-root.mobile .seg3 .th {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: calc((100% - 6px) / 3);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: transform 0.25s ease;
+}
+.canon-root.mobile .seg3 button {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  color: var(--ink);
+}
+.canon-root.mobile .seg3 button.m {
+  color: var(--mute);
+}
+.canon-root.mobile.compare .rd {
+  top: 100px;
+}
+.canon-root.mobile .t2 {
+  display: block;
+  font: 400 15.5px/1.6 var(--font-inter), sans-serif;
+  color: var(--mute);
+  margin-top: 6px;
+  padding-left: 12px;
+  box-shadow: inset 1.5px 0 0 var(--line);
+}
+.canon-root.mobile .t2 .w.d {
+  color: var(--ink);
+}
+.canon-root.mobile .tag {
+  font: 600 9.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.08em;
+  color: var(--mute);
+  margin-right: 6px;
+}
+
+.thread-root {
+  font-family: var(--font-inter), sans-serif;
+}
+.thread-root .bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  font: 500 11px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+  box-shadow: 0 1px 0 var(--line);
+  z-index: 20;
+  background: var(--bg);
+}
+.thread-root .crumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+}
+.thread-root .crumb i {
+  font-style: normal;
+  color: var(--faint);
+}
+.thread-root .logo {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--acc);
+  margin-right: 6px;
+}
+.thread-root .keys {
+  margin-left: auto;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+.thread-root .k {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  background: transparent;
+  color: var(--mute);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font: 500 11px/1 var(--font-inter), sans-serif;
+}
+.thread-root .k b {
+  font-weight: 500;
+  color: var(--ink);
+  padding: 3px 5px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+.thread-root .k.on {
+  color: var(--ink);
+}
+.thread-root .k.on b {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: none;
+}
+.thread-root .led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.thread-root .k.on .led {
+  background: var(--acc);
+  box-shadow: 0 0 0 3px var(--accS);
+}
+.thread-root .ruler {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transform: translateX(-50%);
+}
+.thread-root .ruler span {
+  width: 1px;
+  height: 8px;
+  background: var(--faint);
+}
+.thread-root .ruler span.on {
+  background: var(--acc);
+  height: 14px;
+}
+.thread-root .ruler span.r {
+  background: var(--ink);
+}
+.thread-root .sheet {
+  position: absolute;
+  left: 24px;
+  top: 70px;
+  bottom: 24px;
+  width: 744px;
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px var(--line);
+  border-radius: 6px;
+  overflow: auto;
+}
+.thread-root .hd {
+  display: flex;
+  justify-content: space-between;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mute);
+  padding: 30px 40px 0;
+}
+.thread-root .ttl {
+  padding: 16px 40px 0;
+  font: 400 22px/1 var(--font-inter), sans-serif;
+  letter-spacing: -0.02em;
+}
+.thread-root .ttl em {
+  font-style: italic;
+  color: var(--mute);
+}
+.thread-root .txt {
+  padding: 22px 64px 28px 40px;
+  font: 400 18.5px/1.78 var(--font-inter), sans-serif;
+  color: var(--ink);
+}
+.thread-root .txt p {
+  margin: 0 0 14px;
+}
+.thread-root .s {
+  display: block;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin: 24px 0 12px;
+}
+.thread-root .s:first-child {
+  margin-top: 0;
+}
+.thread-root .v {
+  display: inline;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+}
+.thread-root .v .n {
+  font: 500 10px/1 var(--font-inter), sans-serif;
+  color: var(--mute);
+  vertical-align: 0.45em;
+  margin: 0 4px 0 2px;
+}
+.thread-root .v.sel {
+  background: linear-gradient(transparent 12%, var(--accS) 12%, var(--accS) 92%, transparent 92%);
+  box-decoration-break: clone;
+}
+.thread-root .v.sel .n {
+  color: var(--acc);
+}
+.thread-root .foot {
+  display: flex;
+  justify-content: space-between;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mute);
+  padding: 0 40px 22px;
+}
+.thread-root .field {
+  position: absolute;
+  left: 792px;
+  right: 24px;
+  top: 70px;
+  bottom: 24px;
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+  background-size: 20px 20px;
+}
+.thread-root .flabel,
+.thread-root .statline {
+  position: absolute;
+  left: 0;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.thread-root .flabel {
+  top: 0;
+}
+.thread-root .statline {
+  bottom: 0;
+  letter-spacing: 0.06em;
+}
+.thread-root .statline b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.thread-root .card {
+  position: absolute;
+  width: 270px;
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px var(--line), 0 12px 28px -18px rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  padding: 12px 14px;
+  text-align: left;
+  color: var(--ink);
+}
+.thread-root .card .ch {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 9px;
+}
+.thread-root .card .ch span:last-child {
+  color: var(--mute);
+}
+.thread-root .card p {
+  font: 400 14.5px/1.5 var(--font-inter), sans-serif;
+}
+.thread-root .card .cf {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  font: 500 10px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--mute);
+  text-transform: uppercase;
+}
+.thread-root .card.o2 {
+  width: 236px;
+}
+.thread-root .card.o2 p {
+  font-size: 13.5px;
+}
+.thread-root .card:before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 16px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--acc);
+}
+.thread-root .card.o2:before {
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1.2px var(--acc);
+}
+.thread-root svg.wire {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 5;
+}
+.thread-root svg.wire path {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 1.1;
+}
+.thread-root svg.wire path.o2 {
+  stroke-dasharray: 2 3;
+  stroke-width: 1;
+}
+.thread-root .tagl {
+  position: absolute;
+  font: 500 9px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--acc);
+  background: var(--bg);
+  padding: 3px 5px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--acc);
+  z-index: 6;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+.thread-root .tools {
+  position: absolute;
+  display: flex;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 6px;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  z-index: 30;
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.4);
+}
+.thread-root .tools button {
+  padding: 10px 12px;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  background: transparent;
+  color: var(--bg);
+}
+.thread-root .tools button + button {
+  box-shadow: -1px 0 0 rgba(128, 128, 128, 0.35);
+}
+.thread-root .tools b {
+  font-weight: 500;
+  opacity: 0.5;
+}
+.thread-root .tools .on {
+  color: var(--acc);
+}
+.thread-root .note {
+  position: absolute;
+  width: 420px;
+  background: var(--sheet);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--line), 0 24px 50px -24px rgba(0, 0, 0, 0.35);
+  padding: 18px 22px;
+  z-index: 12;
+}
+.thread-root .note .ch {
+  display: flex;
+  justify-content: space-between;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 16px;
+}
+.thread-root .note .ch b {
+  color: var(--acc);
+  font-weight: 500;
+}
+.thread-root .note .q {
+  font: italic 400 17px/1.6 var(--font-inter), sans-serif;
+  padding-left: 14px;
+  box-shadow: inset 2px 0 0 var(--acc);
+  margin-bottom: 16px;
+}
+.thread-root .note textarea {
+  width: 100%;
+  min-height: 88px;
+  border: 0;
+  resize: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: 400 15.5px/1.6 var(--font-inter), sans-serif;
+}
+.thread-root .note .sv {
+  margin-top: 12px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 3px;
+  padding: 6px 8px;
+  font: 500 10px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.thread-root .cmp {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 70px;
+  bottom: 24px;
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px var(--line);
+  border-radius: 6px;
+  overflow: auto;
+}
+.thread-root .hd2 {
+  display: grid;
+  grid-template-columns: 1fr 92px 1fr;
+  min-height: 64px;
+  align-items: center;
+  box-shadow: 0 1px 0 var(--line);
+  padding: 12px 36px;
+  position: sticky;
+  top: 0;
+  background: var(--sheet);
+  z-index: 2;
+}
+.thread-root .vh {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 500 11px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+  background: transparent;
+}
+.thread-root .ab {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 11px;
+}
+.thread-root .vh.b .ab {
+  background: var(--acc);
+  color: #fff;
+}
+.thread-root .vh .nm {
+  font: 400 20px/1 var(--font-inter), sans-serif;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--ink);
+}
+.thread-root .pk.open {
+  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--bg);
+  border-radius: 5px;
+  padding: 7px 10px;
+}
+.thread-root .swp {
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font: 500 9px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.08em;
+  color: var(--mute);
+  background: transparent;
+}
+.thread-root .swp span {
+  width: 34px;
+  height: 26px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: var(--bg);
+}
+.thread-root .sim {
+  position: absolute;
+  right: 36px;
+  top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--mute);
+  text-transform: uppercase;
+}
+.thread-root .sim b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.thread-root .rows {
+  padding: 12px 36px 28px;
+}
+.thread-root .row {
+  display: grid;
+  grid-template-columns: 1fr 92px 1fr;
+}
+.thread-root .row .t {
+  font: 400 16.5px/1.72 var(--font-inter), sans-serif;
+  padding: 7px 0;
+}
+.thread-root .row .g {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 12px;
+  gap: 6px;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  color: var(--mute);
+}
+.thread-root .row .dl {
+  font-size: 9.5px;
+  color: var(--acc);
+}
+.thread-root .row .dl.z {
+  color: var(--faint);
+}
+.thread-root .row + .row {
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--line) 60%, transparent);
+}
+.thread-root .w.d {
+  background: var(--accS);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1.5px var(--accS);
+}
+.thread-root .rsec {
+  display: grid;
+  grid-template-columns: 1fr 92px 1fr;
+  font: 500 10px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute);
+  padding: 20px 0 10px;
+}
+.thread-root .vmenu {
+  position: absolute;
+  width: 300px;
+  background: var(--sheet);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--line), 0 20px 40px -18px rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  z-index: 40;
+}
+.thread-root .vmenu button {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 4px;
+  width: 100%;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font: 500 11px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.thread-root .vmenu button.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+.thread-root .vmenu .ft {
+  padding: 10px 10px 6px;
+  color: var(--mute);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 -1px 0 var(--line);
+  margin-top: 4px;
+}
+.thread-root .more {
+  position: absolute;
+  right: 16px;
+  top: 52px;
+  z-index: 40;
+  width: 220px;
+  background: var(--sheet);
+  border-radius: 6px;
+  padding: 6px;
+  box-shadow: 0 0 0 1px var(--line), 0 20px 40px -18px rgba(0, 0, 0, 0.35);
+}
+.thread-root.mobile .bar {
+  height: 42px;
+  padding: 0 18px;
+}
+.thread-root.mobile .ruler {
+  display: none;
+}
+.thread-root.mobile .sheet {
+  left: 10px;
+  right: 10px;
+  width: auto;
+  top: 54px;
+  bottom: 10px;
+}
+.thread-root.mobile .hd,
+.thread-root.mobile .foot {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+.thread-root.mobile .hd {
+  padding-top: 18px;
+}
+.thread-root.mobile .ttl {
+  padding: 12px 20px 0;
+  font-size: 22px;
+}
+.thread-root.mobile .txt {
+  padding: 16px 28px 80px 20px;
+  font-size: 16.5px;
+  line-height: 1.72;
+}
+.thread-root.mobile .tray {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 232px;
+  background: var(--bg);
+  box-shadow: 0 -1px 0 var(--line);
+  z-index: 15;
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+  background-size: 16px 16px;
+  overflow: hidden;
+}
+.thread-root.mobile .tray .tl {
+  position: absolute;
+  left: 18px;
+  top: 14px;
+  font: 500 10px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.thread-root.mobile .tray .tl b {
+  color: var(--acc);
+}
+.thread-root.mobile .tray .card {
+  top: 46px;
+  width: 236px;
+}
+.thread-root.mobile .sheet.threaded {
+  bottom: 232px;
+}
+.thread-root.mobile .note {
+  left: 8px;
+  right: 8px;
+  width: auto;
+  bottom: 8px;
+  border-radius: 14px 14px 30px 30px;
+}
+.thread-root.mobile .cmp {
+  left: 10px;
+  right: 10px;
+  top: 54px;
+  bottom: 64px;
+}
+.thread-root.mobile .hd2,
+.thread-root.mobile .row {
+  grid-template-columns: 1fr;
+}
+.thread-root.mobile .hd2 .swp,
+.thread-root.mobile .row .g,
+.thread-root.mobile .sim {
+  display: none;
+}
+.thread-root.mobile .rows {
+  padding: 12px 16px 24px;
+}
+.thread-root.mobile .pager {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 16px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px var(--line);
+  z-index: 20;
+  font: 500 10.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+}
+.thread-root.mobile .pager button {
+  padding: 8px 12px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--mute);
+}
+.thread-root.mobile .pager button.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+.thread-root.mobile .pager button.onb {
+  background: var(--acc);
+  color: #fff;
+}
+@media (max-width: 1200px) {
+  .thread-root:not(.mobile) .sheet {
+    width: min(744px, calc(52% - 12px));
+  }
+  .thread-root:not(.mobile) .field {
+    left: calc(min(744px, 52% - 12px) + 48px);
+  }
+}
+
+.reader-root button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.canon-root .rd,
+.thread-root .sheet,
+.thread-root .cmp {
+  scrollbar-width: none;
+}
+.canon-root .rd::-webkit-scrollbar,
+.thread-root .sheet::-webkit-scrollbar,
+.thread-root .cmp::-webkit-scrollbar {
+  display: none;
+}
+.canon-root.opening .top,
+.canon-root.opening .rd,
+.canon-root.opening .rib,
+.canon-root.opening .rl,
+.canon-root.opening .rr {
+  opacity: 0;
+}
+.canon-root .w.d.lit,
+.canon-root .vr .w.d.lit {
+  background: var(--acc);
+  color: var(--bg);
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px var(--acc);
+  background-image: none;
+}
+.canon-root .tip {
+  position: absolute;
+  z-index: 40;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px 16px 13px;
+  box-shadow: 0 0 0 1px var(--line), 0 18px 40px -16px rgba(0, 0, 0, 0.25);
+  width: 290px;
+}
+.canon-root .tip .k {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 8px;
+}
+.canon-root .tip .pair {
+  font: italic 400 20px/1.15 var(--font-inter), sans-serif;
+  margin-bottom: 10px;
+}
+.canon-root .tip .pair em {
+  font-style: italic;
+  color: var(--acc);
+}
+.canon-root .tip .g {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+.thread-root .ports {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.thread-root .port {
+  position: absolute;
+  right: 22px;
+  width: 22px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  font: 500 9.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--mute);
+}
+.thread-root .port:after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.2px var(--faint);
+  flex: none;
+}
+.thread-root .port.on {
+  color: var(--acc);
+}
+.thread-root .port.on:after {
+  background: var(--acc);
+  box-shadow: 0 0 0 3px var(--accS);
+}
+.thread-root.mobile .port {
+  right: 8px;
+}
+.thread-root .sim .m {
+  display: flex;
+  gap: 2px;
+}
+.thread-root .sim .m i {
+  width: 4px;
+  height: 12px;
+  background: var(--line);
+  border-radius: 1px;
+}
+.thread-root .sim .m i.f {
+  background: var(--ink);
+}
+.thread-root .row.hot {
+  background: color-mix(in srgb, var(--bg) 70%, var(--sheet));
+}
+.thread-root .row.hot .g {
+  color: var(--acc);
+}
+.thread-root .w.d.lit {
+  background: var(--acc);
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--acc);
+}
+.thread-root .tipT {
+  position: absolute;
+  z-index: 30;
+  width: 260px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font: 500 11px/1.5 var(--font-inter), sans-serif;
+  letter-spacing: 0.03em;
+}
+.thread-root .tipT .p {
+  font: italic 400 18px/1.25 var(--font-inter), sans-serif;
+  margin: 6px 0 8px;
+  letter-spacing: 0;
+}
+.thread-root .tipT .p em {
+  color: var(--acc);
+  font-style: italic;
+}
+.thread-root .tipT .o {
+  opacity: 0.6;
+}
+.thread-root .note .h {
+  font: italic 400 20px/1.2 var(--font-inter), sans-serif;
+  margin-bottom: 8px;
+}
+.thread-root .note .tg {
+  display: flex;
+  gap: 6px;
+  margin-top: 14px;
+  align-items: center;
+}
+.thread-root .note .tg button {
+  padding: 5px 7px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--mute);
+  font: 500 10px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+}
+.thread-root .note .tg button.on {
+  color: var(--acc);
+  box-shadow: inset 0 0 0 1px var(--acc);
+}
+.thread-root .note .tg button.sv {
+  margin-left: auto;
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: none;
+}
+.thread-root .pg {
+  position: absolute;
+  inset: 0;
+  padding: 20px 22px 64px;
+  overflow: auto;
+}
+.thread-root .mrow {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 8px;
+  padding: 7px 0;
+  font: 400 16px/1.6 var(--font-inter), sans-serif;
+}
+.thread-root .mrow .n {
+  font: 500 10px/1 var(--font-inter), sans-serif;
+  color: var(--mute);
+  padding-top: 7px;
+  letter-spacing: 0.04em;
+}
+.thread-root .peek {
+  position: absolute;
+  top: 0;
+  bottom: 64px;
+  right: 0;
+  width: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  pointer-events: none;
+}
+.thread-root .peek i {
+  writing-mode: vertical-rl;
+  font: 500 9.5px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.14em;
+  color: var(--mute);
+  font-style: normal;
+}
+.thread-root .logo {
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.canon-root .more a:hover,
+.canon-root .more button:hover,
+.thread-root .more a:hover,
+.thread-root .more button:hover,
+.canon-root .vm .it:hover,
+.thread-root .vmenu button:hover {
+  background: var(--band);
+}
+.thread-root .vmenu button.on:hover {
+  background: var(--ink);
+}

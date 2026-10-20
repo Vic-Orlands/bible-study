@@ -2,6 +2,34 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getViewer, requireViewer } from "./ownership";
 
+export const listMine = query({
+  args: {
+    identityId: v.optional(v.id("identities")),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await getViewer(ctx, args.identityId);
+    if (!viewer) return [];
+
+    const current = await ctx.db
+      .query("audioNotes")
+      .withIndex("by_owner", (q) => q.eq("ownerKey", viewer.ownerKey))
+      .order("desc")
+      .collect();
+
+    if (!args.identityId) return current;
+
+    const legacy = await ctx.db
+      .query("audioNotes")
+      .withIndex("by_identity", (q) => q.eq("identityId", args.identityId))
+      .order("desc")
+      .collect();
+
+    return [
+      ...new Map([...current, ...legacy].map((note) => [note._id, note])).values(),
+    ];
+  },
+});
+
 export const listForPassage = query({
   args: {
     identityId: v.optional(v.id("identities")),

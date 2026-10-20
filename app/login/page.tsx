@@ -2,11 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
-import BibleLogo from "@/components/logo";
-import { Toaster } from "@/components/ui/sonner";
 import { signInWithGoogle } from "@/lib/auth-client";
 
 function getCallbackURL() {
@@ -38,47 +35,24 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#fbf7f2] px-4 text-[#25140b]">
-      <Toaster />
-      <section className="w-full max-w-[380px] border border-[#eadccf] bg-white p-6 shadow-[0_22px_70px_rgba(31,18,9,0.12)]">
+    <main className="flex min-h-svh items-center justify-center bg-[var(--paper)] px-4 text-[var(--ink)]">
+      <section className="w-full max-w-sm rounded-3xl border border-[var(--line)] bg-[var(--sheet)] p-6">
         <div className="mb-8 flex items-center justify-between">
-          <h3 className="text-base font-semibold">Bible Study</h3>
-
-          <Link
-            className="text-[12px] font-semibold text-[#7a6758] hover:text-[#3a2218]"
-            href="/study"
-          >
-            Study
+          <Link className="text-[length:var(--text-md)] font-medium" href="/study">
+            Bible
           </Link>
         </div>
-
-        <Link className="flex items-center gap-2" href="/">
-          <BibleLogo className="size-10" />
-        </Link>
-
-        <h1 className="text-2xl font-semibold tracking-normal mt-5">
-          Sign in to continue
-        </h1>
-        <p className="mt-2 text-xs leading-5 text-[#7a6758]">
-          Use Google to sync your bookmarks, notes, comments, and audio notes.
+        <h1 className="text-[length:var(--text-xl)] font-medium">Sign in to continue</h1>
+        <p className="mt-2 text-[length:var(--text-sm)] leading-6 text-[var(--mute)]">
+          Use Google to keep bookmarks, notes, discussions, and audio notes.
         </p>
-
         <button
-          className="mt-7 flex w-full items-center justify-center gap-3 bg-[#3a2218] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1f1209] disabled:opacity-60"
+          className="mt-7 flex w-full items-center justify-center rounded-full bg-[var(--accent)] px-4 py-3 text-[length:var(--text-sm)] font-medium text-[var(--accent-ink)] disabled:opacity-60"
           disabled={loading}
           onClick={handleSignIn}
           type="button"
         >
-          {loading ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          ) : (
-            <>
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[12px] font-bold text-[#3a2218]">
-                G
-              </span>
-              Continue with Google
-            </>
-          )}
+          {loading ? "Signing in" : "Continue with Google"}
         </button>
       </section>
     </main>

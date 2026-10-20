@@ -200,7 +200,7 @@ function VerseLink({
     <Tooltip>
       <TooltipTrigger asChild>
         <motion.span
-          className="inline-block cursor-pointer font-serif font-medium italic text-[#c5a059] transition-colors hover:text-[#a24723]"
+          className="inline cursor-pointer font-medium text-[var(--accent)]"
           style={{ fontFamily: "Newsreader, serif" }}
           onClick={handleLinkClick}
           onMouseEnter={() => setIsHovered(true)}
@@ -210,18 +210,18 @@ function VerseLink({
         </motion.span>
       </TooltipTrigger>
       <TooltipContent
-        className="pointer-events-none z-[100] w-64 rounded-lg border-[#e5d6c9] bg-white p-3 shadow-xl"
+        className="pointer-events-none z-[100] w-64 rounded-lg border border-[var(--line)] bg-[var(--sheet)] p-3"
         side="top"
         sideOffset={8}
       >
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#9b8878]">
+          <span className="text-[length:var(--text-xs)] font-medium uppercase tracking-wider text-[var(--mute)]">
             {reference} ({previewVersion?.abbreviation ?? "Bible"})
           </span>
           {loading ? (
-            <div className="h-4 w-full animate-pulse rounded bg-[#fbf7f2]" />
+            <div className="h-4 w-full animate-pulse rounded bg-[var(--soft)]" />
           ) : (
-            <p className="font-serif text-[13px] leading-relaxed text-[#3a2218]">
+            <p className="text-[length:var(--text-sm)] leading-relaxed text-[var(--ink)]">
               {previewText}
             </p>
           )}

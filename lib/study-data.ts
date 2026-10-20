@@ -212,6 +212,7 @@ export async function fetchCrossRefChapter(book: string, chapter: number) {
           verse?: number;
           endVerse?: number;
           score?: number;
+          text?: string;
         }[];
       }[];
     };
@@ -234,9 +235,10 @@ export async function fetchCrossRefChapter(book: string, chapter: number) {
           sourceVerse: typeof entry.verse === "number" ? entry.verse : null,
           target,
           text:
-            typeof reference.score === "number"
+            reference.text?.trim() ||
+            (typeof reference.score === "number"
               ? `Related passage (score ${reference.score})`
-              : "Related passage",
+              : "Related passage"),
         } satisfies CrossReference;
       }),
     ) ?? [];

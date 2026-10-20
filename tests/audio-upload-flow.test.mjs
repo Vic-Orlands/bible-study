@@ -1,26 +1,28 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import { describe, it } from "vitest";
 
 const uploadRoute = await readFile(
   new URL("../app/api/upload/route.ts", import.meta.url),
   "utf8",
 );
-const studyPage = await readFile(
-  new URL("../app/study/page.tsx", import.meta.url),
+const audioRecorder = await readFile(
+  new URL("../components/notes/audio-recorder.tsx", import.meta.url),
   "utf8",
 );
 
-test("the upload route accepts the audio file and sends it to R2 server-side", () => {
-  assert.match(uploadRoute, /await req\.formData\(\)/);
-  assert.match(uploadRoute, /const body = Buffer\.from\(await file\.arrayBuffer\(\)\)/);
-  assert.match(uploadRoute, /Body:\s*body/);
-  assert.doesNotMatch(uploadRoute, /getSignedUrl/);
-});
+describe("audio upload", () => {
+  it("accepts the audio file and sends it to R2 server-side", () => {
+    assert.match(uploadRoute, /await req\.formData\(\)/);
+    assert.match(uploadRoute, /const body = Buffer\.from\(await file\.arrayBuffer\(\)\)/);
+    assert.match(uploadRoute, /Body:\s*body/);
+    assert.doesNotMatch(uploadRoute, /getSignedUrl/);
+  });
 
-test("audio notes submit recordings to the same-origin upload route", () => {
-  assert.match(studyPage, /const formData = new FormData\(\)/);
-  assert.match(studyPage, /formData\.append\("file", blob, "audio-note\.webm"\)/);
-  assert.match(studyPage, /body:\s*formData/);
-  assert.doesNotMatch(studyPage, /fetch\(uploadUrl/);
+  it("submits recordings to the same-origin upload route", () => {
+    assert.match(audioRecorder, /const formData = new FormData\(\)/);
+    assert.match(audioRecorder, /formData\.append\("file", blob, "audio-note\.webm"\)/);
+    assert.match(audioRecorder, /body: formData/);
+    assert.doesNotMatch(audioRecorder, /fetch\(uploadUrl/);
+  });
 });
