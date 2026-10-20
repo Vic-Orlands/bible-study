@@ -119,7 +119,7 @@ export function CustomTranslationsManager() {
 
   if (adminState === undefined) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center text-[#7a6758]">
+      <div className="flex min-h-[60vh] items-center justify-center text-[var(--mute)]">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         Loading translation admin...
       </div>
@@ -129,14 +129,14 @@ export function CustomTranslationsManager() {
   if (!adminState?.isAuthenticated) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-[520px] flex-col items-center justify-center gap-5 px-6 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fff3e8] text-[#a24723]">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--soft)] text-[#a24723]">
           <ShieldAlert className="h-7 w-7" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-[#25140b]">
+          <h1 className="text-2xl font-semibold text-[var(--ink)]">
             Sign in to manage translations
           </h1>
-          <p className="text-sm leading-6 text-[#7a6758]">
+          <p className="text-sm leading-6 text-[var(--mute)]">
             This dashboard is app-owned, but access is gated by Better Auth.
           </p>
         </div>
@@ -161,14 +161,14 @@ export function CustomTranslationsManager() {
   if (!adminState.isAdmin) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-[620px] flex-col items-center justify-center gap-5 px-6 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fff3e8] text-[#a24723]">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--soft)] text-[#a24723]">
           <AlertCircle className="h-7 w-7" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-[#25140b]">
+          <h1 className="text-2xl font-semibold text-[var(--ink)]">
             Admin access required
           </h1>
-          <p className="text-sm leading-6 text-[#7a6758]">
+          <p className="text-sm leading-6 text-[var(--mute)]">
             Your Better Auth session is active, but this email is not in the
             translation admin allowlist.
           </p>
@@ -240,40 +240,40 @@ export function CustomTranslationsManager() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-56px)] flex-col bg-[#fbf7f2] text-[#25140b]">
-      <div className="border-b border-[#eadccf] bg-white">
+    <div className="flex min-h-[calc(100vh-56px)] flex-col bg-[var(--soft)] text-[var(--ink)]">
+      <div className="border-b border-[var(--line)] bg-[var(--sheet)]">
         <div className="mx-auto flex w-full max-w-[1400px] items-end justify-between gap-6 px-6 py-6">
           <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9b8878]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--mute)]">
               Translation Registry
             </p>
             <h1 className="text-2xl font-semibold">Custom translation admin</h1>
-            <p className="max-w-[720px] text-sm leading-6 text-[#7a6758]">
+            <p className="max-w-[720px] text-sm leading-6 text-[var(--mute)]">
               Manage curated translations, validate external sources, and control
               what appears in the study version picker.
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[12px] font-semibold text-[#3a2218]">
+            <p className="text-[12px] font-semibold text-[var(--ink)]">
               Signed in as {adminState.name}
             </p>
-            <p className="text-[11px] text-[#9b8878]">{adminState.email}</p>
+            <p className="text-[11px] text-[var(--mute)]">{adminState.email}</p>
           </div>
         </div>
       </div>
 
       <div className="mx-auto grid w-full max-w-[1400px] min-w-0 flex-1 grid-cols-[360px_minmax(0,1fr)] gap-6 px-6 py-6">
-        <section className="flex min-h-0 flex-col border border-[#eadccf] bg-white">
-          <div className="flex items-center justify-between border-b border-[#f1e8df] px-4 py-3">
+        <section className="flex min-h-0 flex-col border border-[var(--line)] bg-[var(--sheet)]">
+          <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold">Registered sources</h2>
-              <p className="text-[11px] text-[#9b8878]">
+              <p className="text-[11px] text-[var(--mute)]">
                 {sortedTranslations.length} translation
                 {sortedTranslations.length === 1 ? "" : "s"}
               </p>
             </div>
             <button
-              className="flex h-8 items-center gap-1 rounded-full border border-[#e5d6c9] px-3 text-[12px] font-semibold text-[#3a2218] hover:border-[#f6823c]"
+              className="flex h-8 items-center gap-1 rounded-full border border-[var(--line)] px-3 text-[12px] font-semibold text-[var(--ink)] hover:border-[#f6823c]"
               onClick={resetForCreate}
               type="button"
             >
@@ -286,7 +286,7 @@ export function CustomTranslationsManager() {
             {sortedTranslations.map((translation) => (
               <button
                 className={cn(
-                  "flex w-full items-start justify-between rounded-full border-b border-[#f7efe7] px-4 py-3 text-left hover:bg-[#fbf7f2]",
+                  "flex w-full items-start justify-between rounded-full border-b border-[#f7efe7] px-4 py-3 text-left hover:bg-[var(--soft)]",
                   selectedId === translation._id && "bg-[#fff8f0]",
                 )}
                 key={translation._id}
@@ -301,44 +301,44 @@ export function CustomTranslationsManager() {
                     <span
                       className={cn(
                         "text-[10px] font-semibold uppercase tracking-[0.08em]",
-                        translation.enabled ? "text-[#2e6b3d]" : "text-[#9b8878]",
+                        translation.enabled ? "text-[#2e6b3d]" : "text-[var(--mute)]",
                       )}
                     >
                       {translation.enabled ? "Enabled" : "Disabled"}
                     </span>
                   </div>
-                  <p className="truncate text-[12px] text-[#3a2218]">
+                  <p className="truncate text-[12px] text-[var(--ink)]">
                     {translation.name}
                   </p>
-                  <p className="truncate text-[11px] text-[#9b8878]">
+                  <p className="truncate text-[11px] text-[var(--mute)]">
                     {translation.languageTag}
                   </p>
                 </div>
-                <PencilLine className="mt-0.5 h-4 w-4 shrink-0 text-[#9b8878]" />
+                <PencilLine className="mt-0.5 h-4 w-4 shrink-0 text-[var(--mute)]" />
               </button>
             ))}
             {sortedTranslations.length === 0 && (
-              <div className="px-4 py-6 text-[12px] text-[#7a6758]">
+              <div className="px-4 py-6 text-[12px] text-[var(--mute)]">
                 No custom translations yet.
               </div>
             )}
           </div>
         </section>
 
-        <section className="flex min-w-0 flex-col border border-[#eadccf] bg-white">
-          <div className="flex items-center justify-between border-b border-[#f1e8df] px-5 py-4">
+        <section className="flex min-w-0 flex-col border border-[var(--line)] bg-[var(--sheet)]">
+          <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
             <div>
               <h2 className="text-sm font-semibold">
                 {selectedId ? "Edit translation" : "Create translation"}
               </h2>
-              <p className="text-[11px] text-[#9b8878]">
+              <p className="text-[11px] text-[var(--mute)]">
                 JSON index plus templated chapter endpoint
               </p>
             </div>
             <div className="flex items-center gap-2">
               {selectedTranslation && (
                 <button
-                  className="flex h-9 items-center gap-2 rounded-full border border-[#e5d6c9] px-3 text-[12px] font-semibold text-[#3a2218] hover:border-[#f6823c]"
+                  className="flex h-9 items-center gap-2 rounded-full border border-[var(--line)] px-3 text-[12px] font-semibold text-[var(--ink)] hover:border-[#f6823c]"
                   onClick={async () => {
                     try {
                       await setEnabled({
@@ -434,16 +434,16 @@ export function CustomTranslationsManager() {
               </div>
             </div>
 
-            <aside className="border-l border-[#f1e8df] bg-[#fcfaf7] px-5 py-5">
+            <aside className="border-l border-[var(--line)] bg-[#fcfaf7] px-5 py-5">
               <div className="space-y-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9b8878]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--mute)]">
                     Source Validation
                   </p>
-                  <h3 className="mt-1 text-sm font-semibold text-[#25140b]">
+                  <h3 className="mt-1 text-sm font-semibold text-[var(--ink)]">
                     Validate provider shape
                   </h3>
-                  <p className="mt-1 text-[12px] leading-5 text-[#7a6758]">
+                  <p className="mt-1 text-[12px] leading-5 text-[var(--mute)]">
                     Checks the index endpoint, resolves the first chapter, and
                     confirms the normalized verse payload.
                   </p>
@@ -464,27 +464,27 @@ export function CustomTranslationsManager() {
                 </button>
 
                 {validationResult ? (
-                  <div className="border border-[#dbeedc] bg-white p-4">
+                  <div className="border border-[#dbeedc] bg-[var(--sheet)] p-4">
                     <div className="flex items-center gap-2 text-[#2e6b3d]">
                       <CheckCircle2 className="h-4 w-4" />
                       <span className="text-[12px] font-semibold">
                         Validation passed
                       </span>
                     </div>
-                    <dl className="mt-3 space-y-2 text-[12px] text-[#3a2218]">
+                    <dl className="mt-3 space-y-2 text-[12px] text-[var(--ink)]">
                       <div className="flex justify-between gap-4">
-                        <dt className="text-[#7a6758]">Books</dt>
+                        <dt className="text-[var(--mute)]">Books</dt>
                         <dd>{validationResult.booksCount}</dd>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <dt className="text-[#7a6758]">Preview chapter</dt>
+                        <dt className="text-[var(--mute)]">Preview chapter</dt>
                         <dd>
                           {validationResult.firstBook} {validationResult.firstChapter}
                         </dd>
                       </div>
                       <div className="space-y-1">
-                        <dt className="text-[#7a6758]">First verse</dt>
-                        <dd className="font-serif text-[13px] leading-6">
+                        <dt className="text-[var(--mute)]">First verse</dt>
+                        <dd className=" text-[13px] leading-6">
                           {validationResult.firstVersePreview.number}.{" "}
                           {validationResult.firstVersePreview.text}
                         </dd>
@@ -492,16 +492,16 @@ export function CustomTranslationsManager() {
                     </dl>
                   </div>
                 ) : (
-                  <div className="border border-dashed border-[#e5d6c9] bg-white p-4 text-[12px] leading-5 text-[#7a6758]">
+                  <div className="border border-dashed border-[var(--line)] bg-[var(--sheet)] p-4 text-[12px] leading-5 text-[var(--mute)]">
                     Use placeholders in the chapter URL template:
-                    <div className="mt-2 font-mono text-[11px] text-[#3a2218]">
+                    <div className="mt-2 font-mono text-[11px] text-[var(--ink)]">
                       {"{bookId}"} {"{chapter}"} {"{bookName}"}
                     </div>
                   </div>
                 )}
 
                 <button
-                  className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-[#e5d6c9] bg-white text-[12px] font-semibold text-[#3a2218] hover:border-[#f6823c] disabled:opacity-60"
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-[var(--sheet)] text-[12px] font-semibold text-[var(--ink)] hover:border-[#f6823c] disabled:opacity-60"
                   disabled={isSaving}
                   onClick={handleSave}
                   type="button"
@@ -533,9 +533,9 @@ function Field({
 }) {
   return (
     <label className="space-y-2">
-      <span className="text-[12px] font-semibold text-[#3a2218]">{label}</span>
+      <span className="text-[12px] font-semibold text-[var(--ink)]">{label}</span>
       <input
-        className="h-11 w-full border border-[#e5d6c9] bg-white px-3 text-[13px] text-[#25140b] outline-none transition-colors focus:border-[#f6823c]"
+        className="h-11 w-full border border-[var(--line)] bg-[var(--sheet)] px-3 text-[13px] text-[var(--ink)] outline-none transition-colors focus:border-[#f6823c]"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       />
@@ -554,9 +554,9 @@ function LongField({
 }) {
   return (
     <label className="space-y-2">
-      <span className="text-[12px] font-semibold text-[#3a2218]">{label}</span>
+      <span className="text-[12px] font-semibold text-[var(--ink)]">{label}</span>
       <textarea
-        className="min-h-[120px] w-full border border-[#e5d6c9] bg-white px-3 py-3 text-[13px] text-[#25140b] outline-none transition-colors focus:border-[#f6823c]"
+        className="min-h-[120px] w-full border border-[var(--line)] bg-[var(--sheet)] px-3 py-3 text-[13px] text-[var(--ink)] outline-none transition-colors focus:border-[#f6823c]"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       />
@@ -576,7 +576,7 @@ function ToggleField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-start gap-3 border border-[#f1e8df] bg-[#fcfaf7] px-4 py-3">
+    <label className="flex items-start gap-3 border border-[var(--line)] bg-[#fcfaf7] px-4 py-3">
       <input
         checked={checked}
         className="mt-1 h-4 w-4 accent-[#3a2218]"
@@ -584,10 +584,10 @@ function ToggleField({
         type="checkbox"
       />
       <span className="space-y-1">
-        <span className="block text-[12px] font-semibold text-[#3a2218]">
+        <span className="block text-[12px] font-semibold text-[var(--ink)]">
           {label}
         </span>
-        <span className="block text-[11px] leading-5 text-[#7a6758]">
+        <span className="block text-[11px] leading-5 text-[var(--mute)]">
           {description}
         </span>
       </span>

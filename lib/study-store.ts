@@ -24,6 +24,7 @@ type State = {
   identityId: string | null;
   displayName: string;
   isAnonymous: boolean;
+  identityReady: boolean;
 };
 
 type Actions = {
@@ -37,6 +38,7 @@ type Actions = {
   setVersePrefill(v: string | null): void;
   setHighlightedVerse(v: string | null): void;
   setIdentity(id: string | null, displayName: string, isAnonymous: boolean): void;
+  setIdentityReady(ready: boolean): void;
 };
 
 export const useStudyStore = create<State & Actions>()(
@@ -54,6 +56,7 @@ export const useStudyStore = create<State & Actions>()(
       identityId: null,
       displayName: "Anonymous",
       isAnonymous: true,
+      identityReady: false,
 
       setPassage(p: PassageSelection) {
         set({ selectedPassage: p, commentTarget: `${p.book} ${p.chapter}:${p.verse}` });
@@ -69,7 +72,7 @@ export const useStudyStore = create<State & Actions>()(
         set({ highlightedVerse: v });
       },
       setVisibleVersions(v: string[]) {
-        set({ visibleVersions: v });
+        set({ visibleVersions: v.slice(0, 2) });
       },
       patchSidebars(patch: Partial<StudySidebars>) {
         set((state) => ({ sidebars: { ...state.sidebars, ...patch } }));
@@ -85,6 +88,9 @@ export const useStudyStore = create<State & Actions>()(
       },
       setIdentity(id: string | null, displayName: string, isAnonymous: boolean) {
         set({ identityId: id, displayName, isAnonymous });
+      },
+      setIdentityReady(ready: boolean) {
+        set({ identityReady: ready });
       },
     }),
     {

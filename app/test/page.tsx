@@ -83,14 +83,14 @@ const highlightFeatures = [
 
 export default function HomePage() {
   return (
-    <main className="flex flex-col md:flex-row h-screen bg-[#0E0E0E] text-white md:overflow-hidden selection:bg-white/20">
+    <main className="flex flex-col md:flex-row h-screen bg-[#0E0E0E] text-white md:overflow-hidden selection:bg-[var(--sheet)]/20">
       {/* Left Static Panel */}
       <div className="w-full md:w-[45%] lg:w-[40%] flex flex-col justify-between p-8 md:p-12 lg:p-16 relative z-10 bg-background border-r border-border md:h-screen shrink-0 overflow-y-auto scrollbar-hide">
 
         
         {/* Header */}
         <header className="flex items-center justify-between z-20">
-          <div className="flex items-center gap-2 font-serif text-xl tracking-tight font-medium">
+          <div className="flex items-center gap-2  text-xl tracking-tight font-medium">
             <BookOpen className="size-6 text-neutral-300" />
             <span className="sr-only">Bible App</span>
           </div>
@@ -103,7 +103,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/login"
-              className="px-3 py-1.5 rounded-full border border-border hover:bg-white/5 transition-colors text-foreground"
+              className="px-3 py-1.5 rounded-full border border-border hover:bg-[var(--sheet)]/5 transition-colors text-foreground"
             >
               Sign In
             </Link>
@@ -145,7 +145,7 @@ export default function HomePage() {
                 Start Reading
               </Button>
             </Link>
-            <span className="text-sm font-medium tracking-wide text-neutral-500 uppercase px-2 py-1 bg-white/5 rounded-md border border-white/10 hidden sm:inline-block">
+            <span className="text-sm font-medium tracking-wide text-neutral-500 uppercase px-2 py-1 bg-[var(--sheet)]/5 rounded-md border border-white/10 hidden sm:inline-block">
               Free Access
             </span>
           </motion.div>
@@ -215,7 +215,7 @@ export default function HomePage() {
                 <div className="absolute bottom-4 inset-x-4 md:bottom-8 md:inset-x-8 z-30 pointer-events-none">
                   <div className="backdrop-blur-xl bg-black/50 border border-white/10 p-5 md:p-6 rounded-2xl shadow-xl transform translate-y-2 group-hover:translate-y-0 transition-all duration-500">
                     <div className="flex items-start gap-4">
-                      <div className="p-3 bg-white/10 rounded-xl shrink-0">
+                      <div className="p-3 bg-[var(--sheet)]/10 rounded-xl shrink-0">
                         <Icon className="size-6 text-white" />
                       </div>
                       <div>

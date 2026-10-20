@@ -916,11 +916,11 @@ export function preferredVisibleVersions(
     .filter((label, index, list) => list.indexOf(label) === index);
 
   if (resolvedRequested.length > 0) {
-    return resolvedRequested.slice(0, 3);
+    return resolvedRequested.slice(0, 2);
   }
 
   return sortVersionsByPreference(available)
-    .slice(0, 3)
+    .slice(0, 1)
     .map((version) => version.id);
 }
 

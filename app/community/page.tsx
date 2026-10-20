@@ -1,5 +1,5 @@
 "use client";
 
-import CommunityPage from "@/components/community-page";
+import GroupsPage from "@/components/groups/groups-page";
 
-export default CommunityPage;
+export default GroupsPage;

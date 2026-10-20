@@ -55,13 +55,13 @@ export function NotificationsSheet({
 
   const headerActions = useMemo(
     () => (
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#f1e8df] bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--line)] bg-[var(--sheet)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9b8878]">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--mute)]">
             Inbox
           </span>
           {unreadCount > 0 && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#f6823c] px-1.5 text-[10px] font-bold text-white">
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 text-[10px] font-bold text-white">
               {unreadCount}
             </span>
           )}
@@ -70,7 +70,7 @@ export function NotificationsSheet({
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {unreadCount > 0 && (
             <button
-              className="flex items-center gap-1.5 border border-[#e5d6c9] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#3a2218] hover:bg-[#fbf7f2]"
+              className="flex items-center gap-1.5 border border-[var(--line)] bg-[var(--sheet)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--ink)] hover:bg-[var(--soft)]"
               onClick={async () => {
                 try {
                   await markAllRead({ ...(identityId ? { identityId } : {}) });
@@ -86,7 +86,7 @@ export function NotificationsSheet({
           )}
           {hasNotifications && (
             <button
-              className="flex items-center gap-1.5 border border-[#f1e8df] bg-[#fff8f4] px-2.5 py-1.5 text-[11px] font-semibold text-[#a24723] hover:bg-[#fff1e8]"
+              className="flex items-center gap-1.5 border border-[var(--line)] bg-[#fff8f4] px-2.5 py-1.5 text-[11px] font-semibold text-[#a24723] hover:bg-[#fff1e8]"
               onClick={async () => {
                 try {
                   await clearAll({ ...(identityId ? { identityId } : {}) });
@@ -109,7 +109,7 @@ export function NotificationsSheet({
                 "rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
                 filter === value
                   ? "bg-[#3a2218] text-white"
-                  : "bg-[#fbf7f2] text-[#7a6758] hover:bg-[#f1e8df] hover:text-[#3a2218]",
+                  : "bg-[var(--soft)] text-[var(--mute)] hover:bg-[#f1e8df] hover:text-[var(--ink)]",
               )}
               key={value}
               onClick={() => setFilter(value)}
@@ -126,7 +126,7 @@ export function NotificationsSheet({
 
   return (
     <BottomSheet isOpen={open} onClose={onClose} title="Notifications">
-      <div className="-m-4 flex h-full flex-col bg-[#fbf7f2]">
+      <div className="-m-4 flex h-full flex-col bg-[var(--soft)]">
         {headerActions}
 
         <div className="bible-app-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4">
@@ -135,12 +135,12 @@ export function NotificationsSheet({
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#f6823c] border-t-transparent" />
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center border border-[#f1e8df] bg-white px-6 py-12 text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#fbf7f2] text-[#9b8878]">
+            <div className="flex flex-col items-center border border-[var(--line)] bg-[var(--sheet)] px-6 py-12 text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--soft)] text-[var(--mute)]">
                 <Bell className="h-5 w-5" />
               </div>
-              <p className="text-[13px] font-semibold text-[#3a2218]">No notifications</p>
-              <p className="mt-1 text-[11px] text-[#9b8878]">
+              <p className="text-[13px] font-semibold text-[var(--ink)]">No notifications</p>
+              <p className="mt-1 text-[11px] text-[var(--mute)]">
                 {filter === "unread"
                   ? "You're all caught up."
                   : filter === "mentions"
@@ -161,7 +161,7 @@ export function NotificationsSheet({
                 return (
                   <button
                     className={cn(
-                      "flex w-full items-start gap-3 border border-[#f1e8df] bg-white px-4 py-3 text-left transition-colors hover:border-[#f6823c] hover:bg-[#fffaf5]",
+                      "flex w-full items-start gap-3 border border-[var(--line)] bg-[var(--sheet)] px-4 py-3 text-left transition-colors hover:border-[#f6823c] hover:bg-[#fffaf5]",
                       !notification.read && "border-[#f6d4bd] bg-[#fff8f1]",
                     )}
                     key={notification._id}
@@ -190,8 +190,8 @@ export function NotificationsSheet({
                       className={cn(
                         "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
                         notification.type === "like"
-                          ? "bg-[#fff3e8] text-[#f6823c]"
-                          : "bg-[#f5efe7] text-[#7a6758]",
+                          ? "bg-[var(--soft)] text-[var(--accent)]"
+                          : "bg-[var(--soft)] text-[var(--mute)]",
                       )}
                     >
                       <Icon className="h-4 w-4" />
@@ -199,7 +199,7 @@ export function NotificationsSheet({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
-                        <p className="text-[12px] leading-5 text-[#25140b]">
+                        <p className="text-[12px] leading-5 text-[var(--ink)]">
                           <span className="font-semibold">{notification.actorName}</span>{" "}
                           {notification.type === "reply"
                             ? "replied to your comment"
@@ -210,15 +210,15 @@ export function NotificationsSheet({
                                 : "commented"}
                         </p>
                         {!notification.read && (
-                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#f6823c]" />
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]" />
                         )}
                       </div>
 
-                      <p className="mt-1 line-clamp-2 font-serif text-[12px] leading-relaxed text-[#5d493a]">
+                      <p className="mt-1 line-clamp-2  text-[12px] leading-relaxed text-[#5d493a]">
                         {notification.preview}
                       </p>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[#9b8878]">
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--mute)]">
                         <span>
                           {notification.passageBook} {notification.passageChapter}:
                           {notification.passageVerse ?? 1}

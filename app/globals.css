@@ -3,191 +3,178 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 5%;
-  --foreground: 0 0% 96%;
-  --muted: 0 0% 12%;
-  --muted-foreground: 0 0% 56%;
-  --accent: 19 91% 57%;
+  --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --scripture: 18px;
+  --paper: #f7f4ef;
+  --sheet: #fffcf8;
+  --ink: #161513;
+  --mute: #8a8580;
+  --line: #e4dfd6;
+  --accent: #2f5dff;
+  --accent-ink: #ffffff;
+  --soft: #f3f0ea;
+  --background: 40 23% 95%;
+  --foreground: 40 6% 8%;
+  --muted: 40 14% 93%;
+  --muted-foreground: 30 4% 52%;
+  --accent-hsl: 226 100% 59%;
   --accent-foreground: 0 0% 100%;
-  --border: 0 0% 15%;
-  --font-sans: "Geist", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --border: 36 18% 87%;
+}
+
+[data-direction="canon"] {
+  --paper: #f7f4ef;
+  --sheet: #fffcf8;
+  --ink: #161513;
+  --mute: #8a8580;
+  --line: #e4dfd6;
+  --accent: #2f5dff;
+  --accent-ink: #ffffff;
+  --soft: #f3f0ea;
+}
+
+[data-direction="canon"][data-scheme="dark"] {
+  --paper: #0e0e10;
+  --sheet: #161618;
+  --ink: #f3f0ea;
+  --mute: #9a958f;
+  --line: #2a2a2e;
+  --accent: #8aa4ff;
+  --accent-ink: #0e0e10;
+  --soft: #1c1c20;
+}
+
+[data-direction="thread"] {
+  --paper: #ede6dc;
+  --sheet: #fbf7f2;
+  --ink: #1c140e;
+  --mute: #8a8178;
+  --line: #e0d6c8;
+  --accent: #e8560c;
+  --accent-ink: #ffffff;
+  --soft: #f3ebe1;
+}
+
+[data-direction="thread"][data-scheme="dark"] {
+  --paper: #161311;
+  --sheet: #1e1a16;
+  --ink: #f6f1ea;
+  --mute: #a3988e;
+  --line: #342c26;
+  --accent: #e8560c;
+  --accent-ink: #ffffff;
+  --soft: #241e19;
+}
+
+[data-scheme="dark"] {
+  color-scheme: dark;
+}
+
+[data-scheme="light"] {
+  color-scheme: light;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  scroll-behavior: smooth;
-}
-
+html,
 body {
-  min-height: 100vh;
+  min-height: 100%;
   margin: 0;
-  overflow-x: hidden;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
 }
 
 button,
-a {
+a,
+input,
+textarea {
+  font-family: inherit;
   -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {
-  background: rgba(246, 130, 60, 0.35);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
-.feature-rail {
-  scrollbar-width: none;
+.app-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
-.feature-rail::-webkit-scrollbar {
+.app-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.app-scroll::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+
+[data-direction="canon"] .diff-word {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  background: transparent;
+}
+
+[data-direction="thread"] .diff-word {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 -1px 0 var(--accent);
+  text-decoration: none;
+}
+
+[data-direction="canon"] .thread-only,
+[data-direction="thread"] .canon-only {
+  display: none !important;
+}
+
+.reader-frame {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 40rem;
+}
+
+[data-direction="thread"] .reader-frame {
+  max-width: 68rem;
+}
+
+@media (min-width: 1024px) {
+  [data-direction="thread"] .reader-split {
+    display: grid;
+    grid-template-columns: minmax(0, 32rem) minmax(13rem, 16rem);
+    column-gap: 8rem;
+    justify-content: center;
+    align-items: start;
+  }
+}
+
+[data-direction="thread"] .delta-count {
+  color: var(--accent);
+}
+
+[data-direction="canon"] .delta-count {
   display: none;
 }
 
-.hero-copy {
-  animation: hero-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.feature-panel {
-  animation: panel-settle 700ms ease both;
-}
-
-@keyframes hero-rise {
-  from {
-    transform: translateY(16px);
-  }
-
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes panel-settle {
-  from {
-    opacity: 0.82;
-  }
-
-  to {
-    opacity: 1;
-  }
+[data-sonner-toaster] [data-sonner-toast] {
+  --toast-animation-duration: 200ms;
+  background: var(--sheet) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-
-  .hero-copy,
-  .feature-panel {
-    animation: none;
-  }
-}
-
-.bible-app {
-  --bible-bg: #ffffff;
-  --bible-panel: #ffffff;
-  --bible-surface: #fbf7f2;
-  --bible-soft: #f5eee6;
-  --bible-border: #f1e8df;
-  --bible-border-strong: #e5d6c9;
-  --bible-ink: #25140b;
-  --bible-muted: #7a6758;
-  --bible-accent: #f6823c;
-  --bible-brown: #3a2218;
-  --bible-dark-brown: #1f1209;
-  background: var(--bible-bg);
-  color: var(--bible-ink);
-  font-family: var(--font-sans);
-}
-
-.bible-app button {
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease,
-    transform 150ms ease;
-}
-
-.bible-app .cta-button {
-  border-radius: 999px;
-}
-
-.bible-app .icon-button {
-  border-radius: 999px;
-}
-
-.bible-app button:hover {
-  transform: scale(1.035);
-}
-
-.bible-app button:active {
-  transform: scale(0.96);
-}
-
-.bible-app .rail-handle,
-.bible-app .rail-handle:hover,
-.bible-app .rail-handle:active {
-  transform: translateY(-50%);
-}
-
-.bible-app .reading-plan-page button:hover,
-.bible-app .reading-plan-page button:active {
-  transform: none;
-}
-
-.reading-plan-page .font-serif {
-  font-family: "Fraunces", Georgia, serif;
-}
-
-.bible-app-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: #e5d6c9 transparent;
-}
-
-.bible-app-scroll::-webkit-scrollbar {
-  height: 4px;
-  width: 4px;
-}
-
-.bible-app-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.bible-app-scroll::-webkit-scrollbar-thumb {
-  background: #e5d6c9;
-}
-
-[data-sonner-toaster] [data-sonner-toast] [data-content] {
-  flex: 1;
-  min-width: 0;
-}
-
-[data-sonner-toaster] [data-sonner-toast] {
-  --toast-animation-duration: 200ms;
-  transition:
-    transform 200ms ease,
-    opacity 200ms ease,
-    height 200ms ease,
-    box-shadow 200ms ease !important;
-}
-
-[data-sonner-toaster] [data-sonner-toast][data-front="true"] {
-  box-shadow: 0 18px 44px rgba(31, 18, 9, 0.12);
-}
-
-[data-sonner-toaster] [data-sonner-toast][data-type="loading"] {
-  border-left: 3px solid #f6823c;
-}
-
-[data-sonner-toaster] [data-sonner-toast][data-type="loading"] [data-icon] {
-  color: #f6823c;
-}
-
-[data-sonner-toaster] [data-sonner-toast][data-type="loading"] .sonner-loader {
-  position: static;
-  transform: none;
 }
